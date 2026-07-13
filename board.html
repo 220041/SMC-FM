@@ -33,7 +33,16 @@
   #main { display: flex; flex: 1; min-height: 0; padding: 18px 24px; gap: 20px; }
 
   /* ── 캘린더 ────────────────────────────── */
-  #cal-wrap { flex: 1 1 78%; display: flex; flex-direction: column; min-width: 0; }
+  #cal-wrap {
+    flex: 1 1 78%; display: flex; flex-direction: column; min-width: 0;
+    --chip-font: clamp(13px, 1.05vw, 18px);
+    --daynum-font: clamp(16px, 1.3vw, 22px);
+    --lane-gap: 4px;
+    --lane-pad: 4px 8px;
+  }
+  #cal-wrap.density-1 { --chip-font: clamp(11.5px, 0.9vw, 15px); --daynum-font: clamp(14px, 1.1vw, 19px); --lane-gap: 3px; --lane-pad: 3px 7px; }
+  #cal-wrap.density-2 { --chip-font: clamp(10.5px, 0.8vw, 13px); --daynum-font: clamp(13px, 1vw, 16px); --lane-gap: 2px; --lane-pad: 2px 6px; }
+  #cal-wrap.density-3 { --chip-font: clamp(9.5px, 0.7vw, 11.5px); --daynum-font: clamp(12px, 0.9vw, 14px); --lane-gap: 2px; --lane-pad: 2px 5px; }
   #cal-header {
     display: flex; align-items: center; justify-content: center; gap: 24px;
     margin-bottom: 12px; flex-shrink: 0;
@@ -77,19 +86,19 @@
   .day-cell.other-month { background: #F7F8F6; }
   .day-cell.other-month .day-num { color: var(--dim); }
   .day-num {
-    font-size: clamp(14px, 1.1vw, 20px); font-weight: 800; padding: 2px 4px;
+    font-size: var(--daynum-font); font-weight: 800; padding: 2px 4px;
     display: flex; align-items: center; gap: 6px;
   }
   .day-num.is-redday { color: var(--alert); }
   .cal-lanes {
-    display: flex; flex-direction: column; gap: 3px; padding: 0 6px 8px;
+    display: flex; flex-direction: column; gap: var(--lane-gap); padding: 0 6px 8px;
   }
   .cal-lane {
-    display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--lane-gap);
   }
   .event-chip {
-    font-size: clamp(11px, 0.85vw, 15px); font-weight: 600; line-height: 1.3;
-    padding: 3px 7px; border-radius: 7px;
+    font-size: var(--chip-font); font-weight: 600; line-height: 1.3;
+    padding: var(--lane-pad); border-radius: 7px;
     border-left: 4px solid transparent;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
   }
@@ -228,7 +237,7 @@
         <div id="cal-grid"></div>
       </div>
       <div id="legend">
-        <div class="legend-item"><div class="legend-dot type-공사"></div>공사</div>
+        <div class="legend-item"><div class="legend-dot type-공사"></div>공사(작업)</div>
         <div class="legend-item"><div class="legend-dot type-미팅"></div>미팅</div>
         <div class="legend-item"><div class="legend-dot type-업무"></div>업무</div>
       </div>
@@ -414,7 +423,25 @@ function renderCalendar() {
 
     grid.appendChild(weekEl);
   }
+
+  fitCalendarDensity();
 }
+
+/* 스크롤이 생기지 않는 한도 내에서 최대한 크게, 넘칠 것 같으면 단계별로 글자 축소 */
+function fitCalendarDensity() {
+  const wrap = document.getElementById("cal-wrap");
+  const outer = document.getElementById("cal-grid-outer");
+  const tiers = ["", "density-1", "density-2", "density-3"];
+  for (const tier of tiers) {
+    wrap.className = tier;
+    if (outer.scrollHeight <= outer.clientHeight + 1) return;
+  }
+}
+let densityResizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(densityResizeTimer);
+  densityResizeTimer = setTimeout(fitCalendarDensity, 150);
+});
 
 /* ───────── 날짜 확대보기 (노안 배려) ───────── */
 const dayDetailOverlay = document.getElementById("day-detail-overlay");
