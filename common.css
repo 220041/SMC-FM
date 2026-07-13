@@ -21,6 +21,8 @@
   --dim-bg: #EEF0F1;
 
   --accent: #2B4C7E;
+  --today: #7C5CBF;
+  --today-bg: #EFE9FB;
   --radius: 14px;
 }
 
@@ -41,7 +43,7 @@ button, select, input, textarea {
 .today-badge {
   display: inline-flex; align-items: center; justify-content: center;
   width: 34px; height: 34px; border-radius: 50%;
-  border: 3px solid var(--alert); color: var(--alert);
+  background: var(--today); color: #fff;
   font-weight: 900;
 }
 

@@ -20,7 +20,7 @@
   #topbar .brand { font-size: clamp(18px, 1.6vw, 26px); font-weight: 800; }
   #topbar .brand span { color: var(--ink-soft); font-weight: 500; font-size: 0.7em; margin-left: 8px; }
   #clock { font-size: clamp(16px, 1.4vw, 22px); font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-  #topbar-left { display: flex; align-items: center; gap: 16px; }
+  #topbar-right { display: flex; align-items: center; gap: 16px; }
   .nav-link {
     display: flex; align-items: center; gap: 6px; text-decoration: none;
     background: var(--bg); color: var(--ink-soft); border: 1.5px solid var(--line); border-radius: 20px;
@@ -78,6 +78,7 @@
     font-size: clamp(14px, 1.1vw, 20px); font-weight: 800; padding: 2px 4px;
     display: flex; align-items: center; gap: 6px;
   }
+  .day-num.is-redday { color: var(--alert); }
   .event-chip {
     font-size: clamp(11px, 0.85vw, 15px); font-weight: 600; line-height: 1.3;
     padding: 3px 7px; border-radius: 7px; word-break: keep-all;
@@ -108,15 +109,19 @@
   }
   #alert-list { flex: 1 1 55%; overflow-y: auto; padding: 12px 14px; min-height: 0; }
   .alert-card {
-    background: var(--alert-bg); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
+    background: var(--alert-bg); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px;
     cursor: pointer; border: 1px solid #EFC9C9;
   }
-  .alert-card .title-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .alert-card .title-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
   .alert-card .title { font-weight: 800; font-size: clamp(13px, 1vw, 16px); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .alert-card .meta { font-size: clamp(11px, 0.8vw, 13px); color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .alert-card .urgency-tag {
     display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 6px;
     flex-shrink: 0; vertical-align: middle;
+  }
+  .alert-card .count-tag {
+    display: inline-block; font-size: 10.5px; font-weight: 800; padding: 1px 6px; border-radius: 6px;
+    flex-shrink: 0; background: var(--alert); color: #fff;
   }
   .urgency-상 { background: #C23B3B; color: #fff; }
   .urgency-중 { background: #E1A63B; color: #fff; }
@@ -128,11 +133,12 @@
   }
   #done-list { flex: 1; overflow-y: auto; padding: 0 14px 14px; }
   .done-card {
-    background: var(--dim-bg); border-radius: 10px; padding: 9px 12px; margin-bottom: 8px;
+    background: var(--dim-bg); border-radius: 10px; padding: 7px 12px; margin-bottom: 6px;
     font-size: 12.5px; color: var(--ink-soft); overflow: hidden;
   }
+  .done-card .title-row { display: flex; align-items: center; gap: 6px; }
   .done-card .title {
-    color: var(--ink); font-weight: 700; margin-bottom: 3px;
+    color: var(--ink); font-weight: 700; margin-bottom: 2px;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .done-card > div:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -190,13 +196,13 @@
 <body>
 <div id="app">
   <div id="topbar">
-    <div id="topbar-left">
+    <div class="brand">서귀포의료원 시설관리팀 <span>월간일정</span></div>
+    <div id="topbar-right">
+      <div id="clock">--:--</div>
       <a class="nav-link" href="input.html" title="업무 화면으로 이동">
         <span class="nav-link-icon">✏️</span><span class="nav-link-text">업무</span>
       </a>
-      <div class="brand">서귀포의료원 시설관리팀 <span>월간일정</span></div>
     </div>
-    <div id="clock">--:--</div>
   </div>
 
   <div id="main">
@@ -250,7 +256,7 @@
 <script type="module">
 import { ensureAccess } from "./auth-gate.js";
 import {
-  db, collection, doc, updateDoc, onSnapshot, query, orderBy, serverTimestamp, Timestamp, TEAM_MEMBERS
+  db, collection, doc, updateDoc, onSnapshot, query, orderBy, serverTimestamp, Timestamp, TEAM_MEMBERS, KR_HOLIDAYS
 } from "./firebase-config.js";
 
 await ensureAccess();
@@ -321,8 +327,11 @@ function renderCalendar() {
     const cell = document.createElement("div");
     cell.className = "day-cell" + (c.other ? " other-month" : "");
 
+    const dowIdx = new Date(c.y, c.m, c.day).getDay();
+    const isRedDay = dowIdx === 0 || dowIdx === 6 || !!KR_HOLIDAYS[iso];
+
     const numWrap = document.createElement("div");
-    numWrap.className = "day-num";
+    numWrap.className = "day-num" + (isRedDay ? " is-redday" : "");
     if (iso === todayIso) {
       numWrap.innerHTML = `<span class="today-badge">${c.day}</span>`;
     } else {
@@ -361,8 +370,9 @@ function openDayDetail(iso, y, m, d) {
     dayEvents.forEach(ev => {
       const div = document.createElement("div");
       div.className = "day-detail-event type-" + (ev.type || "업무");
+      const lastDetail = Array.isArray(ev.history) && ev.history.length ? ev.history[ev.history.length-1].text : ev.detail;
       div.innerHTML = `${ev.time ? `<b>${escapeHtml(ev.time)}</b> ` : ""}${escapeHtml(ev.title)}${ev.vendor ? ` (${escapeHtml(ev.vendor)})` : ""}
-        <div class="dd-meta">담당: ${ev.responsible || "미지정"}${ev.detail ? " · " + escapeHtml(ev.detail) : ""}</div>`;
+        <div class="dd-meta">담당: ${ev.responsible || "미지정"}${lastDetail ? " · " + escapeHtml(lastDetail) : ""}</div>`;
       evEl.appendChild(div);
     });
   }
@@ -394,6 +404,25 @@ function tsMillis(ts) {
   return ts.toDate ? ts.toDate().getTime() : new Date(ts).getTime();
 }
 
+/* 연속으로 같은 담당자+용건인 항목은 한 줄로 묶어서 보여줌 (세로 폭 절약) */
+function groupConsecutive(list) {
+  const groups = [];
+  list.forEach(m => {
+    const last = groups[groups.length - 1];
+    const key = (m.assignee || "") + "|" + (m.subject || "");
+    if (last && last.key === key) {
+      last.items.push(m);
+    } else {
+      groups.push({ key, assignee: m.assignee, subject: m.subject, items: [m] });
+    }
+  });
+  return groups;
+}
+const URGENCY_ORDER = { "상": 3, "중": 2, "하": 1 };
+function topUrgency(items) {
+  return items.reduce((top, m) => (URGENCY_ORDER[m.urgency] || 2) > (URGENCY_ORDER[top] || 0) ? m.urgency : top, items[0].urgency || "중");
+}
+
 function renderAlerts() {
   const unconfirmed = memos.filter(m => m.status !== "확인됨");
   // 완료된 항목: 방금 확인(완료)한 것이 최상위로 오도록 confirmedAt 기준 최신순 정렬
@@ -407,30 +436,33 @@ function renderAlerts() {
     listEl.innerHTML = `<div id="empty-alert">미확인 항목이 없습니다</div>`;
   }
   const now = Date.now();
-  unconfirmed.forEach(m => {
+  groupConsecutive(unconfirmed).forEach(g => {
     const card = document.createElement("div");
-    const receivedMs = m.receivedAt?.toDate ? m.receivedAt.toDate().getTime() : now;
+    const receivedMs = g.items[0].receivedAt?.toDate ? g.items[0].receivedAt.toDate().getTime() : now;
     const isOld = (now - receivedMs) > 24 * 60 * 60 * 1000;
     card.className = "alert-card" + (isOld ? " breathing" : "");
+    const countTag = g.items.length > 1 ? `<span class="count-tag">${g.items.length}건</span>` : "";
     card.innerHTML = `
       <div class="title-row">
-        <span class="title">${m.assignee || "미지정"} - ${escapeHtml(m.subject || "")}</span>
-        <span class="urgency-tag urgency-${m.urgency || "중"}">${m.urgency || "중"}</span>
+        <span class="title">${g.assignee || "미지정"} - ${escapeHtml(g.subject || "")}</span>
+        ${countTag}
+        <span class="urgency-tag urgency-${topUrgency(g.items)}">${topUrgency(g.items)}</span>
       </div>
-      <div class="meta">${m.receivedBy || "-"} · ${fmtTimestamp(m.receivedAt)}</div>
+      <div class="meta">${g.items[0].receivedBy || "-"} · ${fmtTimestamp(g.items[0].receivedAt)}</div>
     `;
-    card.addEventListener("click", () => openNameModal(m.id));
+    card.addEventListener("click", () => openNameModal(g.items.map(m => m.id)));
     listEl.appendChild(card);
   });
 
   const doneEl = document.getElementById("done-list");
   doneEl.innerHTML = "";
-  confirmed.slice(0, 30).forEach(m => {
+  groupConsecutive(confirmed.slice(0, 30)).forEach(g => {
     const card = document.createElement("div");
     card.className = "done-card";
+    const countTag = g.items.length > 1 ? ` (${g.items.length}건)` : "";
     card.innerHTML = `
-      <div class="title">${m.assignee || "미지정"} - ${escapeHtml(m.subject || "")}</div>
-      <div>확인함: ${m.confirmedBy || "-"} ${fmtTimestamp(m.confirmedAt)}</div>
+      <div class="title">${g.assignee || "미지정"} - ${escapeHtml(g.subject || "")}${countTag}</div>
+      <div>확인함: ${g.items[0].confirmedBy || "-"} ${fmtTimestamp(g.items[0].confirmedAt)}</div>
     `;
     doneEl.appendChild(card);
   });
@@ -441,7 +473,7 @@ function escapeHtml(s) {
 }
 
 /* ───────── 이름 선택 모달 ───────── */
-let pendingMemoId = null;
+let pendingMemoIds = [];
 const overlay = document.getElementById("name-modal-overlay");
 const nameButtons = document.getElementById("name-buttons");
 TEAM_MEMBERS.forEach(name => {
@@ -452,24 +484,28 @@ TEAM_MEMBERS.forEach(name => {
   nameButtons.appendChild(btn);
 });
 
-function openNameModal(memoId) {
-  pendingMemoId = memoId;
+function openNameModal(memoIds) {
+  pendingMemoIds = Array.isArray(memoIds) ? memoIds : [memoIds];
+  document.getElementById("name-modal-sub").textContent =
+    pendingMemoIds.length > 1 ? `이 ${pendingMemoIds.length}건을 확인한 사람을 선택하세요` : "이 항목을 확인한 사람을 선택하세요";
   overlay.style.display = "flex";
 }
 document.getElementById("name-cancel").addEventListener("click", () => {
   overlay.style.display = "none";
-  pendingMemoId = null;
+  pendingMemoIds = [];
 });
 
 async function confirmMemo(name) {
-  if (!pendingMemoId) return;
-  await updateDoc(doc(db, "phoneMemos", pendingMemoId), {
-    status: "확인됨",
-    confirmedBy: name,
-    confirmedAt: serverTimestamp()
-  });
+  if (!pendingMemoIds.length) return;
+  for (const id of pendingMemoIds) {
+    await updateDoc(doc(db, "phoneMemos", id), {
+      status: "확인됨",
+      confirmedBy: name,
+      confirmedAt: serverTimestamp()
+    });
+  }
   overlay.style.display = "none";
-  pendingMemoId = null;
+  pendingMemoIds = [];
 }
 
 /* 24시간 경과 여부는 시간 흐름에 따라 바뀌므로 주기적으로 다시 렌더 */

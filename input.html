@@ -23,11 +23,12 @@
   .nav-link-icon { font-size: 16px; }
   #user-select-wrap { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink-soft); }
   #user-select-wrap b { color: var(--ink); font-size: 15px; }
-  select, input[type=text], input[type=date], input[type=datetime-local], textarea {
+  select, input[type=text], input[type=date], input[type=datetime-local], input[type=time], textarea {
     border: 1.5px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 14px; color: var(--ink);
     background: var(--surface);
   }
   select:focus, input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  select:disabled, input:disabled, textarea:disabled { background: var(--bg); color: var(--dim); cursor: not-allowed; }
 
   #tabbar { display: flex; gap: 6px; padding: 12px 20px 0; max-width: 1100px; margin: 0 auto; }
   .tab-btn {
@@ -42,6 +43,7 @@
 
   .panel-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
   .panel-head h2 { font-size: 20px; margin: 0; }
+  .panel-head-actions { display: flex; gap: 8px; align-items: center; }
   .btn-primary {
     background: var(--accent); color: #fff; border: none; border-radius: 10px;
     padding: 10px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
@@ -51,6 +53,7 @@
     background: var(--bg); color: var(--ink); border: 1.5px solid var(--line); border-radius: 10px;
     padding: 9px 16px; font-size: 14px; font-weight: 700; cursor: pointer;
   }
+  .btn-danger-outline { color: #C23B3B; border-color: #C23B3B; }
 
   .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
   .filter-bar label { font-size: 13px; color: var(--ink-soft); font-weight: 700; margin-right: 4px; }
@@ -86,6 +89,8 @@
   }
   .row-delete-btn:hover { background: var(--alert-bg); color: var(--alert); }
   th.th-del, td.td-del { width: 36px; text-align: center; }
+  th.th-check, td.td-check { width: 32px; text-align: center; }
+  .row-check { width: 16px; height: 16px; cursor: pointer; }
 
   /* ── 모달 ─────────────────────── */
   .modal-overlay {
@@ -117,6 +122,7 @@
     padding: 4px 8px; border-radius: 7px; display: flex; align-items: center; gap: 6px;
   }
   .date-chip button { border: none; background: none; color: var(--type-미팅); cursor: pointer; font-weight: 900; padding: 0; }
+  .chip-list.readonly-chips .date-chip button { display: none; }
 
   .history-list { max-height: 240px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
   .history-item { padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
@@ -181,9 +187,9 @@
   .dp-cell.dp-blank { cursor: default; }
   .dp-cell:not(.dp-blank):hover { background: var(--bg); }
   .dp-cell.dp-sun { color: var(--alert); }
-  .dp-cell.dp-sat { color: var(--accent); }
+  .dp-cell.dp-sat { color: var(--alert); }
   .dp-cell.dp-holiday { background: var(--alert-bg); color: var(--alert); font-weight: 800; }
-  .dp-cell.dp-today { border: 2px solid var(--accent); }
+  .dp-cell.dp-today { border: 2px solid var(--today); }
   .dp-cell.dp-selected { background: var(--accent); color: #fff; }
 </style>
 </head>
@@ -224,6 +230,12 @@
     <div class="panel-head">
       <h2>대시보드 · <span id="dash-user-name">-</span> 님</h2>
     </div>
+    <div id="dash-update-requests" style="display:none; margin-bottom: 14px;">
+      <div style="background:var(--type-미팅-bg); border:1px solid #C7D3E8; border-radius:12px; padding:14px 16px;">
+        <h3 style="margin:0 0 10px; font-size:14.5px; color:var(--type-미팅);">🔔 업데이트 알림</h3>
+        <div id="dash-update-list"></div>
+      </div>
+    </div>
     <div id="dash-delete-requests" style="display:none; margin-bottom: 18px;">
       <div style="background:var(--alert-bg); border:1px solid #EFC9C9; border-radius:12px; padding:14px 16px;">
         <h3 style="margin:0 0 10px; font-size:14.5px; color:var(--alert);">🔔 삭제 승인 대기</h3>
@@ -250,7 +262,10 @@
   <div class="panel" id="panel-tickets">
     <div class="panel-head">
       <h2>업무관리</h2>
-      <button class="btn-primary" id="ticket-new-btn">+ 새 업무 등록</button>
+      <div class="panel-head-actions">
+        <button class="btn-secondary btn-danger-outline" id="ticket-bulk-delete">선택 삭제</button>
+        <button class="btn-primary" id="ticket-new-btn">+ 새 업무 등록</button>
+      </div>
     </div>
     <div class="filter-bar">
       <label>상태</label>
@@ -269,6 +284,7 @@
     </div>
     <table>
       <thead><tr>
+        <th class="th-check"><input type="checkbox" id="ticket-select-all" /></th>
         <th>제목</th><th>요청자</th><th>담당자</th><th>요청일</th><th>희망기한</th><th>상태</th><th>최근업데이트</th><th class="th-del"></th>
       </tr></thead>
       <tbody id="ticket-tbody"></tbody>
@@ -279,10 +295,14 @@
   <div class="panel" id="panel-schedules">
     <div class="panel-head">
       <h2>일정 / 공사 등록</h2>
-      <button class="btn-primary" id="schedule-new-btn">+ 새 일정 등록</button>
+      <div class="panel-head-actions">
+        <button class="btn-secondary btn-danger-outline" id="schedule-bulk-delete">선택 삭제</button>
+        <button class="btn-primary" id="schedule-new-btn">+ 새 일정 등록</button>
+      </div>
     </div>
     <table>
       <thead><tr>
+        <th class="th-check"><input type="checkbox" id="schedule-select-all" /></th>
         <th>제목</th><th>유형</th><th>날짜</th><th>업체/부서</th><th>담당</th><th>등록자</th><th class="th-del"></th>
       </tr></thead>
       <tbody id="schedule-tbody"></tbody>
@@ -293,7 +313,10 @@
   <div class="panel" id="panel-memos">
     <div class="panel-head">
       <h2>전화 및 기타메모</h2>
-      <button class="btn-primary" id="memo-new-btn">+ 새 메모 등록</button>
+      <div class="panel-head-actions">
+        <button class="btn-secondary btn-danger-outline" id="memo-bulk-delete">선택 삭제</button>
+        <button class="btn-primary" id="memo-new-btn">+ 새 메모 등록</button>
+      </div>
     </div>
     <div class="filter-bar">
       <label>상태</label>
@@ -305,6 +328,7 @@
     </div>
     <table>
       <thead><tr>
+        <th class="th-check"><input type="checkbox" id="memo-select-all" /></th>
         <th>담당자-내용</th><th>긴급도</th><th>받은사람</th><th>받은시간</th><th>상태</th><th class="th-del"></th>
       </tr></thead>
       <tbody id="memo-tbody"></tbody>
@@ -352,7 +376,7 @@
     </div>
 
     <div class="modal-actions">
-      <button class="btn-secondary" id="ticket-delete" style="margin-right:auto; color:#C23B3B; border-color:#C23B3B; display:none;">삭제</button>
+      <button class="btn-secondary btn-danger-outline" id="ticket-delete" style="margin-right:auto; display:none;">삭제</button>
       <button class="btn-secondary" id="ticket-cancel">취소</button>
       <button class="btn-primary" id="ticket-save">저장</button>
     </div>
@@ -363,6 +387,7 @@
 <div class="modal-overlay" id="schedule-modal-overlay">
   <div class="modal-box">
     <h3 id="schedule-modal-title">새 일정 등록</h3>
+    <div class="field small-note" id="schedule-readonly-note" style="display:none;">작성자만 아래 항목들을 수정할 수 있습니다. 상세내용은 누구나 추가할 수 있습니다.</div>
     <div class="field"><label>제목</label><input type="text" id="schedule-title" /></div>
     <div class="row2">
       <div class="field"><label>유형</label>
@@ -389,15 +414,22 @@
           <button type="button" class="btn-secondary" id="schedule-add-single">날짜 추가</button>
         </div>
         <div class="chip-list" id="schedule-date-chips"></div>
-        <div class="small-note">기간과 개별 날짜를 함께 조합할 수 있습니다.</div>
+        <div class="small-note">기간과 개별 날짜를 함께 조합할 수 있습니다. 연속된 기간은 목록에 "몇일~몇일"로 표시됩니다.</div>
       </div>
     </div>
 
-    <div class="field"><label>상세내용</label><textarea id="schedule-detail"></textarea></div>
+    <div class="field" id="schedule-history-field" style="display:none;">
+      <label>상세내용 이력</label>
+      <div class="history-list" id="schedule-history-list"></div>
+    </div>
+    <div class="field">
+      <label id="schedule-detail-label">상세내용</label>
+      <textarea id="schedule-detail-input" placeholder="상세 내용을 입력하세요"></textarea>
+    </div>
     <div class="field"><label>등록자</label><div class="static-value" id="schedule-registrar-display">-</div></div>
 
     <div class="modal-actions">
-      <button class="btn-secondary" id="schedule-delete" style="margin-right:auto; color:#C23B3B; border-color:#C23B3B; display:none;">삭제</button>
+      <button class="btn-secondary btn-danger-outline" id="schedule-delete" style="margin-right:auto; display:none;">삭제</button>
       <button class="btn-secondary" id="schedule-cancel">취소</button>
       <button class="btn-primary" id="schedule-save">저장</button>
     </div>
@@ -425,7 +457,7 @@
     </div>
 
     <div class="modal-actions">
-      <button class="btn-secondary" id="memo-delete" style="margin-right:auto; color:#C23B3B; border-color:#C23B3B; display:none;">삭제</button>
+      <button class="btn-secondary btn-danger-outline" id="memo-delete" style="margin-right:auto; display:none;">삭제</button>
       <button class="btn-secondary" id="memo-cancel">취소</button>
       <button class="btn-primary" id="memo-save">저장</button>
     </div>
@@ -511,8 +543,33 @@ function fmtTs(ts) {
   const d = ts.toDate ? ts.toDate() : new Date(ts);
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+function tsMillis(ts) {
+  if (!ts) return 0;
+  return ts.toDate ? ts.toDate().getTime() : new Date(ts).getTime();
+}
 function escapeHtml(s) {
   return String(s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* 연속된 날짜들을 "몇일~몇일" 범위로 압축 표시 */
+function formatDateRanges(dates) {
+  if (!dates || !dates.length) return "-";
+  const sorted = [...new Set(dates)].sort();
+  const ranges = [];
+  let start = sorted[0], prev = sorted[0];
+  for (let i = 1; i < sorted.length; i++) {
+    const d = sorted[i];
+    const prevDate = new Date(prev + "T00:00:00");
+    prevDate.setDate(prevDate.getDate() + 1);
+    if (d === isoDate(prevDate)) {
+      prev = d;
+    } else {
+      ranges.push(start === prev ? start : `${start} ~ ${prev}`);
+      start = d; prev = d;
+    }
+  }
+  ranges.push(start === prev ? start : `${start} ~ ${prev}`);
+  return ranges.join(", ");
 }
 
 /* ════════════════════════════════════════════════
@@ -563,6 +620,59 @@ function deleteRequestBadge(rec) {
   return rec.deleteRequestedBy
     ? ` <span class="badge" style="background:var(--alert-bg);color:var(--alert);">삭제요청(${escapeHtml(rec.deleteRequestedBy)})</span>`
     : "";
+}
+/* 여러 건을 한 번에 삭제/삭제요청 처리 (체크박스 선택 삭제) */
+async function bulkDelete(type, allItems, selectedSet) {
+  if (selectedSet.size === 0) { alert("선택된 항목이 없습니다"); return; }
+  const items = allItems.filter(x => selectedSet.has(x.id));
+  const me = currentUser();
+  const already = items.filter(x => x.deleteRequestedBy);
+  const actionable = items.filter(x => !x.deleteRequestedBy);
+  const mine = actionable.filter(x => authorOf(type, x) === me);
+  const others = actionable.filter(x => authorOf(type, x) !== me);
+  let msg = `총 ${items.length}건 선택됨\n- 즉시 삭제: ${mine.length}건\n- 삭제 요청 전송(작성자 승인 필요): ${others.length}건`;
+  if (already.length) msg += `\n- 이미 삭제 요청 중이라 건너뜀: ${already.length}건`;
+  if (!confirm(msg)) return;
+  for (const rec of mine) await deleteDoc(doc(db, COLLECTION_OF[type], rec.id));
+  for (const rec of others) {
+    await updateDoc(doc(db, COLLECTION_OF[type], rec.id), { deleteRequestedBy: me, deleteRequestedAt: serverTimestamp() });
+  }
+  selectedSet.clear();
+}
+
+/* ════════════════════════════════════════════════
+   업데이트 알림: 진행이력/상세내용이 갱신되면 관련자에게 대시보드로 알림
+   전체 담당이면 전체에게, 담당자/요청자 외 다른사람이 쓰면 둘 다에게,
+   둘 중 하나가 쓰면 반대쪽에게 알림. 열어보면(markSeen) 알림이 사라짐.
+   ════════════════════════════════════════════════ */
+function roleAOf(type, rec) { return type === "ticket" ? rec.requestedBy : rec.registeredBy; }
+function roleBOf(type, rec) { return type === "ticket" ? (rec.assignee || null) : (rec.responsible || null); }
+function lastHistoryAuthor(rec) {
+  return (rec.history && rec.history.length) ? rec.history[rec.history.length - 1].author : null;
+}
+function notifyTargets(type, rec) {
+  const writer = lastHistoryAuthor(rec);
+  if (!writer) return [];
+  const a = roleAOf(type, rec);
+  const b = roleBOf(type, rec);
+  if (type === "schedule" && b === "전체") {
+    return TEAM_MEMBERS.filter(n => n !== writer);
+  }
+  if (writer === a) return b ? [b] : [];
+  if (writer === b) return a ? [a] : [];
+  return [a, b].filter(Boolean).filter(n => n !== writer);
+}
+function updatedMillis(rec) {
+  if (rec.updatedAt) return tsMillis(rec.updatedAt);
+  const last = rec.history && rec.history.length ? rec.history[rec.history.length - 1] : null;
+  return last ? tsMillis(last.timestamp) : 0;
+}
+async function markSeen(type, id) {
+  const me = currentUser();
+  if (!me) return;
+  try {
+    await updateDoc(doc(db, COLLECTION_OF[type], id), { [`lastSeenBy.${me}`]: Date.now() });
+  } catch (e) { /* 문서가 삭제되었거나 권한 문제인 경우 무시 */ }
 }
 
 /* ════════════════════════════════════════════════
@@ -640,6 +750,7 @@ function dpRenderCalendar() {
   });
 }
 function dpOpen(input) {
+  if (input.disabled) return;
   dpActiveInput = input;
   const parsed = dpParse(input.value) || (() => { const t = new Date(); return { y: t.getFullYear(), m: t.getMonth(), d: t.getDate() }; })();
   dpViewY = parsed.y; dpViewM = parsed.m;
@@ -688,6 +799,8 @@ function initDateField(input) {
    1. 업무관리
    ════════════════════════════════════════════════ */
 let tickets = [];
+let selectedTicketIds = new Set();
+let lastRenderedTicketIds = [];
 const ticketFilterRequester = document.getElementById("ticket-filter-requester");
 TEAM_MEMBERS.forEach(n => ticketFilterRequester.appendChild(new Option(n, n)));
 const ticketFilterAssignee = document.getElementById("ticket-filter-assignee");
@@ -723,11 +836,12 @@ function renderTickets() {
     if (overdueOnly && !isTicketOverdue(t)) return false;
     return true;
   });
+  lastRenderedTicketIds = rows.map(t => t.id);
 
   const tbody = document.getElementById("ticket-tbody");
   tbody.innerHTML = "";
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">표시할 업무가 없습니다</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="9">표시할 업무가 없습니다</td></tr>`;
     return;
   }
   rows.forEach(t => {
@@ -736,6 +850,7 @@ function renderTickets() {
     if (overdue) tr.classList.add("row-overdue", "breathing");
     if (t.status === "완료") tr.classList.add("row-done");
     tr.innerHTML = `
+      <td class="td-check"><input type="checkbox" class="row-check" ${selectedTicketIds.has(t.id) ? "checked" : ""} /></td>
       <td>${escapeHtml(t.title)}${deleteRequestBadge(t)}</td>
       <td>${t.requestedBy || "-"}</td>
       <td>${t.assignee || "미지정"}</td>
@@ -746,6 +861,10 @@ function renderTickets() {
       <td class="td-del"><button type="button" class="row-delete-btn" title="삭제">🗑</button></td>
     `;
     tr.addEventListener("click", () => openTicketDetail(t.id));
+    tr.querySelector(".row-check").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (e.target.checked) selectedTicketIds.add(t.id); else selectedTicketIds.delete(t.id);
+    });
     tr.querySelector(".row-delete-btn").addEventListener("click", (e) => {
       e.stopPropagation();
       handleDeleteClick("ticket", t);
@@ -753,6 +872,13 @@ function renderTickets() {
     tbody.appendChild(tr);
   });
 }
+
+document.getElementById("ticket-select-all").addEventListener("change", (e) => {
+  if (e.target.checked) lastRenderedTicketIds.forEach(id => selectedTicketIds.add(id));
+  else lastRenderedTicketIds.forEach(id => selectedTicketIds.delete(id));
+  renderTickets();
+});
+document.getElementById("ticket-bulk-delete").addEventListener("click", () => bulkDelete("ticket", tickets, selectedTicketIds));
 
 const ticketOverlay = document.getElementById("ticket-modal-overlay");
 let ticketEditingId = null;
@@ -797,6 +923,7 @@ function openTicketDetail(id) {
 
   document.getElementById("ticket-delete").style.display = "inline-block";
   ticketOverlay.classList.add("open");
+  markSeen("ticket", id);
 }
 
 document.getElementById("ticket-cancel").addEventListener("click", () => ticketOverlay.classList.remove("open"));
@@ -853,6 +980,8 @@ document.getElementById("ticket-save").addEventListener("click", async () => {
    2. 일정 / 공사 등록
    ════════════════════════════════════════════════ */
 let schedules = [];
+let selectedScheduleIds = new Set();
+let lastRenderedScheduleIds = [];
 onSnapshot(collection(db, "schedules"), (snap) => {
   schedules = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   schedules.sort((a, b) => (minDate(a.dates) || "").localeCompare(minDate(b.dates) || ""));
@@ -862,28 +991,30 @@ onSnapshot(collection(db, "schedules"), (snap) => {
 function minDate(dates) { return (dates && dates.length) ? [...dates].sort()[0] : null; }
 
 function renderSchedules() {
+  lastRenderedScheduleIds = schedules.map(s => s.id);
   const tbody = document.getElementById("schedule-tbody");
   tbody.innerHTML = "";
   if (schedules.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">등록된 일정이 없습니다</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">등록된 일정이 없습니다</td></tr>`;
     return;
   }
   schedules.forEach(s => {
     const tr = document.createElement("tr");
-    const sortedDates = (s.dates || []).slice().sort();
-    const dateLabel = sortedDates.length > 2
-      ? `${sortedDates[0]} ~ ${sortedDates[sortedDates.length-1]} 외 ${sortedDates.length}일`
-      : sortedDates.join(", ");
     tr.innerHTML = `
+      <td class="td-check"><input type="checkbox" class="row-check" ${selectedScheduleIds.has(s.id) ? "checked" : ""} /></td>
       <td>${escapeHtml(s.title)}${deleteRequestBadge(s)}</td>
       <td><span class="badge type-${s.type}">${s.type}</span></td>
-      <td>${dateLabel || "-"}${s.time ? ` ${s.time}` : ""}</td>
+      <td>${formatDateRanges(s.dates)}${s.time ? ` ${s.time}` : ""}</td>
       <td>${escapeHtml(s.vendor || "-")}</td>
       <td>${s.responsible || "미지정"}</td>
       <td>${s.registeredBy || "-"}</td>
       <td class="td-del"><button type="button" class="row-delete-btn" title="삭제">🗑</button></td>
     `;
     tr.addEventListener("click", () => openScheduleEdit(s.id));
+    tr.querySelector(".row-check").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (e.target.checked) selectedScheduleIds.add(s.id); else selectedScheduleIds.delete(s.id);
+    });
     tr.querySelector(".row-delete-btn").addEventListener("click", (e) => {
       e.stopPropagation();
       handleDeleteClick("schedule", s);
@@ -891,6 +1022,13 @@ function renderSchedules() {
     tbody.appendChild(tr);
   });
 }
+
+document.getElementById("schedule-select-all").addEventListener("change", (e) => {
+  if (e.target.checked) lastRenderedScheduleIds.forEach(id => selectedScheduleIds.add(id));
+  else lastRenderedScheduleIds.forEach(id => selectedScheduleIds.delete(id));
+  renderSchedules();
+});
+document.getElementById("schedule-bulk-delete").addEventListener("click", () => bulkDelete("schedule", schedules, selectedScheduleIds));
 
 const scheduleOverlay = document.getElementById("schedule-modal-overlay");
 let scheduleDateSet = new Set();
@@ -909,6 +1047,14 @@ function renderDateChips() {
     });
     wrap.appendChild(chip);
   });
+}
+
+function setScheduleFieldsEditable(editable) {
+  ["schedule-title", "schedule-type", "schedule-vendor", "schedule-time", "schedule-responsible",
+   "schedule-range-start", "schedule-range-end", "schedule-single-date", "schedule-add-range", "schedule-add-single"]
+    .forEach(id => { document.getElementById(id).disabled = !editable; });
+  document.getElementById("schedule-date-chips").classList.toggle("readonly-chips", !editable);
+  document.getElementById("schedule-readonly-note").style.display = editable ? "none" : "block";
 }
 
 document.getElementById("schedule-add-range").addEventListener("click", () => {
@@ -937,7 +1083,6 @@ function openScheduleNew() {
   document.getElementById("schedule-type").value = "공사";
   document.getElementById("schedule-vendor").value = "";
   document.getElementById("schedule-time").value = "";
-  document.getElementById("schedule-detail").value = "";
   document.getElementById("schedule-range-start").value = "";
   document.getElementById("schedule-range-end").value = "";
   document.getElementById("schedule-single-date").value = "";
@@ -946,6 +1091,10 @@ function openScheduleNew() {
   fillResponsibleSelect(document.getElementById("schedule-responsible"), currentUser());
   document.getElementById("schedule-registrar-display").textContent = currentUser();
   document.getElementById("schedule-delete").style.display = "none";
+  setScheduleFieldsEditable(true);
+  document.getElementById("schedule-history-field").style.display = "none";
+  document.getElementById("schedule-detail-label").textContent = "상세내용";
+  document.getElementById("schedule-detail-input").value = "";
   scheduleOverlay.classList.add("open");
 }
 document.getElementById("schedule-new-btn").addEventListener("click", openScheduleNew);
@@ -954,12 +1103,12 @@ function openScheduleEdit(id) {
   const s = schedules.find(x => x.id === id);
   if (!s) return;
   scheduleEditingId = id;
-  document.getElementById("schedule-modal-title").textContent = "일정 수정";
+  const isAuthor = s.registeredBy === currentUser();
+  document.getElementById("schedule-modal-title").textContent = "일정 수정" + (isAuthor ? "" : " (열람)");
   document.getElementById("schedule-title").value = s.title || "";
   document.getElementById("schedule-type").value = s.type || "공사";
   document.getElementById("schedule-vendor").value = s.vendor || "";
   document.getElementById("schedule-time").value = s.time || "";
-  document.getElementById("schedule-detail").value = s.detail || "";
   document.getElementById("schedule-range-start").value = "";
   document.getElementById("schedule-range-end").value = "";
   document.getElementById("schedule-single-date").value = "";
@@ -968,12 +1117,45 @@ function openScheduleEdit(id) {
   fillResponsibleSelect(document.getElementById("schedule-responsible"), s.responsible);
   document.getElementById("schedule-registrar-display").textContent = s.registeredBy || "-";
   document.getElementById("schedule-delete").style.display = "inline-block";
+  setScheduleFieldsEditable(isAuthor);
+
+  const histEl = document.getElementById("schedule-history-list");
+  histEl.innerHTML = "";
+  const hist = (s.history && s.history.length) ? s.history
+    : (s.detail ? [{ text: s.detail, author: s.registeredBy, timestamp: s.registeredAt }] : []);
+  hist.slice().reverse().forEach(h => {
+    const div = document.createElement("div");
+    div.className = "history-item";
+    div.innerHTML = `<div class="meta">${h.author || "-"} · ${fmtTs(h.timestamp)}</div><div>${escapeHtml(h.text)}</div>`;
+    histEl.appendChild(div);
+  });
+  if (!hist.length) histEl.innerHTML = `<div class="small-note">이력이 없습니다</div>`;
+  document.getElementById("schedule-history-field").style.display = "block";
+  document.getElementById("schedule-detail-label").textContent = `상세내용 추가 (작성자: ${currentUser()})`;
+  document.getElementById("schedule-detail-input").value = "";
+
   scheduleOverlay.classList.add("open");
+  markSeen("schedule", id);
 }
 
 document.getElementById("schedule-cancel").addEventListener("click", () => scheduleOverlay.classList.remove("open"));
 
 document.getElementById("schedule-save").addEventListener("click", async () => {
+  const orig = scheduleEditingId !== null ? schedules.find(x => x.id === scheduleEditingId) : null;
+  const isAuthor = !orig || orig.registeredBy === currentUser();
+  const noteText = document.getElementById("schedule-detail-input").value.trim();
+
+  if (orig && !isAuthor) {
+    // 작성자가 아니면 상세내용 추가만 허용
+    if (!noteText) { alert("추가할 상세내용을 입력하세요"); return; }
+    const history = (orig.history && orig.history.length ? orig.history
+      : (orig.detail ? [{ text: orig.detail, author: orig.registeredBy, timestamp: orig.registeredAt }] : [])).slice();
+    history.push({ text: noteText, author: currentUser(), timestamp: new Date() });
+    await updateDoc(doc(db, "schedules", scheduleEditingId), { history, updatedAt: serverTimestamp() });
+    scheduleOverlay.classList.remove("open");
+    return;
+  }
+
   const title = document.getElementById("schedule-title").value.trim();
   if (!title) { alert("제목을 입력하세요"); return; }
   if (scheduleDateSet.size === 0) { alert("날짜를 1개 이상 추가하세요"); return; }
@@ -983,17 +1165,20 @@ document.getElementById("schedule-save").addEventListener("click", async () => {
     vendor: document.getElementById("schedule-vendor").value.trim(),
     time: document.getElementById("schedule-time").value || null,
     responsible: document.getElementById("schedule-responsible").value,
-    detail: document.getElementById("schedule-detail").value.trim(),
     dates: [...scheduleDateSet],
     updatedAt: serverTimestamp()
   };
+  const history = (orig && orig.history ? orig.history.slice()
+    : (orig && orig.detail ? [{ text: orig.detail, author: orig.registeredBy, timestamp: orig.registeredAt }] : []));
+  if (noteText) history.push({ text: noteText, author: currentUser(), timestamp: new Date() });
+  payload.history = history;
+
   if (scheduleEditingId === null) {
     payload.registeredBy = currentUser();
     payload.registeredAt = serverTimestamp();
     await addDoc(collection(db, "schedules"), payload);
   } else {
-    const orig = schedules.find(x => x.id === scheduleEditingId);
-    payload.registeredBy = orig ? orig.registeredBy : currentUser();
+    payload.registeredBy = orig.registeredBy;
     await updateDoc(doc(db, "schedules", scheduleEditingId), payload);
   }
   scheduleOverlay.classList.remove("open");
@@ -1011,6 +1196,8 @@ document.getElementById("schedule-delete").addEventListener("click", async () =>
    3. 전화 및 기타메모
    ════════════════════════════════════════════════ */
 let memos = [];
+let selectedMemoIds = new Set();
+let lastRenderedMemoIds = [];
 onSnapshot(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc")), (snap) => {
   memos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   renderMemos();
@@ -1021,15 +1208,17 @@ document.getElementById("memo-filter-status").addEventListener("change", renderM
 function renderMemos() {
   const f = document.getElementById("memo-filter-status").value;
   const rows = memos.filter(m => f === "all" || m.status === f);
+  lastRenderedMemoIds = rows.map(m => m.id);
   const tbody = document.getElementById("memo-tbody");
   tbody.innerHTML = "";
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">등록된 메모가 없습니다</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">등록된 메모가 없습니다</td></tr>`;
     return;
   }
   rows.forEach(m => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td class="td-check"><input type="checkbox" class="row-check" ${selectedMemoIds.has(m.id) ? "checked" : ""} /></td>
       <td><b>${m.assignee || "미지정"}</b> - ${escapeHtml(m.subject || "")}${deleteRequestBadge(m)}</td>
       <td><span class="badge urgency-${m.urgency}">${m.urgency}</span></td>
       <td>${m.receivedBy || "-"}</td>
@@ -1038,6 +1227,10 @@ function renderMemos() {
       <td class="td-del"><button type="button" class="row-delete-btn" title="삭제">🗑</button></td>
     `;
     tr.addEventListener("click", () => openMemoEdit(m.id));
+    tr.querySelector(".row-check").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (e.target.checked) selectedMemoIds.add(m.id); else selectedMemoIds.delete(m.id);
+    });
     tr.querySelector(".row-delete-btn").addEventListener("click", (e) => {
       e.stopPropagation();
       handleDeleteClick("memo", m);
@@ -1045,6 +1238,13 @@ function renderMemos() {
     tbody.appendChild(tr);
   });
 }
+
+document.getElementById("memo-select-all").addEventListener("change", (e) => {
+  if (e.target.checked) lastRenderedMemoIds.forEach(id => selectedMemoIds.add(id));
+  else lastRenderedMemoIds.forEach(id => selectedMemoIds.delete(id));
+  renderMemos();
+});
+document.getElementById("memo-bulk-delete").addEventListener("click", () => bulkDelete("memo", memos, selectedMemoIds));
 
 const memoOverlay = document.getElementById("memo-modal-overlay");
 let memoEditingId = null;
@@ -1144,6 +1344,42 @@ function renderDashboard() {
   const me = currentUser();
   document.getElementById("dash-user-name").textContent = me || "-";
 
+  /* 업데이트 알림 (이력/상세내용이 갱신되어 나에게 알려야 하는 항목) */
+  const pendingUpdates = [];
+  tickets.forEach(t => {
+    if (notifyTargets("ticket", t).includes(me)) {
+      const seen = t.lastSeenBy && t.lastSeenBy[me];
+      if (!seen || seen < updatedMillis(t)) pendingUpdates.push({ type: "ticket", rec: t, label: t.title });
+    }
+  });
+  schedules.forEach(s => {
+    if (notifyTargets("schedule", s).includes(me)) {
+      const seen = s.lastSeenBy && s.lastSeenBy[me];
+      if (!seen || seen < updatedMillis(s)) pendingUpdates.push({ type: "schedule", rec: s, label: s.title });
+    }
+  });
+  const updWrap = document.getElementById("dash-update-requests");
+  const updList = document.getElementById("dash-update-list");
+  if (pendingUpdates.length === 0) {
+    updWrap.style.display = "none";
+  } else {
+    updWrap.style.display = "block";
+    updList.innerHTML = "";
+    pendingUpdates.forEach(({ type, rec, label }) => {
+      const writer = lastHistoryAuthor(rec);
+      const lastText = rec.history[rec.history.length - 1].text;
+      const div = document.createElement("div");
+      div.className = "dash-card";
+      div.innerHTML = `<div class="dc-title">[${LABEL_OF[type]}] ${escapeHtml(label || "항목")}</div>
+        <div class="dc-meta">${escapeHtml(writer || "-")}님이 업데이트: ${escapeHtml(lastText)}</div>`;
+      div.addEventListener("click", () => {
+        if (type === "ticket") { switchTab("tickets"); openTicketDetail(rec.id); }
+        else { switchTab("schedules"); openScheduleEdit(rec.id); }
+      });
+      updList.appendChild(div);
+    });
+  }
+
   /* 삭제 승인 대기 (내가 작성자인 항목에 다른 사람이 삭제를 요청한 경우) */
   const pendingDeletes = [];
   tickets.forEach(t => { if (t.deleteRequestedBy && t.requestedBy === me) pendingDeletes.push({ type: "ticket", rec: t, label: t.title }); });
@@ -1213,12 +1449,10 @@ function renderDashboard() {
     sEl.innerHTML = `<div class="dash-empty">관련 일정·공사가 없습니다</div>`;
   } else {
     mySchedules.slice(0, 20).forEach(s => {
-      const dates = (s.dates || []).slice().sort();
-      const dateLabel = dates.length > 2 ? `${dates[0]} ~ ${dates[dates.length-1]}` : dates.join(", ");
       const div = document.createElement("div");
       div.className = "dash-card";
       div.innerHTML = `<div class="dc-title">${escapeHtml(s.title)} <span class="badge type-${s.type}">${s.type}</span></div>
-        <div class="dc-meta">${dateLabel || "-"}${s.time ? ` ${s.time}` : ""} · 담당 ${s.responsible || "미지정"}</div>`;
+        <div class="dc-meta">${formatDateRanges(s.dates)}${s.time ? ` ${s.time}` : ""} · 담당 ${s.responsible || "미지정"}</div>`;
       div.addEventListener("click", () => { switchTab("schedules"); openScheduleEdit(s.id); });
       sEl.appendChild(div);
     });
