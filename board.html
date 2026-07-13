@@ -11,24 +11,32 @@
 
   /* ── 상단 바 ───────────────────────────── */
   #topbar {
-    display: flex; align-items: center; justify-content: space-between;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
     padding: 8px 24px;
     background: var(--surface);
     border-bottom: 1px solid var(--line);
     flex-shrink: 0;
   }
-  #topbar .brand { font-size: clamp(15px, 1.35vw, 21px); font-weight: 800; }
-  #topbar .brand span { color: var(--ink-soft); font-weight: 500; font-size: 0.7em; margin-left: 8px; }
+  #topbar .brand { font-size: clamp(15px, 1.35vw, 21px); font-weight: 800; justify-self: start; }
+  #topbar-nav { display: flex; align-items: center; gap: 14px; justify-self: center; }
+  #topbar-nav .month-title { font-size: clamp(15px, 1.2vw, 19px); font-weight: 900; min-width: 130px; text-align: center; }
+  .tb-nav-btn {
+    width: 28px; height: 28px; border-radius: 50%; border: none;
+    background: var(--bg); color: var(--accent);
+    font-size: 15px; font-weight: 900; cursor: pointer; line-height: 1; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tb-nav-btn:active { background: var(--line); }
   .icon-btn {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 22px; height: 22px; margin-left: 6px; vertical-align: middle;
+    width: 22px; height: 22px; vertical-align: middle;
     border: 1.5px solid var(--line); border-radius: 7px; background: var(--bg);
     color: var(--ink-soft); font-size: 12px; line-height: 1; cursor: pointer; padding: 0;
   }
   .icon-btn:active { background: var(--line); }
   .icon-btn.is-active { color: var(--accent); border-color: var(--accent); }
   #clock { font-size: clamp(13px, 1.15vw, 18px); font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-  #topbar-right { display: flex; align-items: center; gap: 12px; }
+  #topbar-right { display: flex; align-items: center; gap: 12px; justify-self: end; }
   .nav-link {
     display: flex; align-items: center; gap: 6px; text-decoration: none;
     background: var(--bg); color: var(--ink-soft); border: 1.5px solid var(--line); border-radius: 18px;
@@ -55,18 +63,6 @@
   #cal-wrap.density-1 { --chip-font: clamp(11.5px, 0.9vw, 15px); --daynum-font: clamp(14px, 1.1vw, 19px); --lane-gap: 3px; --lane-pad: 3px 7px; }
   #cal-wrap.density-2 { --chip-font: clamp(10.5px, 0.8vw, 13px); --daynum-font: clamp(13px, 1vw, 16px); --lane-gap: 2px; --lane-pad: 2px 6px; }
   #cal-wrap.density-3 { --chip-font: clamp(9.5px, 0.7vw, 11.5px); --daynum-font: clamp(12px, 0.9vw, 14px); --lane-gap: 2px; --lane-pad: 2px 5px; }
-  #cal-header {
-    display: flex; align-items: center; justify-content: center; gap: 24px;
-    margin-bottom: 12px; flex-shrink: 0;
-  }
-  #cal-header .month-title { font-size: clamp(22px, 2.2vw, 34px); font-weight: 900; min-width: 220px; text-align: center; }
-  .nav-btn {
-    width: 52px; height: 52px; border-radius: 50%; border: none;
-    background: var(--surface); box-shadow: 0 2px 6px rgba(0,0,0,0.12);
-    font-size: 22px; font-weight: 900; color: var(--accent); cursor: pointer;
-  }
-  .nav-btn:active { background: var(--line); }
-
   #cal-grid-outer { flex: 1; min-height: 0; overflow-y: auto; border-radius: var(--radius); }
   #dow-row {
     display: grid; grid-template-columns: repeat(7, 1fr);
@@ -117,6 +113,9 @@
   .event-chip.type-공사 { background: var(--type-공사-bg); color: var(--type-공사); border-left-color: var(--type-공사); }
   .event-chip.type-미팅 { background: var(--type-미팅-bg); color: var(--type-미팅); border-left-color: var(--type-미팅); }
   .event-chip.type-업무 { background: var(--type-업무-bg); color: var(--type-업무); border-left-color: var(--type-업무); }
+  /* 주 경계에서 잘린 연속일정: 각진 모서리 + 화살표로 이어짐을 표시 */
+  .event-chip.cont-prev { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+  .event-chip.cont-next { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 
   /* ── 범례 ─────────────────────────────── */
   #legend { display: flex; gap: 18px; justify-content: center; margin-top: 10px; flex-shrink: 0; }
@@ -250,8 +249,14 @@
 <body>
 <div id="app">
   <div id="topbar">
-    <div class="brand">서귀포의료원 시설관리팀 <span>월간일정</span><button type="button" id="fullscreen-btn" class="icon-btn" title="전체화면">⛶</button></div>
+    <div class="brand">서귀포의료원 시설관리팀</div>
+    <div id="topbar-nav">
+      <button class="tb-nav-btn" id="prev-month">‹</button>
+      <div class="month-title" id="month-title">-</div>
+      <button class="tb-nav-btn" id="next-month">›</button>
+    </div>
     <div id="topbar-right">
+      <button type="button" id="fullscreen-btn" class="icon-btn" title="전체화면">⛶</button>
       <div id="clock">--:--</div>
       <a class="nav-link" href="input.html" title="업무 화면으로 이동">
         <span class="nav-link-icon">✏️</span><span class="nav-link-text">업무</span>
@@ -261,11 +266,6 @@
 
   <div id="main">
     <div id="cal-wrap">
-      <div id="cal-header">
-        <button class="nav-btn" id="prev-month">‹</button>
-        <div class="month-title" id="month-title">-</div>
-        <button class="nav-btn" id="next-month">›</button>
-      </div>
       <div id="cal-grid-outer" class="scrollbar-thin">
         <div id="dow-row">
           <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
@@ -385,6 +385,13 @@ onSnapshot(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc")), (
 /* ───────── 캘린더 렌더링 ───────── */
 function pad(n) { return String(n).padStart(2, "0"); }
 function isoDate(y, m, d) { return `${y}-${pad(m+1)}-${pad(d)}`; }
+/* 일정 담당(복수지정) 필드를 항상 배열로 정규화 (구 데이터: 문자열 이름/"전체"/빈 값 도 지원) */
+function responsibleArray(rec) {
+  if (Array.isArray(rec.responsible)) return rec.responsible;
+  if (rec.responsible === "전체") return [...TEAM_MEMBERS];
+  if (rec.responsible) return [rec.responsible];
+  return [];
+}
 /* "2026-07-15" → "07/15" */
 function mdShort(iso) { return iso.slice(5,7) + "/" + iso.slice(8,10); }
 /* 연속된 날짜들을 "07/15~07/23" 형태의 범위 목록으로 압축 (입력화면과 동일한 방식) */
@@ -407,6 +414,59 @@ function formatDateRanges(dates) {
   }
   ranges.push(start === prev ? mdShort(start) : `${mdShort(start)}~${mdShort(prev)}`);
   return ranges.join(", ");
+}
+/* 다음 날짜 iso 계산 (주 경계 넘어 이어지는 일정인지 판단용) */
+function addDaysIso(iso, delta) {
+  const d = new Date(iso + "T00:00:00");
+  d.setDate(d.getDate() + delta);
+  return isoDate(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+/* ── 일정별 고유 색조 자동 부여 ─────────────────────
+   같은 유형(공사/미팅/업무) 안에서도 일정마다 살짝 다른 색조를 고정 배정하여,
+   여러 일정이 몰려 있어도 서로 구분이 쉽도록 한다. (문서 id 기반 해시 → 항상 동일한 색) */
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+function hexToHsl(hex) {
+  hex = hex.replace("#", "");
+  const r = parseInt(hex.substr(0,2),16)/255, g = parseInt(hex.substr(2,2),16)/255, b = parseInt(hex.substr(4,2),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h, s; const l = (max+min)/2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      default: h = (r - g) / d + 4;
+    }
+    h /= 6;
+  }
+  return [h*360, s*100, l*100];
+}
+const TYPE_VAR = { "공사": "--type-공사", "미팅": "--type-미팅", "업무": "--type-업무" };
+const scheduleColorCache = {};
+function scheduleColorVariant(type, id) {
+  const cacheKey = (type || "업무") + "|" + id;
+  if (scheduleColorCache[cacheKey]) return scheduleColorCache[cacheKey];
+  const baseHex = getComputedStyle(document.documentElement).getPropertyValue(TYPE_VAR[type] || TYPE_VAR["업무"]).trim();
+  const [h, s, l] = hexToHsl(baseHex);
+  const hash = hashStr(String(id || ""));
+  const hueShift = (hash % 25) - 12;       // -12 ~ +12도
+  const lightShift = ((hash >> 5) % 14) - 7; // -7 ~ +7
+  const hue = (h + hueShift + 360) % 360;
+  const fgL = Math.max(20, Math.min(45, l + lightShift));
+  const bgL = Math.max(88, Math.min(96, 92 + lightShift / 2));
+  const variant = {
+    fg: `hsl(${hue.toFixed(0)}, ${s.toFixed(0)}%, ${fgL.toFixed(0)}%)`,
+    bg: `hsl(${hue.toFixed(0)}, ${Math.max(20, s - 10).toFixed(0)}%, ${bgL.toFixed(0)}%)`
+  };
+  scheduleColorCache[cacheKey] = variant;
+  return variant;
 }
 
 function renderCalendar() {
@@ -509,7 +569,17 @@ function renderCalendar() {
         const rangeNote = seg.startCol !== seg.endCol ? `${mdShort(weekIsos[seg.startCol])}~${mdShort(weekIsos[seg.endCol])}` : "";
         const noteParts = [seg.s.vendor, rangeNote].filter(Boolean);
         const noteText = noteParts.length ? ` (${noteParts.join(" ")})` : "";
-        bar.textContent = (seg.s.time ? seg.s.time + " " : "") + seg.s.title + noteText;
+        // 주 경계를 넘어 이어지는 일정은 각진 모서리 + 화살표로 이어짐을 표시 (다른 일정과 혼동 방지)
+        const contPrev = seg.startCol === 0 && Array.isArray(seg.s.dates) && seg.s.dates.includes(addDaysIso(weekIsos[0], -1));
+        const contNext = seg.endCol === 6 && Array.isArray(seg.s.dates) && seg.s.dates.includes(addDaysIso(weekIsos[6], 1));
+        bar.classList.toggle("cont-prev", contPrev);
+        bar.classList.toggle("cont-next", contNext);
+        bar.textContent = (contPrev ? "◀ " : "") + (seg.s.time ? seg.s.time + " " : "") + seg.s.title + noteText + (contNext ? " ▶" : "");
+        // 일정별 고유 색조 부여 (같은 유형 안에서도 항목마다 구분되도록)
+        const variant = scheduleColorVariant(seg.s.type, seg.s.id);
+        bar.style.backgroundColor = variant.bg;
+        bar.style.color = variant.fg;
+        bar.style.borderLeftColor = variant.fg;
         bar.addEventListener("click", (e) => {
           e.stopPropagation();
           const c = weekCells[seg.startCol];
@@ -564,9 +634,13 @@ function openDayDetail(iso, y, m, d) {
     dayEvents.forEach(ev => {
       const div = document.createElement("div");
       div.className = "day-detail-event type-" + (ev.type || "업무");
+      const variant = scheduleColorVariant(ev.type, ev.id);
+      div.style.backgroundColor = variant.bg;
+      div.style.color = variant.fg;
+      div.style.borderLeftColor = variant.fg;
       const lastDetail = Array.isArray(ev.history) && ev.history.length ? ev.history[ev.history.length-1].text : ev.detail;
       div.innerHTML = `${ev.time ? `<b>${escapeHtml(ev.time)}</b> ` : ""}${escapeHtml(ev.title)}${ev.vendor ? ` (${escapeHtml(ev.vendor)})` : ""}
-        <div class="dd-meta">담당: ${ev.responsible || "미지정"}${lastDetail ? " · " + escapeHtml(lastDetail) : ""}</div>
+        <div class="dd-meta">담당: ${responsibleArray(ev).join(", ") || "미지정"}${lastDetail ? " · " + escapeHtml(lastDetail) : ""}</div>
         <div class="dd-tap-hint">👆 눌러서 상세내역 보기</div>`;
       div.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -590,7 +664,7 @@ function openEventDetail(ev) {
   const metaLines = [];
   metaLines.push(`유형: <b>${escapeHtml(ev.type === "공사" ? "공사(작업)" : (ev.type || "-"))}</b>`);
   if (ev.vendor) metaLines.push(`업체/부서: <b>${escapeHtml(ev.vendor)}</b>`);
-  metaLines.push(`담당: <b>${escapeHtml(ev.responsible || "미지정")}</b>`);
+  metaLines.push(`담당: <b>${escapeHtml(responsibleArray(ev).join(", ") || "미지정")}</b>`);
   metaLines.push(`날짜: <b>${escapeHtml(formatDateRanges(ev.dates))}</b>${ev.time ? ` <b>${escapeHtml(ev.time)}</b>` : ""}`);
   metaLines.push(`등록자: <b>${escapeHtml(ev.registeredBy || "-")}</b>`);
   document.getElementById("event-detail-meta").innerHTML = metaLines.join("<br>");
