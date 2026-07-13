@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-<title>시설관리팀 전자칠판</title>
+<title>시설관리팀 월간일정</title>
 <link rel="stylesheet" href="common.css" />
 <style>
   html, body { height: 100%; overflow: hidden; }
@@ -20,12 +20,20 @@
   #topbar .brand { font-size: clamp(18px, 1.6vw, 26px); font-weight: 800; }
   #topbar .brand span { color: var(--ink-soft); font-weight: 500; font-size: 0.7em; margin-left: 8px; }
   #clock { font-size: clamp(16px, 1.4vw, 22px); font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  #topbar-left { display: flex; align-items: center; gap: 16px; }
+  .nav-link {
+    display: flex; align-items: center; gap: 6px; text-decoration: none;
+    background: var(--bg); color: var(--ink-soft); border: 1.5px solid var(--line); border-radius: 20px;
+    padding: 8px 14px; font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+  .nav-link:active { background: var(--line); }
+  .nav-link-icon { font-size: 16px; }
 
   /* ── 메인 영역: 캘린더 + 알림패널 ───────── */
   #main { display: flex; flex: 1; min-height: 0; padding: 18px 24px; gap: 20px; }
 
   /* ── 캘린더 ────────────────────────────── */
-  #cal-wrap { flex: 1 1 68%; display: flex; flex-direction: column; min-width: 0; }
+  #cal-wrap { flex: 1 1 78%; display: flex; flex-direction: column; min-width: 0; }
   #cal-header {
     display: flex; align-items: center; justify-content: center; gap: 24px;
     margin-bottom: 12px; flex-shrink: 0;
@@ -89,7 +97,7 @@
 
   /* ── 우측 알림 패널 ────────────────────── */
   #alert-panel {
-    flex: 1 1 32%; max-width: 420px; min-width: 300px;
+    flex: 1 1 22%; max-width: 300px; min-width: 220px;
     display: flex; flex-direction: column; min-height: 0;
     background: var(--surface); border-radius: var(--radius);
     border: 1px solid var(--line); overflow: hidden;
@@ -103,11 +111,12 @@
     background: var(--alert-bg); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
     cursor: pointer; border: 1px solid #EFC9C9;
   }
-  .alert-card .title { font-weight: 800; font-size: clamp(13px, 1vw, 16px); margin-bottom: 4px; }
-  .alert-card .meta { font-size: clamp(11px, 0.8vw, 13px); color: var(--ink-soft); }
+  .alert-card .title-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .alert-card .title { font-weight: 800; font-size: clamp(13px, 1vw, 16px); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .alert-card .meta { font-size: clamp(11px, 0.8vw, 13px); color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .alert-card .urgency-tag {
     display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 6px;
-    margin-left: 6px; vertical-align: middle;
+    flex-shrink: 0; vertical-align: middle;
   }
   .urgency-상 { background: #C23B3B; color: #fff; }
   .urgency-중 { background: #E1A63B; color: #fff; }
@@ -120,9 +129,13 @@
   #done-list { flex: 1; overflow-y: auto; padding: 0 14px 14px; }
   .done-card {
     background: var(--dim-bg); border-radius: 10px; padding: 9px 12px; margin-bottom: 8px;
-    font-size: 12.5px; color: var(--ink-soft);
+    font-size: 12.5px; color: var(--ink-soft); overflow: hidden;
   }
-  .done-card .title { color: var(--ink); font-weight: 700; margin-bottom: 3px; }
+  .done-card .title {
+    color: var(--ink); font-weight: 700; margin-bottom: 3px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .done-card > div:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   #empty-alert { padding: 30px 14px; text-align: center; color: var(--ink-soft); font-size: 14px; }
 
@@ -177,7 +190,12 @@
 <body>
 <div id="app">
   <div id="topbar">
-    <div class="brand">서귀포의료원 시설관리팀 <span>전자칠판</span></div>
+    <div id="topbar-left">
+      <a class="nav-link" href="input.html" title="업무 화면으로 이동">
+        <span class="nav-link-icon">✏️</span><span class="nav-link-text">업무</span>
+      </a>
+      <div class="brand">서귀포의료원 시설관리팀 <span>월간일정</span></div>
+    </div>
     <div id="clock">--:--</div>
   </div>
 
@@ -242,10 +260,10 @@ function tickClock() {
   const now = new Date();
   const days = ["일","월","화","수","목","금","토"];
   document.getElementById("clock").textContent =
-    `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,"0")}.${String(now.getDate()).padStart(2,"0")} (${days[now.getDay()]}) ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+    `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,"0")}.${String(now.getDate()).padStart(2,"0")} (${days[now.getDay()]}) ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}:${String(now.getSeconds()).padStart(2,"0")}`;
 }
 tickClock();
-setInterval(tickClock, 10000);
+setInterval(tickClock, 1000); // 초 단위로 갱신 — 화면이 살아있는지(멈추지 않았는지) 확인용
 
 /* ───────── 상태 ───────── */
 let viewYear, viewMonth; // viewMonth: 0-indexed
@@ -316,7 +334,7 @@ function renderCalendar() {
     dayEvents.forEach(ev => {
       const chip = document.createElement("div");
       chip.className = "event-chip type-" + (ev.type || "업무");
-      chip.textContent = ev.title + (ev.vendor ? ` (${ev.vendor})` : "");
+      chip.textContent = (ev.time ? ev.time + " " : "") + ev.title + (ev.vendor ? ` (${ev.vendor})` : "");
       cell.appendChild(chip);
     });
 
@@ -343,8 +361,8 @@ function openDayDetail(iso, y, m, d) {
     dayEvents.forEach(ev => {
       const div = document.createElement("div");
       div.className = "day-detail-event type-" + (ev.type || "업무");
-      div.innerHTML = `${escapeHtml(ev.title)}${ev.vendor ? ` (${escapeHtml(ev.vendor)})` : ""}
-        <div class="dd-meta">담당: ${ev.responsible || "-"}${ev.detail ? " · " + escapeHtml(ev.detail) : ""}</div>`;
+      div.innerHTML = `${ev.time ? `<b>${escapeHtml(ev.time)}</b> ` : ""}${escapeHtml(ev.title)}${ev.vendor ? ` (${escapeHtml(ev.vendor)})` : ""}
+        <div class="dd-meta">담당: ${ev.responsible || "미지정"}${ev.detail ? " · " + escapeHtml(ev.detail) : ""}</div>`;
       evEl.appendChild(div);
     });
   }
@@ -371,9 +389,17 @@ function fmtTimestamp(ts) {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function tsMillis(ts) {
+  if (!ts) return 0;
+  return ts.toDate ? ts.toDate().getTime() : new Date(ts).getTime();
+}
+
 function renderAlerts() {
   const unconfirmed = memos.filter(m => m.status !== "확인됨");
-  const confirmed = memos.filter(m => m.status === "확인됨");
+  // 완료된 항목: 방금 확인(완료)한 것이 최상위로 오도록 confirmedAt 기준 최신순 정렬
+  const confirmed = memos.filter(m => m.status === "확인됨")
+    .slice()
+    .sort((a, b) => tsMillis(b.confirmedAt) - tsMillis(a.confirmedAt));
 
   const listEl = document.getElementById("alert-list");
   listEl.innerHTML = "";
@@ -387,10 +413,11 @@ function renderAlerts() {
     const isOld = (now - receivedMs) > 24 * 60 * 60 * 1000;
     card.className = "alert-card" + (isOld ? " breathing" : "");
     card.innerHTML = `
-      <div class="title">${m.assignee || "미지정"} - ${escapeHtml(m.subject || "")}
+      <div class="title-row">
+        <span class="title">${m.assignee || "미지정"} - ${escapeHtml(m.subject || "")}</span>
         <span class="urgency-tag urgency-${m.urgency || "중"}">${m.urgency || "중"}</span>
       </div>
-      <div class="meta">받은사람 ${m.receivedBy || "-"} · ${fmtTimestamp(m.receivedAt)}</div>
+      <div class="meta">${m.receivedBy || "-"} · ${fmtTimestamp(m.receivedAt)}</div>
     `;
     card.addEventListener("click", () => openNameModal(m.id));
     listEl.appendChild(card);
