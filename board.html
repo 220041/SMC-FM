@@ -20,7 +20,8 @@
   #topbar .brand { font-size: clamp(15px, 1.35vw, 21px); font-weight: 800; justify-self: start; color: var(--ink); text-decoration: none; cursor: pointer; }
   #topbar .brand:active { color: var(--accent); }
   #topbar-nav { display: flex; align-items: center; gap: 14px; justify-self: center; }
-  #topbar-nav .month-title { font-size: clamp(15px, 1.2vw, 19px); font-weight: 900; min-width: 130px; text-align: center; }
+  #topbar-nav .month-title { font-size: clamp(15px, 1.2vw, 19px); font-weight: 900; min-width: 130px; text-align: center; cursor: pointer; }
+  #topbar-nav .month-title:active { color: var(--accent); }
   .tb-nav-btn {
     width: 28px; height: 28px; border-radius: 50%; border: none;
     background: var(--bg); color: var(--accent);
@@ -57,7 +58,9 @@
     --lane-gap: 4px;
     --lane-pad: 4px 8px;
   }
-  /* 여유 공간이 많을 때(일정이 적은 달 등) 기본값보다 살짝 더 크게 키우는 단계 (과하지 않게 소폭만) */
+  /* 여유 공간이 많을 때(일정이 적은 달 등) 기본값보다 크게 키우는 단계들 - 여유가 큰 만큼 최대한 활용 */
+  #cal-wrap.density-plus-4 { --chip-font: clamp(19px, 1.5vw, 27px); --daynum-font: clamp(23px, 1.75vw, 31px); --lane-gap: 7px; --lane-pad: 7px 11px; }
+  #cal-wrap.density-plus-3 { --chip-font: clamp(17px, 1.32vw, 24px); --daynum-font: clamp(21px, 1.58vw, 28px); --lane-gap: 6px; --lane-pad: 6px 10px; }
   #cal-wrap.density-plus-2 { --chip-font: clamp(15px, 1.15vw, 20px); --daynum-font: clamp(18px, 1.4vw, 24px); --lane-gap: 5px; --lane-pad: 5px 9px; }
   #cal-wrap.density-plus-1 { --chip-font: clamp(14px, 1.1vw, 19px); --daynum-font: clamp(17px, 1.35vw, 23px); --lane-gap: 4px; --lane-pad: 4px 8px; }
   /* 스크롤이 생길 것 같으면 기본값에서부터 단계별로 축소 */
@@ -99,6 +102,10 @@
     display: flex; align-items: center; gap: 6px;
   }
   .day-num.is-redday { color: var(--alert); }
+  .day-num .holiday-name {
+    font-size: clamp(10.5px, 0.75vw, 13px); font-weight: 700; color: var(--alert);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; min-width: 0;
+  }
   .cal-lanes {
     display: flex; flex-direction: column; gap: var(--lane-gap); padding: 0 6px 8px;
   }
@@ -221,7 +228,6 @@
   .day-detail-event.type-미팅 { background: var(--type-미팅-bg); color: var(--type-미팅); border-left-color: var(--type-미팅); }
   .day-detail-event.type-업무 { background: var(--type-업무-bg); color: var(--type-업무); border-left-color: var(--type-업무); }
   .day-detail-event .dd-meta { font-size: 15px; font-weight: 600; color: var(--ink-soft); margin-top: 6px; }
-  .day-detail-event .dd-tap-hint { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); opacity: 0.75; margin-top: 6px; }
   #day-detail-empty { font-size: 19px; color: var(--dim); text-align: center; padding: 30px 0; }
 
   /* ── 개별 일정 상세내역 ────────────────── */
@@ -245,6 +251,34 @@
   #event-detail-history .eh-item:last-child { border-bottom: none; }
   #event-detail-history .eh-meta { color: var(--ink-soft); font-size: 12.5px; margin-bottom: 3px; }
   #event-detail-empty-hist { color: var(--dim); font-size: 14px; padding: 6px 0; }
+
+  /* ── 전화메모 상세보기 (미확인 알림 / 완료된 항목 공용) ────── */
+  #memo-detail-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    display: none; align-items: center; justify-content: center; z-index: 950; padding: 24px;
+  }
+  #memo-detail-overlay.open { display: flex; }
+  #memo-detail-card {
+    background: var(--surface); border-radius: 22px; padding: 32px 36px;
+    max-width: 560px; width: 100%; max-height: 85vh; overflow-y: auto; position: relative;
+  }
+  #memo-detail-close {
+    position: absolute; top: 16px; right: 18px; width: 40px; height: 40px; border-radius: 50%;
+    border: none; background: var(--bg); font-size: 24px; font-weight: 900; color: var(--ink-soft); cursor: pointer;
+  }
+  #memo-detail-title { font-size: 22px; font-weight: 900; margin-bottom: 4px; padding-right: 46px; }
+  #memo-detail-meta { font-size: 15px; color: var(--ink-soft); margin-bottom: 16px; line-height: 1.6; }
+  #memo-detail-meta b { color: var(--ink); }
+  #memo-detail-items .eh-item { padding: 10px 0; border-bottom: 1px dashed var(--line); font-size: 14.5px; }
+  #memo-detail-items .eh-item:last-child { border-bottom: none; }
+  #memo-detail-items .eh-meta { color: var(--ink-soft); font-size: 13px; }
+  #memo-detail-actions { margin-top: 20px; text-align: right; }
+  #memo-detail-confirm-btn {
+    padding: 10px 22px; font-size: 15px; font-weight: 800;
+    background: var(--accent); color: #fff; border: none; border-radius: 10px; cursor: pointer;
+  }
+  #memo-detail-confirm-btn:active { opacity: 0.85; }
+  .done-card { cursor: pointer; }
 </style>
 </head>
 <body>
@@ -253,7 +287,7 @@
     <a class="brand" href="index.html" title="처음 화면으로 이동">서귀포의료원 시설관리팀</a>
     <div id="topbar-nav">
       <button class="tb-nav-btn" id="prev-month">‹</button>
-      <div class="month-title" id="month-title">-</div>
+      <div class="month-title" id="month-title" title="클릭하면 이번 달로 이동">-</div>
       <button class="tb-nav-btn" id="next-month">›</button>
     </div>
     <div id="topbar-right">
@@ -317,6 +351,16 @@
   </div>
 </div>
 
+<div id="memo-detail-overlay">
+  <div id="memo-detail-card">
+    <button id="memo-detail-close" aria-label="닫기">×</button>
+    <div id="memo-detail-title"></div>
+    <div id="memo-detail-meta"></div>
+    <div id="memo-detail-items"></div>
+    <div id="memo-detail-actions"></div>
+  </div>
+</div>
+
 <script type="module">
 import { ensureAccess } from "./auth-gate.js";
 import {
@@ -371,6 +415,9 @@ let viewYear, viewMonth; // viewMonth: 0-indexed
 }
 let schedules = [];
 let memos = [];
+/* 관리자 화면(admin.html)에서 등록한 임시 공휴일 등 (기본 KR_HOLIDAYS에 없는 날짜를 추가로 반영) */
+let customHolidays = {};
+function holidayName(iso) { return customHolidays[iso] || KR_HOLIDAYS[iso]; }
 
 /* ───────── Firestore 구독 ───────── */
 onSnapshot(collection(db, "schedules"), (snap) => {
@@ -381,6 +428,13 @@ onSnapshot(collection(db, "schedules"), (snap) => {
 onSnapshot(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc")), (snap) => {
   memos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   renderAlerts();
+});
+
+onSnapshot(collection(db, "customHolidays"), (snap) => {
+  const map = {};
+  snap.docs.forEach(d => { map[d.id] = (d.data() && d.data().name) || "공휴일"; });
+  customHolidays = map;
+  renderCalendar();
 });
 
 /* ───────── 캘린더 렌더링 ───────── */
@@ -511,18 +565,17 @@ function renderCalendar() {
     weekCells.forEach((c, i) => {
       const iso = weekIsos[i];
       const dowIdx = new Date(c.y, c.m, c.day).getDay();
-      const isRedDay = dowIdx === 0 || dowIdx === 6 || !!KR_HOLIDAYS[iso];
+      const hName = holidayName(iso);
+      const isRedDay = dowIdx === 0 || dowIdx === 6 || !!hName;
 
       const cell = document.createElement("div");
       cell.className = "day-cell" + (c.other ? " other-month" : "");
 
       const numWrap = document.createElement("div");
       numWrap.className = "day-num" + (isRedDay ? " is-redday" : "");
-      if (iso === todayIso) {
-        numWrap.innerHTML = `<span class="today-badge">${c.day}</span>`;
-      } else {
-        numWrap.textContent = c.day;
-      }
+      let numHtml = iso === todayIso ? `<span class="today-badge">${c.day}</span>` : `<span>${c.day}</span>`;
+      if (hName) numHtml += `<span class="holiday-name" title="${escapeHtml(hName)}">${escapeHtml(hName)}</span>`;
+      numWrap.innerHTML = numHtml;
       cell.appendChild(numWrap);
       cell.addEventListener("click", () => openDayDetail(iso, c.y, c.m, c.day));
       daynumsEl.appendChild(cell);
@@ -604,7 +657,7 @@ function fitCalendarDensity() {
   const wrap = document.getElementById("cal-wrap");
   const outer = document.getElementById("cal-grid-outer");
   // 큰 순서 → 작은 순서로 하나씩 적용해보고, 스크롤 없이 들어가는 첫 단계를 채택
-  const tiers = ["density-plus-2", "density-plus-1", "", "density-1", "density-2", "density-3"];
+  const tiers = ["density-plus-4", "density-plus-3", "density-plus-2", "density-plus-1", "", "density-1", "density-2", "density-3"];
   for (const tier of tiers) {
     wrap.className = tier;
     // 클래스 변경 직후 레이아웃을 강제로 다시 계산시켜 정확한 높이를 측정
@@ -641,8 +694,7 @@ function openDayDetail(iso, y, m, d) {
       div.style.borderLeftColor = variant.fg;
       const lastDetail = Array.isArray(ev.history) && ev.history.length ? ev.history[ev.history.length-1].text : ev.detail;
       div.innerHTML = `${ev.time ? `<b>${escapeHtml(ev.time)}</b> ` : ""}${escapeHtml(ev.title)}${ev.vendor ? ` (${escapeHtml(ev.vendor)})` : ""}
-        <div class="dd-meta">담당: ${responsibleArray(ev).join(", ") || "미지정"}${lastDetail ? " · " + escapeHtml(lastDetail) : ""}</div>
-        <div class="dd-tap-hint">👆 눌러서 상세내역 보기</div>`;
+        <div class="dd-meta">담당: ${responsibleArray(ev).join(", ") || "미지정"}${lastDetail ? " · " + escapeHtml(lastDetail) : ""}</div>`;
       div.addEventListener("click", (e) => {
         e.stopPropagation();
         openEventDetail(ev);
@@ -697,6 +749,12 @@ document.getElementById("prev-month").addEventListener("click", () => {
 });
 document.getElementById("next-month").addEventListener("click", () => {
   viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+  renderCalendar();
+});
+document.getElementById("month-title").addEventListener("click", () => {
+  const t = new Date();
+  viewYear = t.getFullYear();
+  viewMonth = t.getMonth();
   renderCalendar();
 });
 
@@ -758,7 +816,7 @@ function renderAlerts() {
       </div>
       <div class="meta">${g.items[0].receivedBy || "-"} · ${fmtTimestamp(g.items[0].receivedAt)}</div>
     `;
-    card.addEventListener("click", () => openNameModal(g.items.map(m => m.id)));
+    card.addEventListener("click", () => openMemoDetail(g, false));
     listEl.appendChild(card);
   });
 
@@ -772,9 +830,51 @@ function renderAlerts() {
       <div class="title">${g.assignee || "미지정"} - ${escapeHtml(g.subject || "")}${countTag}</div>
       <div>확인함: ${g.items[0].confirmedBy || "-"} ${fmtTimestamp(g.items[0].confirmedAt)}</div>
     `;
+    card.addEventListener("click", () => openMemoDetail(g, true));
     doneEl.appendChild(card);
   });
 }
+
+/* ───────── 전화메모 상세보기 (미확인 알림 / 완료된 항목 공용) ───────── */
+const memoDetailOverlay = document.getElementById("memo-detail-overlay");
+function openMemoDetail(group, isDone) {
+  document.getElementById("memo-detail-title").textContent = `${group.assignee || "미지정"} - ${group.subject || ""}`;
+
+  const metaLines = [];
+  metaLines.push(`긴급도: <b>${topUrgency(group.items)}</b>`);
+  metaLines.push(`상태: <b>${isDone ? "확인됨" : "미확인"}</b>`);
+  document.getElementById("memo-detail-meta").innerHTML = metaLines.join("<br>");
+
+  const itemsEl = document.getElementById("memo-detail-items");
+  itemsEl.innerHTML = "";
+  group.items.forEach(m => {
+    const div = document.createElement("div");
+    div.className = "eh-item";
+    div.innerHTML = isDone
+      ? `<div class="eh-meta">받은사람 ${escapeHtml(m.receivedBy || "-")} · ${fmtTimestamp(m.receivedAt)}</div><div>확인함: ${escapeHtml(m.confirmedBy || "-")} · ${fmtTimestamp(m.confirmedAt)}</div>`
+      : `<div class="eh-meta">받은사람 ${escapeHtml(m.receivedBy || "-")} · ${fmtTimestamp(m.receivedAt)}</div>`;
+    itemsEl.appendChild(div);
+  });
+
+  const actionsEl = document.getElementById("memo-detail-actions");
+  actionsEl.innerHTML = "";
+  if (!isDone) {
+    const btn = document.createElement("button");
+    btn.id = "memo-detail-confirm-btn";
+    btn.textContent = "확인 처리";
+    btn.addEventListener("click", () => {
+      memoDetailOverlay.classList.remove("open");
+      openNameModal(group.items.map(m => m.id));
+    });
+    actionsEl.appendChild(btn);
+  }
+
+  memoDetailOverlay.classList.add("open");
+}
+document.getElementById("memo-detail-close").addEventListener("click", () => memoDetailOverlay.classList.remove("open"));
+memoDetailOverlay.addEventListener("click", (e) => {
+  if (e.target === memoDetailOverlay) memoDetailOverlay.classList.remove("open");
+});
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));

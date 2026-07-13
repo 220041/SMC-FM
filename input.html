@@ -177,6 +177,12 @@
     content: "최근"; position: absolute; top: -10px; right: -6.5px; background: var(--accent); color: #fff;
     font-size: 11px; font-weight: 800; padding: 2px 6.5px; border-radius: 9px;
   }
+  .name-btn .key-num {
+    display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+    background: var(--bg); color: var(--ink-soft); border: 1.5px solid var(--line); border-radius: 50%;
+    font-size: 12px; font-weight: 800; margin-right: 8px; vertical-align: middle;
+  }
+  .name-btn:active .key-num { background: var(--accent); color: #fff; border-color: var(--accent); }
 
   /* ── 대시보드 ─────────────────────────── */
   .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(286px, 1fr)); gap: 20px; }
@@ -240,6 +246,10 @@
   .day-num { font-size: 16px; font-weight: 800; padding: 2px 3.5px; display: flex; align-items: center; gap: 4.5px; }
   .day-num.is-redday { color: var(--alert); }
   .day-num .today-badge { width: 26.5px; height: 26.5px; font-size: 14px; }
+  .day-num .holiday-name {
+    font-size: 10.5px; font-weight: 700; color: var(--alert);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; min-width: 0;
+  }
   .cal-lanes { display: flex; flex-direction: column; gap: 2px; padding: 0 4.5px 6.5px; }
   .cal-lane { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
   .event-chip {
@@ -554,15 +564,25 @@ const authGateButtons = document.getElementById("author-gate-buttons");
 function buildAuthGateButtons() {
   authGateButtons.innerHTML = "";
   const last = sessionStorage.getItem("smcfm_current_user");
-  TEAM_MEMBERS.forEach(n => {
+  TEAM_MEMBERS.forEach((n, idx) => {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "name-btn" + (n === last ? " last-used" : "");
-    b.textContent = n;
+    const shortcutNum = idx + 1;
+    b.innerHTML = shortcutNum <= 9 ? `<span class="key-num">${shortcutNum}</span>${escapeHtml(n)}` : escapeHtml(n);
+    b.title = shortcutNum <= 9 ? `단축키: 숫자 ${shortcutNum}` : "";
     b.addEventListener("click", () => selectAuthor(n));
     authGateButtons.appendChild(b);
   });
 }
+/* 작성자 선택 화면이 열려있을 때 숫자키(1~5)로 바로 선택 가능 */
+document.addEventListener("keydown", (e) => {
+  if (!authGateOverlay.classList.contains("open")) return;
+  const n = parseInt(e.key, 10);
+  if (n >= 1 && n <= TEAM_MEMBERS.length) {
+    selectAuthor(TEAM_MEMBERS[n - 1]);
+  }
+});
 function selectAuthor(name) {
   currentUserName = name;
   sessionStorage.setItem("smcfm_current_user", name);
@@ -575,7 +595,24 @@ document.getElementById("author-change-btn").addEventListener("click", () => {
   authGateOverlay.classList.add("open");
 });
 buildAuthGateButtons();
-authGateOverlay.classList.add("open"); // 진입 시 항상 먼저 선택하도록
+// 세션에 이미 선택된 작성자가 남아있으면(같은 브라우저 탭에서 계속 이용 중) 다시 묻지 않고 바로 이어서 사용
+const lastUsedAuthor = sessionStorage.getItem("smcfm_current_user");
+if (lastUsedAuthor && TEAM_MEMBERS.includes(lastUsedAuthor)) {
+  selectAuthor(lastUsedAuthor);
+} else {
+  authGateOverlay.classList.add("open");
+}
+
+/* 관리자 화면(admin.html)에서 등록한 임시 공휴일 등 (기본 KR_HOLIDAYS에 없는 날짜를 추가로 반영) */
+let customHolidays = {};
+function holidayName(iso) { return customHolidays[iso] || KR_HOLIDAYS[iso]; }
+onSnapshot(collection(db, "customHolidays"), (snap) => {
+  const map = {};
+  snap.docs.forEach(d => { map[d.id] = (d.data() && d.data().name) || "공휴일"; });
+  customHolidays = map;
+  if (dpPopup.classList.contains("open")) dpRenderCalendar();
+  if (document.getElementById("schedule-calendar-view").style.display !== "none") renderScheduleCalendar();
+});
 
 /* 담당자 등 이름 select 채우기 helper */
 function fillNameSelect(sel, defaultTo) {
@@ -849,14 +886,14 @@ function dpRenderCalendar() {
   for (let d = 1; d <= daysInMonth; d++) {
     const iso = dpFormat(dpViewY, dpViewM, d);
     const dowIdx = new Date(dpViewY, dpViewM, d).getDay();
-    const holidayName = KR_HOLIDAYS[iso];
+    const hName = holidayName(iso);
     let cls = "dp-cell";
     if (dowIdx === 0) cls += " dp-sun";
     if (dowIdx === 6) cls += " dp-sat";
-    if (holidayName) cls += " dp-holiday";
+    if (hName) cls += " dp-holiday";
     if (iso === todayIsoStr) cls += " dp-today";
     if (selected && selected.y === dpViewY && selected.m === dpViewM && selected.d === d) cls += " dp-selected";
-    html += `<div class="${cls}" data-iso="${iso}" title="${holidayName || ""}">${d}</div>`;
+    html += `<div class="${cls}" data-iso="${iso}" title="${hName || ""}">${d}</div>`;
   }
   html += `</div>`;
   dpPopup.innerHTML = html;
@@ -1086,7 +1123,7 @@ function renderTicketNoteHistory(t, noteHist) {
     div.style.cssText = isReply ? "margin-left:22px; border-left:2px solid var(--line); padding-left:10px;" : "";
     const readBy = h.id ? noteReadBy(t, h, candidates) : [];
     const readNote = readBy.length ? `<div class="small-note">읽음: ${readBy.map(escapeHtml).join(", ")}</div>` : "";
-    div.innerHTML = `<div class="meta">${h.author || "-"} · ${fmtTs(h.timestamp)}</div><div>${escapeHtml(h.text)}</div>${readNote}`;
+    div.innerHTML = `<div class="meta">${h.author || "-"} · ${fmtTs(h.timestamp)}${h.editedAt ? " (수정됨)" : ""}</div><div>${escapeHtml(h.text)}</div>${readNote}`;
     if (h.id && ticketEditingId !== null) {
       const replyBtn = document.createElement("button");
       replyBtn.type = "button";
@@ -1115,6 +1152,48 @@ function renderTicketNoteHistory(t, noteHist) {
       replyBox.appendChild(replySaveBtn);
       div.appendChild(replyBtn);
       div.appendChild(replyBox);
+
+      // 본인이 쓴 세부사항/댓글은 수정·삭제 가능. 단, 댓글이 달린 세부사항(top-level)은 수정을 막음
+      const canModify = h.author === currentUser() && (isReply || repliesOf(h.id).length === 0);
+      if (canModify) {
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.className = "btn-secondary";
+        editBtn.style.cssText = "padding:3px 10px; font-size:12.5px; margin-top:6px; margin-right:6px;";
+        editBtn.textContent = "수정";
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.className = "btn-secondary btn-danger-outline";
+        delBtn.style.cssText = "padding:3px 10px; font-size:12.5px; margin-top:6px; margin-right:6px;";
+        delBtn.textContent = "삭제";
+        const editBox = document.createElement("div");
+        editBox.style.cssText = "display:none; margin-top:8px; gap:6px; flex-direction:column;";
+        const editTa = document.createElement("textarea");
+        editTa.value = h.text;
+        editTa.style.cssText = "min-height:50px;";
+        const editSaveBtn = document.createElement("button");
+        editSaveBtn.type = "button";
+        editSaveBtn.className = "btn-primary";
+        editSaveBtn.style.cssText = "padding:6px 14px; font-size:13px; align-self:flex-end;";
+        editSaveBtn.textContent = "저장";
+        editBtn.addEventListener("click", () => {
+          editBox.style.display = editBox.style.display === "none" ? "flex" : "none";
+        });
+        editSaveBtn.addEventListener("click", async () => {
+          const txt = editTa.value.trim();
+          if (!txt) { alert("내용을 입력하세요"); return; }
+          await editTicketNote(h.id, txt);
+        });
+        editBox.appendChild(editTa);
+        editBox.appendChild(editSaveBtn);
+        delBtn.addEventListener("click", async () => {
+          if (!confirm("이 항목을 삭제할까요?")) return;
+          await deleteTicketNote(h.id);
+        });
+        div.insertBefore(editBtn, replyBtn);
+        div.insertBefore(delBtn, replyBtn);
+        div.appendChild(editBox);
+      }
     }
     noteHistEl.appendChild(div);
     repliesOf(h.id).forEach(r => renderEntry(r, true));
@@ -1129,6 +1208,26 @@ async function addTicketReply(parentId, text) {
   if (!t) return;
   const history = (t.history || []).slice();
   history.push({ id: newHistId(), text, author: currentUser(), timestamp: new Date(), type: "note", replyTo: parentId });
+  await updateDoc(doc(db, "requestTickets", ticketEditingId), { history, updatedAt: serverTimestamp() });
+  openTicketDetail(ticketEditingId);
+}
+
+/* 본인이 쓴 세부사항/댓글 수정 (댓글이 달린 세부사항은 renderEntry 단계에서 애초에 버튼을 노출하지 않음) */
+async function editTicketNote(id, text) {
+  if (ticketEditingId === null) return;
+  const t = tickets.find(x => x.id === ticketEditingId);
+  if (!t) return;
+  const history = (t.history || []).map(h => h.id === id ? { ...h, text, editedAt: new Date() } : h);
+  await updateDoc(doc(db, "requestTickets", ticketEditingId), { history, updatedAt: serverTimestamp() });
+  openTicketDetail(ticketEditingId);
+}
+
+/* 본인이 쓴 세부사항/댓글 삭제 */
+async function deleteTicketNote(id) {
+  if (ticketEditingId === null) return;
+  const t = tickets.find(x => x.id === ticketEditingId);
+  if (!t) return;
+  const history = (t.history || []).filter(h => h.id !== id);
   await updateDoc(doc(db, "requestTickets", ticketEditingId), { history, updatedAt: serverTimestamp() });
   openTicketDetail(ticketEditingId);
 }
@@ -1298,16 +1397,15 @@ function renderScheduleCalendar() {
     weekCells.forEach((c, i) => {
       const iso = weekIsos[i];
       const dowIdx = new Date(c.y, c.m, c.day).getDay();
-      const isRedDay = dowIdx === 0 || dowIdx === 6 || !!KR_HOLIDAYS[iso];
+      const hName = holidayName(iso);
+      const isRedDay = dowIdx === 0 || dowIdx === 6 || !!hName;
       const cell = document.createElement("div");
       cell.className = "day-cell" + (c.other ? " other-month" : "");
       const numWrap = document.createElement("div");
       numWrap.className = "day-num" + (isRedDay ? " is-redday" : "");
-      if (iso === todayIsoStr) {
-        numWrap.innerHTML = `<span class="today-badge">${c.day}</span>`;
-      } else {
-        numWrap.textContent = c.day;
-      }
+      let numHtml = iso === todayIsoStr ? `<span class="today-badge">${c.day}</span>` : `<span>${c.day}</span>`;
+      if (hName) numHtml += `<span class="holiday-name" title="${escapeHtml(hName)}">${escapeHtml(hName)}</span>`;
+      numWrap.innerHTML = numHtml;
       cell.appendChild(numWrap);
       daynumsEl.appendChild(cell);
     });
@@ -1384,15 +1482,37 @@ const scheduleOverlay = document.getElementById("schedule-modal-overlay");
 let scheduleDateSet = new Set();
 let scheduleEditingId = null;
 
+/* 선택된 날짜들을 연속 구간별로 묶어서 반환 (기간으로 추가한 날짜들을 칩 하나로 압축 표시하기 위함) */
+function scheduleDateGroups() {
+  const sorted = [...scheduleDateSet].sort();
+  const groups = [];
+  if (!sorted.length) return groups;
+  let start = sorted[0], prev = sorted[0], isos = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    const d = sorted[i];
+    const prevDate = new Date(prev + "T00:00:00");
+    prevDate.setDate(prevDate.getDate() + 1);
+    if (d === isoDate(prevDate)) {
+      prev = d; isos.push(d);
+    } else {
+      groups.push({ start, end: prev, isos });
+      start = d; prev = d; isos = [d];
+    }
+  }
+  groups.push({ start, end: prev, isos });
+  return groups;
+}
+
 function renderDateChips() {
   const wrap = document.getElementById("schedule-date-chips");
   wrap.innerHTML = "";
-  [...scheduleDateSet].sort().forEach(iso => {
+  scheduleDateGroups().forEach(g => {
     const chip = document.createElement("div");
     chip.className = "date-chip";
-    chip.innerHTML = `<span>${iso}</span><button type="button">×</button>`;
+    const label = g.start === g.end ? g.start : `${g.start} ~ ${g.end}`;
+    chip.innerHTML = `<span>${label}</span><button type="button">×</button>`;
     chip.querySelector("button").addEventListener("click", () => {
-      scheduleDateSet.delete(iso);
+      g.isos.forEach(iso => scheduleDateSet.delete(iso));
       renderDateChips();
     });
     wrap.appendChild(chip);
@@ -1505,7 +1625,7 @@ function renderScheduleHistory(s, hist) {
     div.style.cssText = isReply ? "margin-left:22px; border-left:2px solid var(--line); padding-left:10px;" : "";
     const readBy = h.id ? noteReadBy(s, h, candidates) : [];
     const readNote = readBy.length ? `<div class="small-note">읽음: ${readBy.map(escapeHtml).join(", ")}</div>` : "";
-    div.innerHTML = `<div class="meta">${h.author || "-"} · ${fmtTs(h.timestamp)}</div><div>${escapeHtml(h.text)}</div>${readNote}`;
+    div.innerHTML = `<div class="meta">${h.author || "-"} · ${fmtTs(h.timestamp)}${h.editedAt ? " (수정됨)" : ""}</div><div>${escapeHtml(h.text)}</div>${readNote}`;
     if (h.id && scheduleEditingId !== null) {
       const replyBtn = document.createElement("button");
       replyBtn.type = "button";
@@ -1534,6 +1654,48 @@ function renderScheduleHistory(s, hist) {
       replyBox.appendChild(replySaveBtn);
       div.appendChild(replyBtn);
       div.appendChild(replyBox);
+
+      // 본인이 쓴 세부사항/댓글은 수정·삭제 가능. 단, 댓글이 달린 세부사항(top-level)은 수정을 막음
+      const canModify = h.author === currentUser() && (isReply || repliesOf(h.id).length === 0);
+      if (canModify) {
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.className = "btn-secondary";
+        editBtn.style.cssText = "padding:3px 10px; font-size:12.5px; margin-top:6px; margin-right:6px;";
+        editBtn.textContent = "수정";
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.className = "btn-secondary btn-danger-outline";
+        delBtn.style.cssText = "padding:3px 10px; font-size:12.5px; margin-top:6px; margin-right:6px;";
+        delBtn.textContent = "삭제";
+        const editBox = document.createElement("div");
+        editBox.style.cssText = "display:none; margin-top:8px; gap:6px; flex-direction:column;";
+        const editTa = document.createElement("textarea");
+        editTa.value = h.text;
+        editTa.style.cssText = "min-height:50px;";
+        const editSaveBtn = document.createElement("button");
+        editSaveBtn.type = "button";
+        editSaveBtn.className = "btn-primary";
+        editSaveBtn.style.cssText = "padding:6px 14px; font-size:13px; align-self:flex-end;";
+        editSaveBtn.textContent = "저장";
+        editBtn.addEventListener("click", () => {
+          editBox.style.display = editBox.style.display === "none" ? "flex" : "none";
+        });
+        editSaveBtn.addEventListener("click", async () => {
+          const txt = editTa.value.trim();
+          if (!txt) { alert("내용을 입력하세요"); return; }
+          await editScheduleNote(h.id, txt);
+        });
+        editBox.appendChild(editTa);
+        editBox.appendChild(editSaveBtn);
+        delBtn.addEventListener("click", async () => {
+          if (!confirm("이 항목을 삭제할까요?")) return;
+          await deleteScheduleNote(h.id);
+        });
+        div.insertBefore(editBtn, replyBtn);
+        div.insertBefore(delBtn, replyBtn);
+        div.appendChild(editBox);
+      }
     }
     histEl.appendChild(div);
     repliesOf(h.id).forEach(r => renderEntry(r, true));
@@ -1549,6 +1711,30 @@ async function addScheduleReply(parentId, text) {
   const history = (s.history && s.history.length ? s.history
     : (s.detail ? [{ text: s.detail, author: s.registeredBy, timestamp: s.registeredAt }] : [])).slice();
   history.push({ id: newHistId(), text, author: currentUser(), timestamp: new Date(), type: "note", replyTo: parentId });
+  await updateDoc(doc(db, "schedules", scheduleEditingId), { history, updatedAt: serverTimestamp() });
+  openScheduleEdit(scheduleEditingId);
+}
+
+/* 본인이 쓴 세부사항/댓글 수정 (댓글이 달린 세부사항은 renderEntry 단계에서 애초에 버튼을 노출하지 않음) */
+async function editScheduleNote(id, text) {
+  if (scheduleEditingId === null) return;
+  const s = schedules.find(x => x.id === scheduleEditingId);
+  if (!s) return;
+  const baseHist = (s.history && s.history.length ? s.history
+    : (s.detail ? [{ text: s.detail, author: s.registeredBy, timestamp: s.registeredAt }] : [])).slice();
+  const history = baseHist.map(h => h.id === id ? { ...h, text, editedAt: new Date() } : h);
+  await updateDoc(doc(db, "schedules", scheduleEditingId), { history, updatedAt: serverTimestamp() });
+  openScheduleEdit(scheduleEditingId);
+}
+
+/* 본인이 쓴 세부사항/댓글 삭제 */
+async function deleteScheduleNote(id) {
+  if (scheduleEditingId === null) return;
+  const s = schedules.find(x => x.id === scheduleEditingId);
+  if (!s) return;
+  const baseHist = (s.history && s.history.length ? s.history
+    : (s.detail ? [{ text: s.detail, author: s.registeredBy, timestamp: s.registeredAt }] : [])).slice();
+  const history = baseHist.filter(h => h.id !== id);
   await updateDoc(doc(db, "schedules", scheduleEditingId), { history, updatedAt: serverTimestamp() });
   openScheduleEdit(scheduleEditingId);
 }
