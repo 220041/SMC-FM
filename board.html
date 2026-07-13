@@ -17,7 +17,8 @@
     border-bottom: 1px solid var(--line);
     flex-shrink: 0;
   }
-  #topbar .brand { font-size: clamp(15px, 1.35vw, 21px); font-weight: 800; justify-self: start; }
+  #topbar .brand { font-size: clamp(15px, 1.35vw, 21px); font-weight: 800; justify-self: start; color: var(--ink); text-decoration: none; cursor: pointer; }
+  #topbar .brand:active { color: var(--accent); }
   #topbar-nav { display: flex; align-items: center; gap: 14px; justify-self: center; }
   #topbar-nav .month-title { font-size: clamp(15px, 1.2vw, 19px); font-weight: 900; min-width: 130px; text-align: center; }
   .tb-nav-btn {
@@ -249,7 +250,7 @@
 <body>
 <div id="app">
   <div id="topbar">
-    <div class="brand">서귀포의료원 시설관리팀</div>
+    <a class="brand" href="index.html" title="처음 화면으로 이동">서귀포의료원 시설관리팀</a>
     <div id="topbar-nav">
       <button class="tb-nav-btn" id="prev-month">‹</button>
       <div class="month-title" id="month-title">-</div>

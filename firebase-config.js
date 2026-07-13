@@ -13,7 +13,8 @@ import {
   query,
   orderBy,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import {
   getAuth,
@@ -39,6 +40,9 @@ const auth = getAuth(app);
 export const TEAM_MEMBERS = ["강보선", "강은석", "박재현", "김준형", "김류현"];
 
 export const ACCESS_CODE = "3813";
+
+// 관리자(admin.html) 전용 비밀번호 - 팀 접근코드와 별개로 한 번 더 확인
+export const ADMIN_PASSWORD = "mm976456";
 
 // 대한민국 법정 공휴일 (관공서의 공휴일에 관한 규정 기준, 대체공휴일 포함)
 // ※ 2025·2026년은 확정 고시 기준, 2027년은 (음력 환산 및 현행 대체공휴일 규정 기준) 예상치이므로
@@ -108,5 +112,5 @@ export const KR_HOLIDAYS = {
 export {
   db, auth,
   collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, Timestamp,
-  signInAnonymously, onAuthStateChanged
+  signInAnonymously, onAuthStateChanged, getDocs
 };
