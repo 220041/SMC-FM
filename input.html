@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>시설관리팀 업무입력</title>
+<link rel="stylesheet" href="common.css" />
+<style>
+  body { padding-bottom: 40px; }
+  #topbar {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    padding: 14px 20px; background: var(--surface); border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 50;
+  }
+  #topbar .brand { font-size: 18px; font-weight: 800; }
+  #user-select-wrap { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-soft); }
+  select, input[type=text], input[type=date], input[type=datetime-local], textarea {
+    border: 1.5px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 14px; color: var(--ink);
+    background: var(--surface);
+  }
+  select:focus, input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+
+  #tabbar { display: flex; gap: 6px; padding: 12px 20px 0; max-width: 1100px; margin: 0 auto; }
+  .tab-btn {
+    padding: 10px 18px; border-radius: 10px 10px 0 0; border: none; cursor: pointer;
+    font-size: 15px; font-weight: 700; background: #E7E9E6; color: var(--ink-soft);
+  }
+  .tab-btn.active { background: var(--surface); color: var(--accent); }
+
+  #content { max-width: 1100px; margin: 0 auto; padding: 20px; background: var(--surface); border-radius: 0 12px 12px 12px; min-height: 60vh; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .panel-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  .panel-head h2 { font-size: 20px; margin: 0; }
+  .btn-primary {
+    background: var(--accent); color: #fff; border: none; border-radius: 10px;
+    padding: 10px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .btn-primary:active { background: #1f3a5f; }
+  .btn-secondary {
+    background: var(--bg); color: var(--ink); border: 1.5px solid var(--line); border-radius: 10px;
+    padding: 9px 16px; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+
+  .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+  .filter-bar label { font-size: 13px; color: var(--ink-soft); font-weight: 700; margin-right: 4px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { padding: 10px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { background: var(--bg); font-weight: 800; color: var(--ink-soft); font-size: 12.5px; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: #FAFBF9; }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 7px; font-size: 11.5px; font-weight: 800; }
+  .badge.요청됨 { background: var(--type-미팅-bg); color: var(--type-미팅); }
+  .badge.진행중 { background: #FDF2D9; color: #A9740A; }
+  .badge.완료 { background: var(--type-업무-bg); color: var(--type-업무); }
+  .badge.보류 { background: var(--dim-bg); color: var(--dim); }
+  .badge.type-공사 { background: var(--type-공사-bg); color: var(--type-공사); }
+  .badge.type-미팅 { background: var(--type-미팅-bg); color: var(--type-미팅); }
+  .badge.type-업무 { background: var(--type-업무-bg); color: var(--type-업무); }
+  .badge.urgency-상 { background: #C23B3B; color: #fff; }
+  .badge.urgency-중 { background: #E1A63B; color: #fff; }
+  .badge.urgency-하 { background: #9AA5B1; color: #fff; }
+  .badge.status-미확인 { background: var(--alert-bg); color: var(--alert); }
+  .badge.status-확인됨 { background: var(--dim-bg); color: var(--dim); }
+
+  tr.row-overdue { background: var(--alert-bg); }
+  tr.row-overdue td:first-child { border-left: 4px solid var(--alert); }
+  tr.row-done td { color: var(--dim); }
+
+  .empty-row td { text-align: center; padding: 30px; color: var(--dim); }
+
+  /* ── 모달 ─────────────────────── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none;
+    align-items: flex-start; justify-content: center; z-index: 200; padding: 30px 14px; overflow-y: auto;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box { background: var(--surface); border-radius: 16px; padding: 26px 28px; width: 100%; max-width: 560px; }
+  .modal-box h3 { margin: 0 0 18px; font-size: 19px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; font-weight: 700; color: var(--ink-soft); margin-bottom: 5px; }
+  .field input, .field select, .field textarea { width: 100%; }
+  .field textarea { min-height: 70px; resize: vertical; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+  .date-picker-box { border: 1.5px dashed var(--line); border-radius: 10px; padding: 12px; }
+  .date-picker-box .sub-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+  .date-picker-box .sub-label { font-size: 12px; font-weight: 700; color: var(--ink-soft); width: 68px; flex-shrink: 0; }
+  .chip-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .date-chip {
+    background: var(--type-미팅-bg); color: var(--type-미팅); font-size: 12.5px; font-weight: 700;
+    padding: 4px 8px; border-radius: 7px; display: flex; align-items: center; gap: 6px;
+  }
+  .date-chip button { border: none; background: none; color: var(--type-미팅); cursor: pointer; font-weight: 900; padding: 0; }
+
+  .history-list { max-height: 240px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+  .history-item { padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+  .history-item:last-child { border-bottom: none; }
+  .history-item .meta { color: var(--ink-soft); font-size: 11.5px; margin-bottom: 3px; }
+
+  .small-note { font-size: 12px; color: var(--dim); margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="brand">시설관리팀 업무입력</div>
+  <div id="user-select-wrap">
+    작성자
+    <select id="current-user-select"></select>
+  </div>
+</div>
+
+<div id="tabbar">
+  <button class="tab-btn active" data-tab="tickets">요청업무관리</button>
+  <button class="tab-btn" data-tab="schedules">일정/공사등록</button>
+  <button class="tab-btn" data-tab="memos">전화 및 기타메모</button>
+</div>
+
+<div id="content">
+
+  <!-- ══════════ 1. 요청업무관리 ══════════ -->
+  <div class="panel active" id="panel-tickets">
+    <div class="panel-head">
+      <h2>요청업무관리</h2>
+      <button class="btn-primary" id="ticket-new-btn">+ 새 요청 등록</button>
+    </div>
+    <div class="filter-bar">
+      <label>상태</label>
+      <select id="ticket-filter-status">
+        <option value="all">전체</option>
+        <option value="요청됨">요청됨</option>
+        <option value="진행중">진행중</option>
+        <option value="완료">완료</option>
+        <option value="보류">보류</option>
+      </select>
+      <label>요청자</label>
+      <select id="ticket-filter-requester"><option value="all">전체</option></select>
+      <label><input type="checkbox" id="ticket-filter-overdue" /> 기한초과만</label>
+    </div>
+    <table>
+      <thead><tr>
+        <th>제목</th><th>요청자</th><th>요청일</th><th>희망기한</th><th>상태</th><th>최근업데이트</th>
+      </tr></thead>
+      <tbody id="ticket-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- ══════════ 2. 일정/공사등록 ══════════ -->
+  <div class="panel" id="panel-schedules">
+    <div class="panel-head">
+      <h2>일정 / 공사 등록</h2>
+      <button class="btn-primary" id="schedule-new-btn">+ 새 일정 등록</button>
+    </div>
+    <table>
+      <thead><tr>
+        <th>제목</th><th>유형</th><th>날짜</th><th>업체/부서</th><th>담당</th><th>등록자</th>
+      </tr></thead>
+      <tbody id="schedule-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- ══════════ 3. 전화 및 기타메모 ══════════ -->
+  <div class="panel" id="panel-memos">
+    <div class="panel-head">
+      <h2>전화 및 기타메모</h2>
+      <button class="btn-primary" id="memo-new-btn">+ 새 메모 등록</button>
+    </div>
+    <div class="filter-bar">
+      <label>상태</label>
+      <select id="memo-filter-status">
+        <option value="all">전체</option>
+        <option value="미확인">미확인</option>
+        <option value="확인됨">확인됨</option>
+      </select>
+    </div>
+    <table>
+      <thead><tr>
+        <th>담당자-내용</th><th>긴급도</th><th>받은사람</th><th>받은시간</th><th>상태</th>
+      </tr></thead>
+      <tbody id="memo-tbody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ══════════ 모달: 요청업무 상세/등록 ══════════ -->
+<div class="modal-overlay" id="ticket-modal-overlay">
+  <div class="modal-box">
+    <h3 id="ticket-modal-title">새 요청 등록</h3>
+    <div id="ticket-new-fields">
+      <div class="field"><label>제목</label><input type="text" id="ticket-title" /></div>
+      <div class="row2">
+        <div class="field"><label>요청자</label><select id="ticket-requester"></select></div>
+        <div class="field"><label>요청희망기한</label><input type="date" id="ticket-due" /></div>
+      </div>
+      <div class="field"><label>요청 내용</label><textarea id="ticket-content" placeholder="무엇을 요청하는지 적어주세요"></textarea></div>
+    </div>
+
+    <div id="ticket-detail-fields" style="display:none;">
+      <div class="row2">
+        <div class="field"><label>상태</label>
+          <select id="ticket-status-select">
+            <option value="요청됨">요청됨</option>
+            <option value="진행중">진행중</option>
+            <option value="완료">완료</option>
+            <option value="보류">보류</option>
+          </select>
+        </div>
+        <div class="field"><label>요청희망기한</label><input type="date" id="ticket-due-edit" /></div>
+      </div>
+      <div class="field"><label>진행 이력</label>
+        <div class="history-list" id="ticket-history-list"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>작성자</label><select id="ticket-note-author"></select></div>
+        <div class="field"><label>&nbsp;</label></div>
+      </div>
+      <div class="field"><label>진행상황 추가 입력</label><textarea id="ticket-note-text" placeholder="예: 계약팀에 문의함 / 회신 대기중 등"></textarea></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="ticket-cancel">취소</button>
+      <button class="btn-primary" id="ticket-save">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 모달: 일정/공사 등록 ══════════ -->
+<div class="modal-overlay" id="schedule-modal-overlay">
+  <div class="modal-box">
+    <h3 id="schedule-modal-title">새 일정 등록</h3>
+    <div class="field"><label>제목</label><input type="text" id="schedule-title" /></div>
+    <div class="row2">
+      <div class="field"><label>유형</label>
+        <select id="schedule-type"><option value="공사">공사</option><option value="미팅">미팅</option><option value="업무">업무</option></select>
+      </div>
+      <div class="field"><label>담당</label><select id="schedule-responsible"></select></div>
+    </div>
+    <div class="field"><label>업체 / 부서</label><input type="text" id="schedule-vendor" placeholder="예: 대상전력, 계약팀 등" /></div>
+
+    <div class="field">
+      <label>날짜 선택</label>
+      <div class="date-picker-box">
+        <div class="sub-row">
+          <span class="sub-label">기간</span>
+          <input type="date" id="schedule-range-start" />
+          <span>~</span>
+          <input type="date" id="schedule-range-end" />
+          <button type="button" class="btn-secondary" id="schedule-add-range">기간 추가</button>
+        </div>
+        <div class="sub-row">
+          <span class="sub-label">개별</span>
+          <input type="date" id="schedule-single-date" />
+          <button type="button" class="btn-secondary" id="schedule-add-single">날짜 추가</button>
+        </div>
+        <div class="chip-list" id="schedule-date-chips"></div>
+        <div class="small-note">기간과 개별 날짜를 함께 조합할 수 있습니다.</div>
+      </div>
+    </div>
+
+    <div class="field"><label>상세내용</label><textarea id="schedule-detail"></textarea></div>
+    <div class="field"><label>등록자</label><select id="schedule-registrar"></select></div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="schedule-delete" style="margin-right:auto; color:#C23B3B; border-color:#C23B3B; display:none;">삭제</button>
+      <button class="btn-secondary" id="schedule-cancel">취소</button>
+      <button class="btn-primary" id="schedule-save">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 모달: 전화 및 기타메모 ══════════ -->
+<div class="modal-overlay" id="memo-modal-overlay">
+  <div class="modal-box">
+    <h3 id="memo-modal-title">새 메모 등록</h3>
+    <div class="row2">
+      <div class="field"><label>받은사람 (전달받은 사람)</label><select id="memo-receiver"></select></div>
+      <div class="field"><label>담당자 (처리할 사람)</label><select id="memo-assignee"></select></div>
+    </div>
+    <div class="field"><label>용건</label><textarea id="memo-subject" placeholder="예: 대상전력 - 신관 공사 일정 문의"></textarea></div>
+    <div class="row2">
+      <div class="field"><label>긴급도</label>
+        <select id="memo-urgency"><option value="상">상</option><option value="중" selected>중</option><option value="하">하</option></select>
+      </div>
+      <div class="field"><label>받은시간</label><input type="datetime-local" id="memo-time" /></div>
+    </div>
+    <div class="field" id="memo-status-field" style="display:none;">
+      <label>상태</label>
+      <select id="memo-status-select"><option value="미확인">미확인</option><option value="확인됨">확인됨</option></select>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="memo-cancel">취소</button>
+      <button class="btn-primary" id="memo-save">저장</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { ensureAccess } from "./auth-gate.js";
+import {
+  db, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, TEAM_MEMBERS
+} from "./firebase-config.js";
+
+await ensureAccess();
+
+/* ───────── 현재 사용자 (작성자 기본값) ───────── */
+const userSelect = document.getElementById("current-user-select");
+TEAM_MEMBERS.forEach(n => userSelect.appendChild(new Option(n, n)));
+const savedUser = sessionStorage.getItem("smcfm_current_user");
+if (savedUser && TEAM_MEMBERS.includes(savedUser)) userSelect.value = savedUser;
+userSelect.addEventListener("change", () => sessionStorage.setItem("smcfm_current_user", userSelect.value));
+if (!sessionStorage.getItem("smcfm_current_user")) sessionStorage.setItem("smcfm_current_user", userSelect.value);
+function currentUser() { return userSelect.value; }
+
+/* 모든 이름 select 채우기 helper */
+function fillNameSelect(sel, defaultTo) {
+  sel.innerHTML = "";
+  TEAM_MEMBERS.forEach(n => sel.appendChild(new Option(n, n)));
+  if (defaultTo) sel.value = defaultTo;
+}
+
+/* ───────── 탭 전환 ───────── */
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+  });
+});
+
+function pad(n) { return String(n).padStart(2, "0"); }
+function isoDate(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function todayIso() { return isoDate(new Date()); }
+function fmtTs(ts) {
+  if (!ts) return "-";
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* ════════════════════════════════════════════════
+   1. 요청업무관리
+   ════════════════════════════════════════════════ */
+let tickets = [];
+const ticketFilterRequester = document.getElementById("ticket-filter-requester");
+TEAM_MEMBERS.forEach(n => ticketFilterRequester.appendChild(new Option(n, n)));
+
+onSnapshot(query(collection(db, "requestTickets"), orderBy("requestedAt", "desc")), (snap) => {
+  tickets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderTickets();
+});
+
+document.getElementById("ticket-filter-status").addEventListener("change", renderTickets);
+ticketFilterRequester.addEventListener("change", renderTickets);
+document.getElementById("ticket-filter-overdue").addEventListener("change", renderTickets);
+
+function isTicketOverdue(t) {
+  if (!t.dueDate) return false;
+  if (t.status === "진행중" || t.status === "완료") return false;
+  return t.dueDate < todayIso();
+}
+
+function renderTickets() {
+  const statusF = document.getElementById("ticket-filter-status").value;
+  const reqF = ticketFilterRequester.value;
+  const overdueOnly = document.getElementById("ticket-filter-overdue").checked;
+
+  let rows = tickets.filter(t => {
+    if (statusF !== "all" && t.status !== statusF) return false;
+    if (reqF !== "all" && t.requestedBy !== reqF) return false;
+    if (overdueOnly && !isTicketOverdue(t)) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById("ticket-tbody");
+  tbody.innerHTML = "";
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">표시할 요청이 없습니다</td></tr>`;
+    return;
+  }
+  rows.forEach(t => {
+    const overdue = isTicketOverdue(t);
+    const tr = document.createElement("tr");
+    if (overdue) tr.classList.add("row-overdue", "breathing");
+    if (t.status === "완료") tr.classList.add("row-done");
+    tr.innerHTML = `
+      <td>${escapeHtml(t.title)}</td>
+      <td>${t.requestedBy || "-"}</td>
+      <td>${t.requestedAt ? fmtTs(t.requestedAt).slice(0,10) : "-"}</td>
+      <td>${t.dueDate || "-"} ${overdue ? "⚠️" : ""}</td>
+      <td><span class="badge ${t.status}">${t.status}</span></td>
+      <td>${t.updatedAt ? fmtTs(t.updatedAt) : "-"}</td>
+    `;
+    tr.addEventListener("click", () => openTicketDetail(t.id));
+    tbody.appendChild(tr);
+  });
+}
+
+const ticketOverlay = document.getElementById("ticket-modal-overlay");
+let ticketEditingId = null;
+
+document.getElementById("ticket-new-btn").addEventListener("click", () => {
+  ticketEditingId = null;
+  document.getElementById("ticket-modal-title").textContent = "새 요청 등록";
+  document.getElementById("ticket-new-fields").style.display = "block";
+  document.getElementById("ticket-detail-fields").style.display = "none";
+  document.getElementById("ticket-title").value = "";
+  document.getElementById("ticket-due").value = "";
+  document.getElementById("ticket-content").value = "";
+  fillNameSelect(document.getElementById("ticket-requester"), currentUser());
+  ticketOverlay.classList.add("open");
+});
+
+function openTicketDetail(id) {
+  const t = tickets.find(x => x.id === id);
+  if (!t) return;
+  ticketEditingId = id;
+  document.getElementById("ticket-modal-title").textContent = t.title;
+  document.getElementById("ticket-new-fields").style.display = "none";
+  document.getElementById("ticket-detail-fields").style.display = "block";
+  document.getElementById("ticket-status-select").value = t.status;
+  document.getElementById("ticket-due-edit").value = t.dueDate || "";
+  fillNameSelect(document.getElementById("ticket-note-author"), currentUser());
+  document.getElementById("ticket-note-text").value = "";
+
+  const histEl = document.getElementById("ticket-history-list");
+  histEl.innerHTML = "";
+  (t.history || []).slice().reverse().forEach(h => {
+    const div = document.createElement("div");
+    div.className = "history-item";
+    div.innerHTML = `<div class="meta">${h.author || "-"} · ${fmtTs(h.timestamp)}</div><div>${escapeHtml(h.text)}</div>`;
+    histEl.appendChild(div);
+  });
+  if (!(t.history || []).length) histEl.innerHTML = `<div class="small-note">이력이 없습니다</div>`;
+
+  ticketOverlay.classList.add("open");
+}
+
+document.getElementById("ticket-cancel").addEventListener("click", () => ticketOverlay.classList.remove("open"));
+
+document.getElementById("ticket-save").addEventListener("click", async () => {
+  if (ticketEditingId === null) {
+    // 새 요청 생성
+    const title = document.getElementById("ticket-title").value.trim();
+    if (!title) { alert("제목을 입력하세요"); return; }
+    const requester = document.getElementById("ticket-requester").value;
+    const due = document.getElementById("ticket-due").value || null;
+    const content = document.getElementById("ticket-content").value.trim();
+    const history = content ? [{ text: content, author: requester, timestamp: new Date() }] : [];
+    await addDoc(collection(db, "requestTickets"), {
+      title, requestedBy: requester, requestedAt: serverTimestamp(),
+      dueDate: due, status: "요청됨", history, updatedAt: serverTimestamp()
+    });
+  } else {
+    // 기존 요청 업데이트
+    const t = tickets.find(x => x.id === ticketEditingId);
+    const newStatus = document.getElementById("ticket-status-select").value;
+    const newDue = document.getElementById("ticket-due-edit").value || null;
+    const noteText = document.getElementById("ticket-note-text").value.trim();
+    const author = document.getElementById("ticket-note-author").value;
+
+    const history = (t.history || []).slice();
+    if (t.status !== newStatus) {
+      history.push({ text: `상태변경: ${t.status} → ${newStatus}`, author, timestamp: new Date() });
+    }
+    if (noteText) {
+      history.push({ text: noteText, author, timestamp: new Date() });
+    }
+    await updateDoc(doc(db, "requestTickets", ticketEditingId), {
+      status: newStatus, dueDate: newDue, history, updatedAt: serverTimestamp()
+    });
+  }
+  ticketOverlay.classList.remove("open");
+});
+
+/* ════════════════════════════════════════════════
+   2. 일정 / 공사 등록
+   ════════════════════════════════════════════════ */
+let schedules = [];
+onSnapshot(collection(db, "schedules"), (snap) => {
+  schedules = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  schedules.sort((a, b) => (minDate(a.dates) || "").localeCompare(minDate(b.dates) || ""));
+  renderSchedules();
+});
+function minDate(dates) { return (dates && dates.length) ? [...dates].sort()[0] : null; }
+
+function renderSchedules() {
+  const tbody = document.getElementById("schedule-tbody");
+  tbody.innerHTML = "";
+  if (schedules.length === 0) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">등록된 일정이 없습니다</td></tr>`;
+    return;
+  }
+  schedules.forEach(s => {
+    const tr = document.createElement("tr");
+    const sortedDates = (s.dates || []).slice().sort();
+    const dateLabel = sortedDates.length > 2
+      ? `${sortedDates[0]} ~ ${sortedDates[sortedDates.length-1]} 외 ${sortedDates.length}일`
+      : sortedDates.join(", ");
+    tr.innerHTML = `
+      <td>${escapeHtml(s.title)}</td>
+      <td><span class="badge type-${s.type}">${s.type}</span></td>
+      <td>${dateLabel || "-"}</td>
+      <td>${escapeHtml(s.vendor || "-")}</td>
+      <td>${s.responsible || "-"}</td>
+      <td>${s.registeredBy || "-"}</td>
+    `;
+    tr.addEventListener("click", () => openScheduleEdit(s.id));
+    tbody.appendChild(tr);
+  });
+}
+
+const scheduleOverlay = document.getElementById("schedule-modal-overlay");
+let scheduleDateSet = new Set();
+let scheduleEditingId = null;
+
+function renderDateChips() {
+  const wrap = document.getElementById("schedule-date-chips");
+  wrap.innerHTML = "";
+  [...scheduleDateSet].sort().forEach(iso => {
+    const chip = document.createElement("div");
+    chip.className = "date-chip";
+    chip.innerHTML = `<span>${iso}</span><button type="button">×</button>`;
+    chip.querySelector("button").addEventListener("click", () => {
+      scheduleDateSet.delete(iso);
+      renderDateChips();
+    });
+    wrap.appendChild(chip);
+  });
+}
+
+document.getElementById("schedule-add-range").addEventListener("click", () => {
+  const start = document.getElementById("schedule-range-start").value;
+  const end = document.getElementById("schedule-range-end").value;
+  if (!start || !end || start > end) { alert("시작일과 종료일을 올바르게 선택하세요"); return; }
+  let cur = new Date(start + "T00:00:00");
+  const endD = new Date(end + "T00:00:00");
+  while (cur <= endD) {
+    scheduleDateSet.add(isoDate(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  renderDateChips();
+});
+document.getElementById("schedule-add-single").addEventListener("click", () => {
+  const v = document.getElementById("schedule-single-date").value;
+  if (!v) return;
+  scheduleDateSet.add(v);
+  renderDateChips();
+});
+
+function openScheduleNew() {
+  scheduleEditingId = null;
+  document.getElementById("schedule-modal-title").textContent = "새 일정 등록";
+  document.getElementById("schedule-title").value = "";
+  document.getElementById("schedule-type").value = "공사";
+  document.getElementById("schedule-vendor").value = "";
+  document.getElementById("schedule-detail").value = "";
+  scheduleDateSet = new Set();
+  renderDateChips();
+  fillNameSelect(document.getElementById("schedule-responsible"), currentUser());
+  fillNameSelect(document.getElementById("schedule-registrar"), currentUser());
+  document.getElementById("schedule-delete").style.display = "none";
+  scheduleOverlay.classList.add("open");
+}
+document.getElementById("schedule-new-btn").addEventListener("click", openScheduleNew);
+
+function openScheduleEdit(id) {
+  const s = schedules.find(x => x.id === id);
+  if (!s) return;
+  scheduleEditingId = id;
+  document.getElementById("schedule-modal-title").textContent = "일정 수정";
+  document.getElementById("schedule-title").value = s.title || "";
+  document.getElementById("schedule-type").value = s.type || "공사";
+  document.getElementById("schedule-vendor").value = s.vendor || "";
+  document.getElementById("schedule-detail").value = s.detail || "";
+  scheduleDateSet = new Set(s.dates || []);
+  renderDateChips();
+  fillNameSelect(document.getElementById("schedule-responsible"), s.responsible);
+  fillNameSelect(document.getElementById("schedule-registrar"), s.registeredBy);
+  document.getElementById("schedule-delete").style.display = "inline-block";
+  scheduleOverlay.classList.add("open");
+}
+
+document.getElementById("schedule-cancel").addEventListener("click", () => scheduleOverlay.classList.remove("open"));
+
+document.getElementById("schedule-save").addEventListener("click", async () => {
+  const title = document.getElementById("schedule-title").value.trim();
+  if (!title) { alert("제목을 입력하세요"); return; }
+  if (scheduleDateSet.size === 0) { alert("날짜를 1개 이상 추가하세요"); return; }
+  const payload = {
+    title,
+    type: document.getElementById("schedule-type").value,
+    vendor: document.getElementById("schedule-vendor").value.trim(),
+    responsible: document.getElementById("schedule-responsible").value,
+    detail: document.getElementById("schedule-detail").value.trim(),
+    dates: [...scheduleDateSet],
+    registeredBy: document.getElementById("schedule-registrar").value,
+    updatedAt: serverTimestamp()
+  };
+  if (scheduleEditingId === null) {
+    payload.registeredAt = serverTimestamp();
+    await addDoc(collection(db, "schedules"), payload);
+  } else {
+    await updateDoc(doc(db, "schedules", scheduleEditingId), payload);
+  }
+  scheduleOverlay.classList.remove("open");
+});
+
+document.getElementById("schedule-delete").addEventListener("click", async () => {
+  if (!scheduleEditingId) return;
+  if (!confirm("이 일정을 삭제할까요?")) return;
+  await deleteDoc(doc(db, "schedules", scheduleEditingId));
+  scheduleOverlay.classList.remove("open");
+});
+
+/* ════════════════════════════════════════════════
+   3. 전화 및 기타메모
+   ════════════════════════════════════════════════ */
+let memos = [];
+onSnapshot(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc")), (snap) => {
+  memos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderMemos();
+});
+document.getElementById("memo-filter-status").addEventListener("change", renderMemos);
+
+function renderMemos() {
+  const f = document.getElementById("memo-filter-status").value;
+  const rows = memos.filter(m => f === "all" || m.status === f);
+  const tbody = document.getElementById("memo-tbody");
+  tbody.innerHTML = "";
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">등록된 메모가 없습니다</td></tr>`;
+    return;
+  }
+  rows.forEach(m => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><b>${m.assignee || "미지정"}</b> - ${escapeHtml(m.subject || "")}</td>
+      <td><span class="badge urgency-${m.urgency}">${m.urgency}</span></td>
+      <td>${m.receivedBy || "-"}</td>
+      <td>${fmtTs(m.receivedAt)}</td>
+      <td><span class="badge status-${m.status}">${m.status}</span>${m.status === "확인됨" ? `<div class="small-note">${m.confirmedBy} ${fmtTs(m.confirmedAt)}</div>` : ""}</td>
+    `;
+    tr.addEventListener("click", () => openMemoEdit(m.id));
+    tbody.appendChild(tr);
+  });
+}
+
+const memoOverlay = document.getElementById("memo-modal-overlay");
+let memoEditingId = null;
+
+function nowLocalDatetimeValue() {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0,16);
+}
+
+document.getElementById("memo-new-btn").addEventListener("click", () => {
+  memoEditingId = null;
+  document.getElementById("memo-modal-title").textContent = "새 메모 등록";
+  fillNameSelect(document.getElementById("memo-receiver"), currentUser());
+  fillNameSelect(document.getElementById("memo-assignee"), TEAM_MEMBERS.includes("강보선") ? "강보선" : currentUser());
+  document.getElementById("memo-subject").value = "";
+  document.getElementById("memo-urgency").value = "중";
+  document.getElementById("memo-time").value = nowLocalDatetimeValue();
+  document.getElementById("memo-status-field").style.display = "none";
+  memoOverlay.classList.add("open");
+});
+
+function openMemoEdit(id) {
+  const m = memos.find(x => x.id === id);
+  if (!m) return;
+  memoEditingId = id;
+  document.getElementById("memo-modal-title").textContent = "메모 수정";
+  fillNameSelect(document.getElementById("memo-receiver"), m.receivedBy);
+  fillNameSelect(document.getElementById("memo-assignee"), m.assignee);
+  document.getElementById("memo-subject").value = m.subject || "";
+  document.getElementById("memo-urgency").value = m.urgency || "중";
+  const d = m.receivedAt?.toDate ? m.receivedAt.toDate() : new Date();
+  const local = new Date(d.getTime() - d.getTimezoneOffset()*60000);
+  document.getElementById("memo-time").value = local.toISOString().slice(0,16);
+  document.getElementById("memo-status-field").style.display = "block";
+  document.getElementById("memo-status-select").value = m.status || "미확인";
+  memoOverlay.classList.add("open");
+}
+
+document.getElementById("memo-cancel").addEventListener("click", () => memoOverlay.classList.remove("open"));
+
+document.getElementById("memo-save").addEventListener("click", async () => {
+  const subject = document.getElementById("memo-subject").value.trim();
+  if (!subject) { alert("용건을 입력하세요"); return; }
+  const timeVal = document.getElementById("memo-time").value;
+  const receivedAt = timeVal ? new Date(timeVal) : new Date();
+
+  if (memoEditingId === null) {
+    await addDoc(collection(db, "phoneMemos"), {
+      receivedBy: document.getElementById("memo-receiver").value,
+      assignee: document.getElementById("memo-assignee").value,
+      subject,
+      urgency: document.getElementById("memo-urgency").value,
+      receivedAt,
+      status: "미확인",
+      confirmedBy: null,
+      confirmedAt: null
+    });
+  } else {
+    const newStatus = document.getElementById("memo-status-select").value;
+    const m = memos.find(x => x.id === memoEditingId);
+    const payload = {
+      receivedBy: document.getElementById("memo-receiver").value,
+      assignee: document.getElementById("memo-assignee").value,
+      subject,
+      urgency: document.getElementById("memo-urgency").value,
+      receivedAt,
+      status: newStatus
+    };
+    if (newStatus === "확인됨" && m.status !== "확인됨") {
+      payload.confirmedBy = currentUser();
+      payload.confirmedAt = new Date();
+    }
+    if (newStatus === "미확인") {
+      payload.confirmedBy = null;
+      payload.confirmedAt = null;
+    }
+    await updateDoc(doc(db, "phoneMemos", memoEditingId), payload);
+  }
+  memoOverlay.classList.remove("open");
+});
+</script>
+</body>
+</html>

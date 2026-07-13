@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>서귀포의료원 시설관리팀</title>
+<link rel="stylesheet" href="common.css" />
+<style>
+  body { display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+  .wrap { text-align: center; }
+  h1 { font-size: 22px; margin-bottom: 6px; }
+  p { color: var(--ink-soft); margin-bottom: 32px; }
+  .links { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  a.card {
+    display: block; width: 220px; padding: 28px 20px; border-radius: 16px;
+    background: var(--surface); border: 1.5px solid var(--line); text-decoration: none; color: var(--ink);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+  }
+  a.card .emoji { font-size: 32px; margin-bottom: 10px; display: block; }
+  a.card .title { font-weight: 800; font-size: 16px; }
+  a.card .desc { font-size: 12.5px; color: var(--ink-soft); margin-top: 6px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>서귀포의료원 시설관리팀</h1>
+    <p>사용할 화면을 선택하세요</p>
+    <div class="links">
+      <a class="card" href="board.html">
+        <span class="emoji">🗓️</span>
+        <div class="title">전자칠판</div>
+        <div class="desc">사무실 대형화면용<br/>월별 일정 + 미확인 알림</div>
+      </a>
+      <a class="card" href="input.html">
+        <span class="emoji">✏️</span>
+        <div class="title">업무입력</div>
+        <div class="desc">PC / 모바일용<br/>요청업무·일정·메모 등록</div>
+      </a>
+    </div>
+  </div>
+</body>
+</html>

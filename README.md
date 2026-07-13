@@ -1,0 +1,86 @@
+# 서귀포의료원 시설관리팀 업무공유 시스템
+
+## 구성
+- `index.html` — 시작 페이지 (전자칠판 / 업무입력 선택)
+- `board.html` — 전자칠판용 대시보드 (사무실 대형화면, 168×95cm 터치스크린)
+- `input.html` — PC/모바일용 입력 화면 (요청업무관리 / 일정·공사등록 / 전화·기타메모)
+- `firebase-config.js`, `auth-gate.js`, `common.css` — 공용 모듈 (직접 열 필요 없음)
+
+---
+
+## 1단계. Firebase 콘솔 설정 (딱 2가지만 하면 됩니다)
+
+### ① 익명 로그인 켜기
+1. https://console.firebase.google.com → `smc-fm` 프로젝트 선택
+2. 왼쪽 메뉴 **Authentication** → **Sign-in method** 탭
+3. **Anonymous(익명)** 항목 클릭 → 사용 설정 → 저장
+
+이게 안 켜져 있으면 접근코드를 입력해도 로그인이 안 되고 화면이 멈춘 것처럼 보입니다.
+
+### ② Firestore 보안규칙 붙여넣기
+1. 왼쪽 메뉴 **Firestore Database** → **규칙(Rules)** 탭
+2. 아래 내용을 전체 붙여넣고 **게시(Publish)**
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+> 참고: 이 시스템은 "접근코드(3813) → 익명 로그인" 방식의 최소 인증입니다.
+> 개인별 아이디/비밀번호는 없고, 코드를 아는 사람이면 누구나 접속·입력할 수 있습니다.
+> (팀 내부용 도구이므로 이 정도 보안 수준으로 설계했습니다)
+
+---
+
+## 2단계. GitHub Pages로 올리기
+
+1. GitHub에서 새 저장소(Repository) 생성 (예: `smc-fm`), Public 또는 Private 무관
+2. 이 폴더 안의 파일 6개를 저장소에 업로드 (드래그 앤 드롭으로 가능)
+   - `index.html`, `board.html`, `input.html`, `firebase-config.js`, `auth-gate.js`, `common.css`
+3. 저장소 **Settings → Pages**
+4. **Source**: `Deploy from a branch` / **Branch**: `main`, 폴더 `/(root)` 선택 → **Save**
+5. 1~2분 후 상단에 `https://아이디.github.io/smc-fm/` 형태의 주소가 생깁니다
+
+---
+
+## 3단계. 사용 방법
+
+### 전자칠판 (사무실 대형화면)
+1. 화면에서 브라우저로 `https://아이디.github.io/smc-fm/board.html` 접속
+2. 접근코드 `3813` 입력 (한 번만, 세션 유지됨)
+3. 이후 브라우저 탭을 항상 열어두면 됩니다. 화면보호기/절전모드로 꺼지지 않도록 안드로이드 디스플레이 설정에서 "화면 항상 켜짐"으로 맞춰두시는 걸 추천드립니다.
+4. 좌측: 이번 달 캘린더 (공사=주황, 미팅=파랑, 업무=초록)
+5. 우측: 미확인 전화·기타메모 알림. 카드를 터치하면 이름을 선택해 확인 처리할 수 있습니다.
+6. 24시간 넘게 미확인 상태인 카드는 은은하게 깜빡입니다.
+
+### PC / 모바일 입력
+1. `https://아이디.github.io/smc-fm/input.html` 접속, 접근코드 입력
+2. 상단 "작성자" 선택 (본인 이름 — 등록 시 기본값으로 쓰입니다)
+3. 탭 3개: **요청업무관리 / 일정·공사등록 / 전화 및 기타메모**
+4. 요청업무는 항목을 클릭하면 상세 이력을 보고 이어서 진행상황을 추가할 수 있습니다.
+5. 일정·공사 등록 시 날짜는 "기간"과 "개별 날짜"를 함께 조합해서 추가할 수 있습니다.
+
+---
+
+## 데이터 보관
+모든 데이터는 Firestore에 계속 누적 저장됩니다 (자동 삭제 없음). 나중에 필요하면 Firebase 콘솔의 Firestore Database 화면에서 직접 데이터를 조회·내보내기 할 수 있습니다.
+
+## 나중에 팀원 명단을 바꾸려면
+`firebase-config.js` 파일을 열어 아래 줄의 이름만 수정하면 모든 화면(전자칠판, 입력화면)에 자동 반영됩니다.
+
+```js
+export const TEAM_MEMBERS = ["강보선", "강은석", "박재현", "김준형", "김류현"];
+```
+
+## 접근코드를 바꾸려면
+같은 파일에서 아래 줄을 수정하세요.
+
+```js
+export const ACCESS_CODE = "3813";
+```

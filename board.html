@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>시설관리팀 전자칠판</title>
+<link rel="stylesheet" href="common.css" />
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  #app { display: flex; flex-direction: column; height: 100vh; }
+
+  /* ── 상단 바 ───────────────────────────── */
+  #topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+  #topbar .brand { font-size: clamp(18px, 1.6vw, 26px); font-weight: 800; }
+  #topbar .brand span { color: var(--ink-soft); font-weight: 500; font-size: 0.7em; margin-left: 8px; }
+  #clock { font-size: clamp(16px, 1.4vw, 22px); font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+
+  /* ── 메인 영역: 캘린더 + 알림패널 ───────── */
+  #main { display: flex; flex: 1; min-height: 0; padding: 18px 24px; gap: 20px; }
+
+  /* ── 캘린더 ────────────────────────────── */
+  #cal-wrap { flex: 1 1 68%; display: flex; flex-direction: column; min-width: 0; }
+  #cal-header {
+    display: flex; align-items: center; justify-content: center; gap: 24px;
+    margin-bottom: 12px; flex-shrink: 0;
+  }
+  #cal-header .month-title { font-size: clamp(22px, 2.2vw, 34px); font-weight: 900; min-width: 220px; text-align: center; }
+  .nav-btn {
+    width: 52px; height: 52px; border-radius: 50%; border: none;
+    background: var(--surface); box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    font-size: 22px; font-weight: 900; color: var(--accent); cursor: pointer;
+  }
+  .nav-btn:active { background: var(--line); }
+
+  #cal-grid-outer { flex: 1; min-height: 0; overflow-y: auto; border-radius: var(--radius); }
+  #dow-row {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    background: var(--surface); border-radius: var(--radius) var(--radius) 0 0;
+    border: 1px solid var(--line); border-bottom: none;
+  }
+  #dow-row div {
+    text-align: center; padding: 10px 0; font-weight: 800;
+    font-size: clamp(13px, 1vw, 17px); color: var(--ink-soft);
+  }
+  #dow-row div:first-child { color: var(--alert); }
+  #dow-row div:last-child { color: var(--accent); }
+
+  #cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: minmax(115px, auto);
+    background: var(--line);
+    gap: 1px;
+    border: 1px solid var(--line);
+    border-radius: 0 0 var(--radius) var(--radius);
+    overflow: hidden;
+  }
+  .day-cell {
+    background: var(--surface); padding: 6px 6px 8px; min-width: 0;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .day-cell.other-month { background: #F7F8F6; }
+  .day-cell.other-month .day-num { color: var(--dim); }
+  .day-num {
+    font-size: clamp(14px, 1.1vw, 20px); font-weight: 800; padding: 2px 4px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .event-chip {
+    font-size: clamp(11px, 0.85vw, 15px); font-weight: 600; line-height: 1.3;
+    padding: 3px 7px; border-radius: 7px; word-break: keep-all;
+    border-left: 4px solid transparent;
+  }
+  .event-chip.type-공사 { background: var(--type-공사-bg); color: var(--type-공사); border-left-color: var(--type-공사); }
+  .event-chip.type-미팅 { background: var(--type-미팅-bg); color: var(--type-미팅); border-left-color: var(--type-미팅); }
+  .event-chip.type-업무 { background: var(--type-업무-bg); color: var(--type-업무); border-left-color: var(--type-업무); }
+
+  /* ── 범례 ─────────────────────────────── */
+  #legend { display: flex; gap: 18px; justify-content: center; margin-top: 10px; flex-shrink: 0; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: clamp(12px, 0.9vw, 15px); font-weight: 700; color: var(--ink-soft); }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+  .legend-dot.type-공사 { background: var(--type-공사); }
+  .legend-dot.type-미팅 { background: var(--type-미팅); }
+  .legend-dot.type-업무 { background: var(--type-업무); }
+
+  /* ── 우측 알림 패널 ────────────────────── */
+  #alert-panel {
+    flex: 1 1 32%; max-width: 420px; min-width: 300px;
+    display: flex; flex-direction: column; min-height: 0;
+    background: var(--surface); border-radius: var(--radius);
+    border: 1px solid var(--line); overflow: hidden;
+  }
+  #alert-panel h2 {
+    font-size: clamp(16px, 1.3vw, 22px); margin: 0; padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--line); flex-shrink: 0;
+  }
+  #alert-list { flex: 1 1 55%; overflow-y: auto; padding: 12px 14px; min-height: 0; }
+  .alert-card {
+    background: var(--alert-bg); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
+    cursor: pointer; border: 1px solid #EFC9C9;
+  }
+  .alert-card .title { font-weight: 800; font-size: clamp(13px, 1vw, 16px); margin-bottom: 4px; }
+  .alert-card .meta { font-size: clamp(11px, 0.8vw, 13px); color: var(--ink-soft); }
+  .alert-card .urgency-tag {
+    display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 6px;
+    margin-left: 6px; vertical-align: middle;
+  }
+  .urgency-상 { background: #C23B3B; color: #fff; }
+  .urgency-중 { background: #E1A63B; color: #fff; }
+  .urgency-하 { background: #9AA5B1; color: #fff; }
+
+  #done-section { flex: 1 1 45%; border-top: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  #done-section h3 {
+    font-size: 14px; color: var(--ink-soft); margin: 0; padding: 10px 18px; flex-shrink: 0;
+  }
+  #done-list { flex: 1; overflow-y: auto; padding: 0 14px 14px; }
+  .done-card {
+    background: var(--dim-bg); border-radius: 10px; padding: 9px 12px; margin-bottom: 8px;
+    font-size: 12.5px; color: var(--ink-soft);
+  }
+  .done-card .title { color: var(--ink); font-weight: 700; margin-bottom: 3px; }
+
+  #empty-alert { padding: 30px 14px; text-align: center; color: var(--ink-soft); font-size: 14px; }
+
+  /* ── 이름 선택 모달 ────────────────────── */
+  #name-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    display: none; align-items: center; justify-content: center; z-index: 1000;
+  }
+  #name-modal {
+    background: var(--surface); border-radius: 20px; padding: 32px 36px;
+    text-align: center; min-width: 380px;
+  }
+  #name-modal h3 { margin: 0 0 6px; font-size: 20px; }
+  #name-modal p { margin: 0 0 20px; color: var(--ink-soft); font-size: 14px; }
+  #name-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .name-btn {
+    padding: 18px 10px; font-size: 17px; font-weight: 800;
+    border-radius: 12px; border: 2px solid var(--line); background: var(--bg);
+    cursor: pointer; color: var(--ink);
+  }
+  .name-btn:active { background: var(--accent); color: #fff; }
+  #name-cancel { margin-top: 18px; background: none; border: none; color: var(--ink-soft); font-size: 14px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div class="brand">서귀포의료원 시설관리팀 <span>전자칠판</span></div>
+    <div id="clock">--:--</div>
+  </div>
+
+  <div id="main">
+    <div id="cal-wrap">
+      <div id="cal-header">
+        <button class="nav-btn" id="prev-month">‹</button>
+        <div class="month-title" id="month-title">-</div>
+        <button class="nav-btn" id="next-month">›</button>
+      </div>
+      <div id="cal-grid-outer" class="scrollbar-thin">
+        <div id="dow-row">
+          <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+        </div>
+        <div id="cal-grid"></div>
+      </div>
+      <div id="legend">
+        <div class="legend-item"><div class="legend-dot type-공사"></div>공사</div>
+        <div class="legend-item"><div class="legend-dot type-미팅"></div>미팅</div>
+        <div class="legend-item"><div class="legend-dot type-업무"></div>업무</div>
+      </div>
+    </div>
+
+    <div id="alert-panel">
+      <h2>🔴 미확인 알림</h2>
+      <div id="alert-list" class="scrollbar-thin"></div>
+      <div id="done-section">
+        <h3>완료된 항목</h3>
+        <div id="done-list" class="scrollbar-thin"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="name-modal-overlay">
+  <div id="name-modal">
+    <h3>확인자 선택</h3>
+    <p id="name-modal-sub">이 항목을 확인한 사람을 선택하세요</p>
+    <div id="name-buttons"></div>
+    <button id="name-cancel">취소</button>
+  </div>
+</div>
+
+<script type="module">
+import { ensureAccess } from "./auth-gate.js";
+import {
+  db, collection, doc, updateDoc, onSnapshot, query, orderBy, serverTimestamp, Timestamp, TEAM_MEMBERS
+} from "./firebase-config.js";
+
+await ensureAccess();
+
+/* ───────── 시계 ───────── */
+function tickClock() {
+  const now = new Date();
+  const days = ["일","월","화","수","목","금","토"];
+  document.getElementById("clock").textContent =
+    `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,"0")}.${String(now.getDate()).padStart(2,"0")} (${days[now.getDay()]}) ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+}
+tickClock();
+setInterval(tickClock, 10000);
+
+/* ───────── 상태 ───────── */
+let viewYear, viewMonth; // viewMonth: 0-indexed
+{
+  const t = new Date();
+  viewYear = t.getFullYear();
+  viewMonth = t.getMonth();
+}
+let schedules = [];
+let memos = [];
+
+/* ───────── Firestore 구독 ───────── */
+onSnapshot(collection(db, "schedules"), (snap) => {
+  schedules = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderCalendar();
+});
+
+onSnapshot(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc")), (snap) => {
+  memos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderAlerts();
+});
+
+/* ───────── 캘린더 렌더링 ───────── */
+function pad(n) { return String(n).padStart(2, "0"); }
+function isoDate(y, m, d) { return `${y}-${pad(m+1)}-${pad(d)}`; }
+
+function renderCalendar() {
+  document.getElementById("month-title").textContent = `${viewYear}년 ${viewMonth+1}월`;
+
+  const firstDow = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+  const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+  const cells = [];
+  // 이전달 채우기
+  for (let i = firstDow - 1; i >= 0; i--) {
+    cells.push({ day: daysInPrevMonth - i, other: true, y: viewMonth === 0 ? viewYear-1 : viewYear, m: (viewMonth+11)%12 });
+  }
+  // 이번달
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ day: d, other: false, y: viewYear, m: viewMonth });
+  }
+  // 다음달 채우기 (7의 배수로)
+  while (cells.length % 7 !== 0) {
+    const idx = cells.length - (firstDow + daysInMonth);
+    cells.push({ day: idx + 1, other: true, y: viewMonth === 11 ? viewYear+1 : viewYear, m: (viewMonth+1)%12 });
+  }
+
+  const todayIso = isoDate(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+
+  const grid = document.getElementById("cal-grid");
+  grid.innerHTML = "";
+  cells.forEach(c => {
+    const iso = isoDate(c.y, c.m, c.day);
+    const cell = document.createElement("div");
+    cell.className = "day-cell" + (c.other ? " other-month" : "");
+
+    const numWrap = document.createElement("div");
+    numWrap.className = "day-num";
+    if (iso === todayIso) {
+      numWrap.innerHTML = `<span class="today-badge">${c.day}</span>`;
+    } else {
+      numWrap.textContent = c.day;
+    }
+    cell.appendChild(numWrap);
+
+    const dayEvents = schedules.filter(s => Array.isArray(s.dates) && s.dates.includes(iso));
+    dayEvents.forEach(ev => {
+      const chip = document.createElement("div");
+      chip.className = "event-chip type-" + (ev.type || "업무");
+      chip.textContent = ev.title + (ev.vendor ? ` (${ev.vendor})` : "");
+      cell.appendChild(chip);
+    });
+
+    grid.appendChild(cell);
+  });
+}
+
+document.getElementById("prev-month").addEventListener("click", () => {
+  viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+  renderCalendar();
+});
+document.getElementById("next-month").addEventListener("click", () => {
+  viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+  renderCalendar();
+});
+
+/* ───────── 알림 패널 렌더링 ───────── */
+function fmtTimestamp(ts) {
+  if (!ts) return "";
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function renderAlerts() {
+  const unconfirmed = memos.filter(m => m.status !== "확인됨");
+  const confirmed = memos.filter(m => m.status === "확인됨");
+
+  const listEl = document.getElementById("alert-list");
+  listEl.innerHTML = "";
+  if (unconfirmed.length === 0) {
+    listEl.innerHTML = `<div id="empty-alert">미확인 항목이 없습니다</div>`;
+  }
+  const now = Date.now();
+  unconfirmed.forEach(m => {
+    const card = document.createElement("div");
+    const receivedMs = m.receivedAt?.toDate ? m.receivedAt.toDate().getTime() : now;
+    const isOld = (now - receivedMs) > 24 * 60 * 60 * 1000;
+    card.className = "alert-card" + (isOld ? " breathing" : "");
+    card.innerHTML = `
+      <div class="title">${m.assignee || "미지정"} - ${escapeHtml(m.subject || "")}
+        <span class="urgency-tag urgency-${m.urgency || "중"}">${m.urgency || "중"}</span>
+      </div>
+      <div class="meta">받은사람 ${m.receivedBy || "-"} · ${fmtTimestamp(m.receivedAt)}</div>
+    `;
+    card.addEventListener("click", () => openNameModal(m.id));
+    listEl.appendChild(card);
+  });
+
+  const doneEl = document.getElementById("done-list");
+  doneEl.innerHTML = "";
+  confirmed.slice(0, 30).forEach(m => {
+    const card = document.createElement("div");
+    card.className = "done-card";
+    card.innerHTML = `
+      <div class="title">${m.assignee || "미지정"} - ${escapeHtml(m.subject || "")}</div>
+      <div>확인함: ${m.confirmedBy || "-"} ${fmtTimestamp(m.confirmedAt)}</div>
+    `;
+    doneEl.appendChild(card);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* ───────── 이름 선택 모달 ───────── */
+let pendingMemoId = null;
+const overlay = document.getElementById("name-modal-overlay");
+const nameButtons = document.getElementById("name-buttons");
+TEAM_MEMBERS.forEach(name => {
+  const btn = document.createElement("button");
+  btn.className = "name-btn";
+  btn.textContent = name;
+  btn.addEventListener("click", () => confirmMemo(name));
+  nameButtons.appendChild(btn);
+});
+
+function openNameModal(memoId) {
+  pendingMemoId = memoId;
+  overlay.style.display = "flex";
+}
+document.getElementById("name-cancel").addEventListener("click", () => {
+  overlay.style.display = "none";
+  pendingMemoId = null;
+});
+
+async function confirmMemo(name) {
+  if (!pendingMemoId) return;
+  await updateDoc(doc(db, "phoneMemos", pendingMemoId), {
+    status: "확인됨",
+    confirmedBy: name,
+    confirmedAt: serverTimestamp()
+  });
+  overlay.style.display = "none";
+  pendingMemoId = null;
+}
+
+/* 24시간 경과 여부는 시간 흐름에 따라 바뀌므로 주기적으로 다시 렌더 */
+setInterval(renderAlerts, 60000);
+
+renderCalendar();
+</script>
+</body>
+</html>

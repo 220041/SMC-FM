@@ -1,0 +1,57 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
+
+:root {
+  --bg: #F3F4F1;
+  --surface: #FFFFFF;
+  --ink: #1F2933;
+  --ink-soft: #5A6572;
+  --line: #DCE1E5;
+  --line-strong: #B7BFC6;
+
+  --type-공사: #B3441E;
+  --type-공사-bg: #FBEAE2;
+  --type-미팅: #2B4C7E;
+  --type-미팅-bg: #E7EDF6;
+  --type-업무: #1F7A5C;
+  --type-업무-bg: #E4F1EC;
+
+  --alert: #C23B3B;
+  --alert-bg: #FBE9E9;
+  --dim: #9AA5B1;
+  --dim-bg: #EEF0F1;
+
+  --accent: #2B4C7E;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, select, input, textarea {
+  font-family: inherit;
+}
+
+.today-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 3px solid var(--alert); color: var(--alert);
+  font-weight: 900;
+}
+
+@keyframes breathe {
+  0%, 100% { background-color: var(--alert-bg); }
+  50% { background-color: #F6C9C9; }
+}
+.breathing {
+  animation: breathe 2.4s ease-in-out infinite;
+}
+
+.scrollbar-thin::-webkit-scrollbar { width: 10px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 6px; }
