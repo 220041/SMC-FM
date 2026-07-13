@@ -9,7 +9,7 @@
   body { padding-bottom: 40px; }
   #topbar {
     display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
-    padding: 14px 20px; background: var(--surface); border-bottom: 1px solid var(--line);
+    padding: 9px 20px; background: var(--surface); border-bottom: 1px solid var(--line);
     position: sticky; top: 0; z-index: 50;
   }
   #topbar .brand { font-size: 18px; font-weight: 800; }
@@ -23,7 +23,7 @@
   #user-select-wrap { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink-soft); }
   #user-select-wrap b { color: var(--ink); font-size: 15px; }
   select, input[type=text], input[type=date], input[type=datetime-local], input[type=time], textarea {
-    border: 1.5px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 14px; color: var(--ink);
+    border: 1.5px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 15.5px; color: var(--ink);
     background: var(--surface);
   }
   select:focus, input:focus, textarea:focus { outline: none; border-color: var(--accent); }
@@ -41,29 +41,29 @@
   .panel.active { display: block; }
 
   .panel-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
-  .panel-head h2 { font-size: 20px; margin: 0; }
+  .panel-head h2 { font-size: 22px; margin: 0; }
   .panel-head-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
   .panel-head .filter-bar { margin-bottom: 0; flex: 1 1 auto; }
   .btn-primary {
     background: var(--accent); color: #fff; border: none; border-radius: 10px;
-    padding: 10px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
+    padding: 11px 20px; font-size: 15.5px; font-weight: 700; cursor: pointer;
   }
   .btn-primary:active { background: #1f3a5f; }
   .btn-secondary {
     background: var(--bg); color: var(--ink); border: 1.5px solid var(--line); border-radius: 10px;
-    padding: 9px 16px; font-size: 14px; font-weight: 700; cursor: pointer;
+    padding: 10px 18px; font-size: 15.5px; font-weight: 700; cursor: pointer;
   }
   .btn-danger-outline { color: #C23B3B; border-color: #C23B3B; }
 
   .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
-  .filter-bar label { font-size: 13px; color: var(--ink-soft); font-weight: 700; margin-right: 4px; }
+  .filter-bar label { font-size: 14.5px; color: var(--ink-soft); font-weight: 700; margin-right: 4px; }
 
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-  th, td { padding: 10px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-  th { background: var(--bg); font-weight: 800; color: var(--ink-soft); font-size: 12.5px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { padding: 11px 9px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { background: var(--bg); font-weight: 800; color: var(--ink-soft); font-size: 14px; }
   tbody tr { cursor: pointer; }
   tbody tr:hover { background: #FAFBF9; }
-  .badge { display: inline-block; padding: 3px 9px; border-radius: 7px; font-size: 11.5px; font-weight: 800; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 7px; font-size: 12.5px; font-weight: 800; }
   .badge.요청됨 { background: var(--type-미팅-bg); color: var(--type-미팅); }
   .badge.진행중 { background: #FDF2D9; color: #A9740A; }
   .badge.완료 { background: var(--type-업무-bg); color: var(--type-업무); }
@@ -98,38 +98,38 @@
     align-items: flex-start; justify-content: center; z-index: 200; padding: 30px 14px; overflow-y: auto;
   }
   .modal-overlay.open { display: flex; }
-  .modal-box { background: var(--surface); border-radius: 16px; padding: 26px 28px; width: 100%; max-width: 560px; }
-  .modal-box h3 { margin: 0 0 18px; font-size: 19px; }
+  .modal-box { background: var(--surface); border-radius: 16px; padding: 29px 31px; width: 100%; max-width: 560px; }
+  .modal-box h3 { margin: 0 0 18px; font-size: 21px; }
   .field { margin-bottom: 14px; }
-  .field label { display: block; font-size: 13px; font-weight: 700; color: var(--ink-soft); margin-bottom: 5px; }
+  .field label { display: block; font-size: 14.5px; font-weight: 700; color: var(--ink-soft); margin-bottom: 5px; }
   .field input, .field select, .field textarea { width: 100%; }
-  .field textarea { min-height: 70px; resize: vertical; }
+  .field textarea { min-height: 77px; resize: vertical; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 
   .static-value {
-    padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 8px;
-    background: var(--bg); font-weight: 700; color: var(--ink); font-size: 14px; min-height: 18px;
+    padding: 9px 11px; border: 1.5px solid var(--line); border-radius: 8px;
+    background: var(--bg); font-weight: 700; color: var(--ink); font-size: 15.5px; min-height: 18px;
   }
 
-  .date-picker-box { border: 1.5px dashed var(--line); border-radius: 10px; padding: 12px; }
+  .date-picker-box { border: 1.5px dashed var(--line); border-radius: 10px; padding: 13px; }
   .date-picker-box .sub-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
-  .date-picker-box .sub-label { font-size: 12px; font-weight: 700; color: var(--ink-soft); width: 68px; flex-shrink: 0; }
+  .date-picker-box .sub-label { font-size: 13px; font-weight: 700; color: var(--ink-soft); width: 68px; flex-shrink: 0; }
   .date-picker-box input.date-input { width: 130px; }
   .chip-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .date-chip {
-    background: var(--type-미팅-bg); color: var(--type-미팅); font-size: 12.5px; font-weight: 700;
-    padding: 4px 8px; border-radius: 7px; display: flex; align-items: center; gap: 6px;
+    background: var(--type-미팅-bg); color: var(--type-미팅); font-size: 14px; font-weight: 700;
+    padding: 4px 9px; border-radius: 7px; display: flex; align-items: center; gap: 6px;
   }
   .date-chip button { border: none; background: none; color: var(--type-미팅); cursor: pointer; font-weight: 900; padding: 0; }
   .chip-list.readonly-chips .date-chip button { display: none; }
 
-  .history-list { max-height: 240px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
-  .history-item { padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+  .history-list { max-height: 264px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; margin-bottom: 12px; }
+  .history-item { padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 14.5px; }
   .history-item:last-child { border-bottom: none; }
-  .history-item .meta { color: var(--ink-soft); font-size: 11.5px; margin-bottom: 3px; }
+  .history-item .meta { color: var(--ink-soft); font-size: 12.5px; margin-bottom: 3px; }
 
-  .small-note { font-size: 12px; color: var(--dim); margin-top: 4px; }
+  .small-note { font-size: 13px; color: var(--dim); margin-top: 4px; }
 
   /* ── 작성자 선택 게이트 ─────────────────── */
   #author-gate-overlay {
@@ -158,16 +158,16 @@
   /* ── 대시보드 ─────────────────────────── */
   .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
   .dash-col { background: var(--bg); border-radius: 12px; padding: 14px 16px; border: 1px solid var(--line); }
-  .dash-col h3 { font-size: 14.5px; margin: 0 0 10px; color: var(--ink-soft); display: flex; align-items: center; gap: 6px; }
-  .dash-count { background: var(--accent); color: #fff; font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 8px; }
+  .dash-col h3 { font-size: 16px; margin: 0 0 10px; color: var(--ink-soft); display: flex; align-items: center; gap: 6px; }
+  .dash-count { background: var(--accent); color: #fff; font-size: 12px; font-weight: 800; padding: 1px 7px; border-radius: 8px; }
   .dash-card {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
-    margin-bottom: 8px; cursor: pointer; font-size: 13px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px;
+    margin-bottom: 8px; cursor: pointer; font-size: 14.5px;
   }
   .dash-card:hover { border-color: var(--accent); }
   .dash-card .dc-title { font-weight: 800; margin-bottom: 4px; }
-  .dash-card .dc-meta { color: var(--ink-soft); font-size: 11.5px; }
-  .dash-empty { color: var(--dim); font-size: 13px; padding: 14px 0; text-align: center; }
+  .dash-card .dc-meta { color: var(--ink-soft); font-size: 12.5px; }
+  .dash-empty { color: var(--dim); font-size: 14.5px; padding: 14px 0; text-align: center; }
 
   /* ── 날짜 입력 팝업 캘린더 (주말·공휴일 표시) ── */
   .dp-popup {
@@ -177,13 +177,13 @@
   }
   .dp-popup.open { display: block; }
   .dp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-  .dp-title { font-weight: 800; font-size: 14.5px; }
+  .dp-title { font-weight: 800; font-size: 16px; }
   .dp-nav { border: none; background: var(--bg); width: 30px; height: 30px; border-radius: 50%; font-weight: 900; color: var(--accent); cursor: pointer; }
-  .dp-dow-row { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 11.5px; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+  .dp-dow-row { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 12.5px; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
   .dp-dow-row .dp-sun { color: var(--alert); }
   .dp-dow-row .dp-sat { color: var(--accent); }
   .dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-  .dp-cell { text-align: center; padding: 7px 0; font-size: 13px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+  .dp-cell { text-align: center; padding: 8px 0; font-size: 14.5px; border-radius: 8px; cursor: pointer; font-weight: 600; }
   .dp-cell.dp-blank { cursor: default; }
   .dp-cell:not(.dp-blank):hover { background: var(--bg); }
   .dp-cell.dp-sun { color: var(--alert); }
@@ -194,16 +194,16 @@
 
   /* ── 일정관리: 월간보기 캘린더 ─────────────── */
   .sched-cal-header { display: flex; align-items: center; justify-content: center; gap: 20px; margin: 4px 0 12px; }
-  .sched-cal-title { font-size: 18px; font-weight: 900; min-width: 140px; text-align: center; }
+  .sched-cal-title { font-size: 20px; font-weight: 900; min-width: 140px; text-align: center; }
   .cal-nav-btn {
-    width: 36px; height: 36px; border-radius: 50%; border: none;
-    background: var(--bg); font-size: 17px; font-weight: 900; color: var(--accent); cursor: pointer;
+    width: 40px; height: 40px; border-radius: 50%; border: none;
+    background: var(--bg); font-size: 19px; font-weight: 900; color: var(--accent); cursor: pointer;
   }
   .cal-nav-btn:active { background: var(--line); }
   .cal-dow-row {
     display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: 800;
-    font-size: 12px; color: var(--ink-soft); border: 1px solid var(--line); border-bottom: none;
-    border-radius: 10px 10px 0 0; padding: 8px 0; background: var(--bg);
+    font-size: 13px; color: var(--ink-soft); border: 1px solid var(--line); border-bottom: none;
+    border-radius: 10px 10px 0 0; padding: 9px 0; background: var(--bg);
   }
   .cal-dow-row div:first-child { color: var(--alert); }
   .cal-dow-row div:last-child { color: var(--accent); }
@@ -211,16 +211,16 @@
   .cal-week { border-bottom: 1px solid var(--line); }
   .cal-week:last-child { border-bottom: none; }
   .cal-daynums { display: grid; grid-template-columns: repeat(7, 1fr); }
-  .day-cell { background: var(--surface); padding: 5px 5px 2px; min-width: 0; min-height: 34px; }
+  .day-cell { background: var(--surface); padding: 5px 5px 2px; min-width: 0; min-height: 37px; }
   .day-cell.other-month { background: #F7F8F6; }
   .day-cell.other-month .day-num { color: var(--dim); }
-  .day-num { font-size: 13px; font-weight: 800; padding: 2px 3px; display: flex; align-items: center; gap: 4px; }
+  .day-num { font-size: 14.5px; font-weight: 800; padding: 2px 3px; display: flex; align-items: center; gap: 4px; }
   .day-num.is-redday { color: var(--alert); }
-  .day-num .today-badge { width: 22px; height: 22px; font-size: 11.5px; }
+  .day-num .today-badge { width: 24px; height: 24px; font-size: 12.5px; }
   .cal-lanes { display: flex; flex-direction: column; gap: 2px; padding: 0 4px 6px; }
   .cal-lane { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
   .event-chip {
-    font-size: 11px; font-weight: 600; line-height: 1.25; padding: 2px 5px; border-radius: 6px;
+    font-size: 12px; font-weight: 600; line-height: 1.25; padding: 2px 6px; border-radius: 6px;
     border-left: 3px solid transparent; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
   }
   .event-chip.type-공사 { background: var(--type-공사-bg); color: var(--type-공사); border-left-color: var(--type-공사); }
@@ -314,7 +314,7 @@
     </div>
     <table>
       <thead><tr>
-        <th>제목</th><th>요청자</th><th>담당자</th><th>요청일</th><th>희망기한</th><th>상태</th><th>최근업데이트</th><th class="th-del"></th>
+        <th>제목</th><th>요청자</th><th>담당자</th><th>요청일</th><th>희망기한</th><th>상태</th><th>확인</th><th class="th-del"></th>
       </tr></thead>
       <tbody id="ticket-tbody"></tbody>
     </table>
@@ -354,18 +354,18 @@
   <div class="panel" id="panel-memos">
     <div class="panel-head">
       <h2>전화 및 메모</h2>
+      <div class="filter-bar">
+        <label>상태</label>
+        <select id="memo-filter-status">
+          <option value="all">전체</option>
+          <option value="미확인">미확인</option>
+          <option value="확인됨">확인됨</option>
+        </select>
+      </div>
       <div class="panel-head-actions">
         <button class="btn-secondary btn-danger-outline" id="memo-bulk-delete">선택 삭제</button>
         <button class="btn-primary" id="memo-new-btn">+ 새 메모 등록</button>
       </div>
-    </div>
-    <div class="filter-bar">
-      <label>상태</label>
-      <select id="memo-filter-status">
-        <option value="all">전체</option>
-        <option value="미확인">미확인</option>
-        <option value="확인됨">확인됨</option>
-      </select>
     </div>
     <table>
       <thead><tr>
@@ -408,11 +408,14 @@
         <div class="field"><label>요청자</label><div class="static-value" id="ticket-requester-display-edit">-</div></div>
         <div class="field"><label>담당자</label><select id="ticket-assignee-edit"></select></div>
       </div>
-      <div class="field"><label>진행 이력</label>
-        <div class="history-list" id="ticket-history-list"></div>
+      <div class="field"><label>진행상태</label>
+        <div class="history-list" id="ticket-status-history-list"></div>
       </div>
-      <div class="field"><label>진행상황 추가 입력 (작성자: <span id="ticket-note-author-display">-</span>)</label>
-        <textarea id="ticket-note-text" placeholder="예: 진행 상황을 입력하세요"></textarea>
+      <div class="field"><label>세부사항</label>
+        <div class="history-list" id="ticket-note-history-list"></div>
+      </div>
+      <div class="field"><label>추가사항</label>
+        <textarea id="ticket-note-text" placeholder="추가사항을 입력하세요"></textarea>
       </div>
     </div>
 
@@ -447,25 +450,26 @@
           <input type="text" id="schedule-range-start" />
           <span>~</span>
           <input type="text" id="schedule-range-end" />
-          <button type="button" class="btn-secondary" id="schedule-add-range">기간 추가</button>
+          <button type="button" class="btn-secondary" id="schedule-add-range">추가</button>
         </div>
         <div class="sub-row">
           <span class="sub-label">개별</span>
           <input type="text" id="schedule-single-date" />
-          <button type="button" class="btn-secondary" id="schedule-add-single">날짜 추가</button>
+          <button type="button" class="btn-secondary" id="schedule-add-single">추가</button>
         </div>
         <div class="chip-list" id="schedule-date-chips"></div>
+        <div class="small-note">연속된 기간은 <b>기간</b>에, 개별 날짜는 <b>개별</b>에 입력한 후 <b>추가</b> 버튼을 꼭 눌러주세요.</div>
         <div class="small-note">기간과 개별 날짜를 함께 조합할 수 있습니다. 연속된 기간은 목록에 "몇일~몇일"로 표시됩니다.</div>
       </div>
     </div>
 
     <div class="field" id="schedule-history-field" style="display:none;">
-      <label>상세내용 이력</label>
+      <label>세부사항</label>
       <div class="history-list" id="schedule-history-list"></div>
     </div>
     <div class="field">
-      <label id="schedule-detail-label">상세내용</label>
-      <textarea id="schedule-detail-input" placeholder="상세 내용을 입력하세요"></textarea>
+      <label id="schedule-detail-label">추가사항</label>
+      <textarea id="schedule-detail-input" placeholder="추가사항을 입력하세요"></textarea>
     </div>
     <div class="field"><label>등록자</label><div class="static-value" id="schedule-registrar-display">-</div></div>
 
@@ -710,6 +714,23 @@ function updatedMillis(rec) {
   const last = rec.history && rec.history.length ? rec.history[rec.history.length - 1] : null;
   return last ? tsMillis(last.timestamp) : 0;
 }
+/* 이력 항목 종류 구분: "status"(상태/담당자 변경 등 스탬프) vs "note"(세부사항 코멘트).
+   과거 데이터는 type이 없으므로 텍스트 패턴으로 추정 */
+function historyEntryType(h) {
+  if (h.type) return h.type;
+  if (/^(상태변경|담당자 변경|새 업무 등록)/.test(h.text || "")) return "status";
+  return "note";
+}
+/* 업무 목록의 "확인" 칸: 담당자가 최신 변경사항을 열어봤는지 여부 + 최근 내용 + 전체 이력 툴팁 */
+function ticketConfirmInfo(t) {
+  const hist = t.history || [];
+  if (!hist.length) return { confirmed: null, lastText: "", tooltip: "" };
+  const last = hist[hist.length - 1];
+  const seenAt = t.assignee ? (t.lastSeenBy && t.lastSeenBy[t.assignee]) : null;
+  const confirmed = t.assignee ? !!(seenAt && seenAt >= updatedMillis(t)) : null;
+  const tooltip = hist.map(h => `${fmtTs(h.timestamp)} · ${h.text}`).join("\n");
+  return { confirmed, lastText: last.text, tooltip };
+}
 async function markSeen(type, id) {
   const me = currentUser();
   if (!me) return;
@@ -889,6 +910,10 @@ function renderTickets() {
     const tr = document.createElement("tr");
     if (overdue) tr.classList.add("row-overdue", "breathing");
     if (t.status === "완료") tr.classList.add("row-done");
+    const info = ticketConfirmInfo(t);
+    const confirmCell = info.confirmed === null
+      ? `<span class="small-note">${t.assignee ? "-" : "담당자 미지정"}</span>`
+      : `<span class="badge status-${info.confirmed ? "확인됨" : "미확인"}">${info.confirmed ? "확인됨" : "미확인"}</span>`;
     tr.innerHTML = `
       <td>${escapeHtml(t.title)}${deleteRequestBadge(t)}</td>
       <td>${t.requestedBy || "-"}</td>
@@ -896,7 +921,7 @@ function renderTickets() {
       <td>${t.requestedAt ? fmtTs(t.requestedAt).slice(0,10) : "-"}</td>
       <td>${t.dueDate || "-"} ${overdue ? "⚠️" : ""}</td>
       <td><span class="badge ${t.status}">${t.status}</span></td>
-      <td>${t.updatedAt ? fmtTs(t.updatedAt) : "-"}</td>
+      <td>${confirmCell}${info.lastText ? `<div class="small-note" title="${escapeHtml(info.tooltip)}">${escapeHtml(info.lastText)}</div>` : ""}</td>
       <td class="td-del"><button type="button" class="row-delete-btn" title="삭제">🗑</button></td>
     `;
     tr.addEventListener("click", () => openTicketDetail(t.id));
@@ -936,18 +961,31 @@ function openTicketDetail(id) {
   document.getElementById("ticket-due-edit").value = t.dueDate || "";
   document.getElementById("ticket-requester-display-edit").textContent = t.requestedBy || "-";
   fillAssigneeSelect(document.getElementById("ticket-assignee-edit"), t.assignee || null);
-  document.getElementById("ticket-note-author-display").textContent = currentUser();
   document.getElementById("ticket-note-text").value = "";
 
-  const histEl = document.getElementById("ticket-history-list");
-  histEl.innerHTML = "";
-  (t.history || []).slice().reverse().forEach(h => {
+  const allHist = t.history || [];
+  const statusHist = allHist.filter(h => historyEntryType(h) === "status");
+  const noteHist = allHist.filter(h => historyEntryType(h) === "note");
+
+  const statusHistEl = document.getElementById("ticket-status-history-list");
+  statusHistEl.innerHTML = "";
+  statusHist.slice().reverse().forEach(h => {
+    const div = document.createElement("div");
+    div.className = "history-item";
+    div.innerHTML = `<div class="meta">${fmtTs(h.timestamp)}</div><div>${escapeHtml(h.text)}</div>`;
+    statusHistEl.appendChild(div);
+  });
+  if (!statusHist.length) statusHistEl.innerHTML = `<div class="small-note">이력이 없습니다</div>`;
+
+  const noteHistEl = document.getElementById("ticket-note-history-list");
+  noteHistEl.innerHTML = "";
+  noteHist.slice().reverse().forEach(h => {
     const div = document.createElement("div");
     div.className = "history-item";
     div.innerHTML = `<div class="meta">${h.author || "-"} · ${fmtTs(h.timestamp)}</div><div>${escapeHtml(h.text)}</div>`;
-    histEl.appendChild(div);
+    noteHistEl.appendChild(div);
   });
-  if (!(t.history || []).length) histEl.innerHTML = `<div class="small-note">이력이 없습니다</div>`;
+  if (!noteHist.length) noteHistEl.innerHTML = `<div class="small-note">세부사항이 없습니다</div>`;
 
   document.getElementById("ticket-delete").style.display = "inline-block";
   ticketOverlay.classList.add("open");
@@ -973,7 +1011,9 @@ document.getElementById("ticket-save").addEventListener("click", async () => {
     const assignee = document.getElementById("ticket-assignee").value || null;
     const due = document.getElementById("ticket-due").value || null;
     const content = document.getElementById("ticket-content").value.trim();
-    const history = content ? [{ text: content, author: requester, timestamp: new Date() }] : [];
+    // 신규 등록 자체를 이력에 스탬프로 남겨서, 담당자가 열어보기 전까지 대시보드 미확인 알림에 표시되게 함
+    const history = [{ text: "새 업무 등록", author: requester, timestamp: new Date(), type: "status" }];
+    if (content) history.push({ text: content, author: requester, timestamp: new Date(), type: "note" });
     await addDoc(collection(db, "requestTickets"), {
       title, requestedBy: requester, assignee, requestedAt: serverTimestamp(),
       dueDate: due, status: "요청됨", history, updatedAt: serverTimestamp()
@@ -989,13 +1029,13 @@ document.getElementById("ticket-save").addEventListener("click", async () => {
 
     const history = (t.history || []).slice();
     if (t.status !== newStatus) {
-      history.push({ text: `상태변경: ${t.status} → ${newStatus}`, author, timestamp: new Date() });
+      history.push({ text: `상태변경: ${t.status} → ${newStatus}`, author, timestamp: new Date(), type: "status" });
     }
     if ((t.assignee || null) !== newAssignee) {
-      history.push({ text: `담당자 변경: ${t.assignee || "미지정"} → ${newAssignee || "미지정"}`, author, timestamp: new Date() });
+      history.push({ text: `담당자 변경: ${t.assignee || "미지정"} → ${newAssignee || "미지정"}`, author, timestamp: new Date(), type: "status" });
     }
     if (noteText) {
-      history.push({ text: noteText, author, timestamp: new Date() });
+      history.push({ text: noteText, author, timestamp: new Date(), type: "note" });
     }
     await updateDoc(doc(db, "requestTickets", ticketEditingId), {
       status: newStatus, dueDate: newDue, assignee: newAssignee, history, updatedAt: serverTimestamp()
@@ -1241,7 +1281,7 @@ function openScheduleNew() {
   document.getElementById("schedule-delete").style.display = "none";
   setScheduleFieldsEditable(true);
   document.getElementById("schedule-history-field").style.display = "none";
-  document.getElementById("schedule-detail-label").textContent = "상세내용";
+  document.getElementById("schedule-detail-label").textContent = "추가사항";
   document.getElementById("schedule-detail-input").value = "";
   scheduleOverlay.classList.add("open");
 }
@@ -1279,7 +1319,7 @@ function openScheduleEdit(id) {
   });
   if (!hist.length) histEl.innerHTML = `<div class="small-note">이력이 없습니다</div>`;
   document.getElementById("schedule-history-field").style.display = "block";
-  document.getElementById("schedule-detail-label").textContent = `상세내용 추가 (작성자: ${currentUser()})`;
+  document.getElementById("schedule-detail-label").textContent = "추가사항";
   document.getElementById("schedule-detail-input").value = "";
 
   scheduleOverlay.classList.add("open");
@@ -1294,8 +1334,8 @@ document.getElementById("schedule-save").addEventListener("click", async () => {
   const noteText = document.getElementById("schedule-detail-input").value.trim();
 
   if (orig && !isAuthor) {
-    // 작성자가 아니면 상세내용 추가만 허용
-    if (!noteText) { alert("추가할 상세내용을 입력하세요"); return; }
+    // 작성자가 아니면 추가사항 입력만 허용
+    if (!noteText) { alert("추가할 내용을 입력하세요"); return; }
     const history = (orig.history && orig.history.length ? orig.history
       : (orig.detail ? [{ text: orig.detail, author: orig.registeredBy, timestamp: orig.registeredAt }] : [])).slice();
     history.push({ text: noteText, author: currentUser(), timestamp: new Date() });
