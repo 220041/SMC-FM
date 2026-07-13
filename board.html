@@ -60,17 +60,19 @@
   #dow-row div:last-child { color: var(--accent); }
 
   #cal-grid {
-    display: grid; grid-template-columns: repeat(7, 1fr);
-    grid-auto-rows: minmax(115px, auto);
-    background: var(--line);
-    gap: 1px;
+    display: flex; flex-direction: column;
+    background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 0 0 var(--radius) var(--radius);
     overflow: hidden;
   }
+  .cal-week { border-bottom: 1px solid var(--line); }
+  .cal-week:last-child { border-bottom: none; }
+  .cal-daynums {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+  }
   .day-cell {
-    background: var(--surface); padding: 6px 6px 8px; min-width: 0;
-    display: flex; flex-direction: column; gap: 4px;
+    background: var(--surface); padding: 6px 6px 2px; min-width: 0; min-height: 40px;
   }
   .day-cell.other-month { background: #F7F8F6; }
   .day-cell.other-month .day-num { color: var(--dim); }
@@ -79,10 +81,17 @@
     display: flex; align-items: center; gap: 6px;
   }
   .day-num.is-redday { color: var(--alert); }
+  .cal-lanes {
+    display: flex; flex-direction: column; gap: 3px; padding: 0 6px 8px;
+  }
+  .cal-lane {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+  }
   .event-chip {
     font-size: clamp(11px, 0.85vw, 15px); font-weight: 600; line-height: 1.3;
-    padding: 3px 7px; border-radius: 7px; word-break: keep-all;
+    padding: 3px 7px; border-radius: 7px;
     border-left: 4px solid transparent;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
   }
   .event-chip.type-공사 { background: var(--type-공사-bg); color: var(--type-공사); border-left-color: var(--type-공사); }
   .event-chip.type-미팅 { background: var(--type-미팅-bg); color: var(--type-미팅); border-left-color: var(--type-미팅); }
@@ -322,35 +331,89 @@ function renderCalendar() {
 
   const grid = document.getElementById("cal-grid");
   grid.innerHTML = "";
-  cells.forEach(c => {
-    const iso = isoDate(c.y, c.m, c.day);
-    const cell = document.createElement("div");
-    cell.className = "day-cell" + (c.other ? " other-month" : "");
 
-    const dowIdx = new Date(c.y, c.m, c.day).getDay();
-    const isRedDay = dowIdx === 0 || dowIdx === 6 || !!KR_HOLIDAYS[iso];
+  // 한 주(7칸)씩 처리 — 같은 주 안에서 연속된 날짜에 걸친 일정은 끊기지 않는 하나의 막대로 표시
+  for (let w = 0; w < cells.length / 7; w++) {
+    const weekCells = cells.slice(w * 7, w * 7 + 7);
+    const weekIsos = weekCells.map(c => isoDate(c.y, c.m, c.day));
 
-    const numWrap = document.createElement("div");
-    numWrap.className = "day-num" + (isRedDay ? " is-redday" : "");
-    if (iso === todayIso) {
-      numWrap.innerHTML = `<span class="today-badge">${c.day}</span>`;
-    } else {
-      numWrap.textContent = c.day;
-    }
-    cell.appendChild(numWrap);
+    const weekEl = document.createElement("div");
+    weekEl.className = "cal-week";
 
-    const dayEvents = schedules.filter(s => Array.isArray(s.dates) && s.dates.includes(iso));
-    dayEvents.forEach(ev => {
-      const chip = document.createElement("div");
-      chip.className = "event-chip type-" + (ev.type || "업무");
-      chip.textContent = (ev.time ? ev.time + " " : "") + ev.title + (ev.vendor ? ` (${ev.vendor})` : "");
-      cell.appendChild(chip);
+    // 날짜 숫자 행
+    const daynumsEl = document.createElement("div");
+    daynumsEl.className = "cal-daynums";
+    weekCells.forEach((c, i) => {
+      const iso = weekIsos[i];
+      const dowIdx = new Date(c.y, c.m, c.day).getDay();
+      const isRedDay = dowIdx === 0 || dowIdx === 6 || !!KR_HOLIDAYS[iso];
+
+      const cell = document.createElement("div");
+      cell.className = "day-cell" + (c.other ? " other-month" : "");
+
+      const numWrap = document.createElement("div");
+      numWrap.className = "day-num" + (isRedDay ? " is-redday" : "");
+      if (iso === todayIso) {
+        numWrap.innerHTML = `<span class="today-badge">${c.day}</span>`;
+      } else {
+        numWrap.textContent = c.day;
+      }
+      cell.appendChild(numWrap);
+      cell.addEventListener("click", () => openDayDetail(iso, c.y, c.m, c.day));
+      daynumsEl.appendChild(cell);
+    });
+    weekEl.appendChild(daynumsEl);
+
+    // 이 주에 걸친 각 일정의 연속 구간(세그먼트) 계산
+    const segments = [];
+    schedules.forEach(s => {
+      if (!Array.isArray(s.dates)) return;
+      let runStart = null;
+      for (let col = 0; col <= 7; col++) {
+        const has = col < 7 && s.dates.includes(weekIsos[col]);
+        if (has && runStart === null) runStart = col;
+        if (!has && runStart !== null) {
+          segments.push({ s, startCol: runStart, endCol: col - 1 });
+          runStart = null;
+        }
+      }
     });
 
-    cell.addEventListener("click", () => openDayDetail(iso, c.y, c.m, c.day));
+    // 겹치지 않도록 레인(줄) 배정
+    segments.sort((a, b) => a.startCol - b.startCol || (b.endCol - b.startCol) - (a.endCol - a.startCol));
+    const lanes = [];
+    segments.forEach(seg => {
+      let laneIdx = lanes.findIndex(lane => lane.every(o => seg.startCol > o.endCol || seg.endCol < o.startCol));
+      if (laneIdx === -1) { lanes.push([seg]); seg.lane = lanes.length - 1; }
+      else { lanes[laneIdx].push(seg); seg.lane = laneIdx; }
+    });
 
-    grid.appendChild(cell);
-  });
+    if (lanes.length) {
+      const lanesEl = document.createElement("div");
+      lanesEl.className = "cal-lanes";
+      const laneRows = lanes.map(() => {
+        const laneRow = document.createElement("div");
+        laneRow.className = "cal-lane";
+        lanesEl.appendChild(laneRow);
+        return laneRow;
+      });
+      segments.forEach(seg => {
+        const bar = document.createElement("div");
+        bar.className = "event-chip type-" + (seg.s.type || "업무");
+        bar.style.gridColumn = `${seg.startCol + 1} / ${seg.endCol + 2}`;
+        bar.textContent = (seg.s.time ? seg.s.time + " " : "") + seg.s.title + (seg.s.vendor ? ` (${seg.s.vendor})` : "");
+        bar.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const c = weekCells[seg.startCol];
+          openDayDetail(weekIsos[seg.startCol], c.y, c.m, c.day);
+        });
+        laneRows[seg.lane].appendChild(bar);
+      });
+      weekEl.appendChild(lanesEl);
+    }
+
+    grid.appendChild(weekEl);
+  }
 }
 
 /* ───────── 날짜 확대보기 (노안 배려) ───────── */
