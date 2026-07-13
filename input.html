@@ -12,7 +12,8 @@
     padding: 9px 20px; background: var(--surface); border-bottom: 1px solid var(--line);
     position: sticky; top: 0; z-index: 50;
   }
-  #topbar .brand { font-size: 18px; font-weight: 800; }
+  #topbar .brand { font-size: 18px; font-weight: 800; color: var(--ink); text-decoration: none; cursor: pointer; }
+  #topbar .brand:active { color: var(--accent); }
   .nav-link {
     display: flex; align-items: center; gap: 6px; text-decoration: none;
     background: var(--bg); color: var(--ink-soft); border: 1.5px solid var(--line); border-radius: 20px;
@@ -261,13 +262,13 @@
 </div>
 
 <div id="topbar">
-  <div class="brand">서귀포의료원 시설관리팀</div>
+  <a class="brand" href="index.html" title="처음 화면으로 이동">서귀포의료원 시설관리팀</a>
   <div id="user-select-wrap">
+    작성자 <b id="current-user-display">-</b>
+    <button type="button" class="btn-secondary" id="author-change-btn" style="padding:6px 12px; font-size:12.5px;">변경</button>
     <a class="nav-link" href="board.html" title="월간일정 화면으로 이동">
       <span class="nav-link-icon">🗓️</span><span class="nav-link-text">월간일정</span>
     </a>
-    작성자 <b id="current-user-display">-</b>
-    <button type="button" class="btn-secondary" id="author-change-btn" style="padding:6px 12px; font-size:12.5px;">변경</button>
   </div>
 </div>
 
@@ -1056,7 +1057,12 @@ function openTicketDetail(id) {
   });
   if (!statusHist.length) statusHistEl.innerHTML = `<div class="small-note">이력이 없습니다</div>`;
 
-  renderTicketNoteHistory(t, noteHist);
+  try {
+    renderTicketNoteHistory(t, noteHist);
+  } catch (e) {
+    console.error("세부사항 렌더링 오류", e);
+    document.getElementById("ticket-note-history-list").innerHTML = `<div class="small-note">세부사항을 표시하는 중 오류가 발생했습니다</div>`;
+  }
 
   document.getElementById("ticket-delete").style.display = "inline-block";
   ticketOverlay.classList.add("open");
@@ -1070,7 +1076,9 @@ function renderTicketNoteHistory(t, noteHist) {
   if (!noteHist.length) { noteHistEl.innerHTML = `<div class="small-note">세부사항이 없습니다</div>`; return; }
   const candidates = [t.requestedBy, t.assignee];
   const topLevel = noteHist.filter(h => !h.replyTo);
-  const repliesOf = (id) => noteHist.filter(h => h.replyTo === id);
+  // id가 없는 옛 항목들은 replyTo도 없으므로(undefined===undefined) id 없는 조회는 항상 빈 배열로 처리해
+  // 서로를 자기 자신의 "답글"로 잘못 인식해 무한 재귀에 빠지는 것을 방지
+  const repliesOf = (id) => id ? noteHist.filter(h => h.replyTo === id) : [];
 
   function renderEntry(h, isReply) {
     const div = document.createElement("div");
@@ -1212,7 +1220,7 @@ function renderSchedules() {
       todayDividerShown = true;
       const divider = document.createElement("tr");
       divider.style.cursor = "default";
-      divider.innerHTML = `<td colspan="8" style="background:var(--today-bg); color:var(--today); font-weight:900; text-align:center; padding:8px;">오늘 (${today})</td>`;
+      divider.innerHTML = `<td colspan="8" style="background:var(--bg); color:var(--ink-soft); font-weight:800; text-align:center; padding:7px; border-top:1px dashed var(--line-strong); border-bottom:1px dashed var(--line-strong);">오늘 (${today})</td>`;
       tbody.appendChild(divider);
     }
     const tr = document.createElement("tr");
@@ -1241,7 +1249,7 @@ function renderSchedules() {
   if (!todayDividerShown) {
     const divider = document.createElement("tr");
     divider.style.cursor = "default";
-    divider.innerHTML = `<td colspan="8" style="background:var(--today-bg); color:var(--today); font-weight:900; text-align:center; padding:8px;">오늘 (${today})</td>`;
+    divider.innerHTML = `<td colspan="8" style="background:var(--bg); color:var(--ink-soft); font-weight:800; text-align:center; padding:7px; border-top:1px dashed var(--line-strong); border-bottom:1px dashed var(--line-strong);">오늘 (${today})</td>`;
     tbody.appendChild(divider);
   }
 }
@@ -1467,7 +1475,12 @@ function openScheduleEdit(id) {
 
   const hist = (s.history && s.history.length) ? s.history
     : (s.detail ? [{ text: s.detail, author: s.registeredBy, timestamp: s.registeredAt }] : []);
-  renderScheduleHistory(s, hist);
+  try {
+    renderScheduleHistory(s, hist);
+  } catch (e) {
+    console.error("세부사항 렌더링 오류", e);
+    document.getElementById("schedule-history-list").innerHTML = `<div class="small-note">세부사항을 표시하는 중 오류가 발생했습니다</div>`;
+  }
   document.getElementById("schedule-history-field").style.display = "block";
   document.getElementById("schedule-detail-label").textContent = "추가사항";
   document.getElementById("schedule-detail-input").value = "";
@@ -1483,7 +1496,8 @@ function renderScheduleHistory(s, hist) {
   if (!hist.length) { histEl.innerHTML = `<div class="small-note">이력이 없습니다</div>`; return; }
   const candidates = [s.registeredBy, ...responsibleArray(s)];
   const topLevel = hist.filter(h => !h.replyTo);
-  const repliesOf = (id) => hist.filter(h => h.replyTo === id);
+  // id가 없는 옛 항목들이 서로를 자기 자신의 "답글"로 잘못 인식해 무한 재귀에 빠지는 것을 방지
+  const repliesOf = (id) => id ? hist.filter(h => h.replyTo === id) : [];
 
   function renderEntry(h, isReply) {
     const div = document.createElement("div");

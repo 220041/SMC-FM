@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>시설관리팀 관리자</title>
+<link rel="stylesheet" href="common.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  body { padding-bottom: 40px; }
+  #topbar {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    padding: 9px 20px; background: var(--surface); border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 50;
+  }
+  #topbar .brand { font-size: 18px; font-weight: 800; color: var(--ink); text-decoration: none; cursor: pointer; }
+  #topbar .brand:active { color: var(--accent); }
+  #topbar-sub { font-size: 13px; color: var(--ink-soft); font-weight: 700; }
+
+  #tabbar { display: flex; gap: 6px; padding: 12px 20px 0; max-width: 1300px; margin: 0 auto; }
+  .tab-btn {
+    padding: 10px 18px; border-radius: 10px 10px 0 0; border: none; cursor: pointer;
+    font-size: 15px; font-weight: 700; background: #E7E9E6; color: var(--ink-soft);
+  }
+  .tab-btn.active { background: var(--surface); color: var(--accent); }
+
+  #content { max-width: 1300px; margin: 0 auto; padding: 20px; background: var(--surface); border-radius: 0 12px 12px 12px; min-height: 60vh; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .panel-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  .panel-head h2 { font-size: 20px; margin: 0; }
+  .panel-head .count-note { font-size: 13px; color: var(--ink-soft); font-weight: 700; margin-left: 8px; }
+
+  .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+  .filter-bar label { font-size: 13.5px; color: var(--ink-soft); font-weight: 700; margin-right: 2px; }
+  .filter-bar input[type=text], .filter-bar input[type=date], .filter-bar select {
+    border: 1.5px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 14px; color: var(--ink);
+    background: var(--surface);
+  }
+  .filter-bar input[type=text] { width: 180px; }
+
+  .btn-primary {
+    background: var(--accent); color: #fff; border: none; border-radius: 10px;
+    padding: 9px 16px; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .btn-primary:active { background: #1f3a5f; }
+  .btn-secondary {
+    background: var(--bg); color: var(--ink); border: 1.5px solid var(--line); border-radius: 10px;
+    padding: 8px 14px; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .btn-secondary:active { background: var(--line); }
+
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; white-space: nowrap; }
+  th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { background: var(--bg); font-weight: 800; color: var(--ink-soft); font-size: 12.5px; cursor: pointer; user-select: none; }
+  th:hover { color: var(--accent); }
+  th .sort-arrow { font-size: 11px; margin-left: 3px; color: var(--accent); }
+  tbody tr:hover { background: #FAFBF9; }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 7px; font-size: 11.5px; font-weight: 800; }
+  .badge.요청됨 { background: var(--type-미팅-bg); color: var(--type-미팅); }
+  .badge.진행중 { background: #FDF2D9; color: #A9740A; }
+  .badge.완료 { background: var(--type-업무-bg); color: var(--type-업무); }
+  .badge.보류 { background: var(--dim-bg); color: var(--dim); }
+  .badge.type-공사 { background: var(--type-공사-bg); color: var(--type-공사); }
+  .badge.type-미팅 { background: var(--type-미팅-bg); color: var(--type-미팅); }
+  .badge.type-업무 { background: var(--type-업무-bg); color: var(--type-업무); }
+  .badge.urgency-상 { background: #C23B3B; color: #fff; }
+  .badge.urgency-중 { background: #E1A63B; color: #fff; }
+  .badge.urgency-하 { background: #9AA5B1; color: #fff; }
+  .badge.status-미확인 { background: var(--alert-bg); color: var(--alert); }
+  .badge.status-확인됨 { background: var(--dim-bg); color: var(--dim); }
+  .empty-row td { text-align: center; padding: 30px; color: var(--dim); white-space: normal; }
+
+  /* ── 관리자 비밀번호 게이트 ─────────────── */
+  #admin-gate-overlay {
+    position: fixed; inset: 0; background: rgba(31,41,51,0.92);
+    display: none; align-items: center; justify-content: center; z-index: 5000; padding: 20px;
+  }
+  #admin-gate-overlay.open { display: flex; }
+  #admin-gate-card {
+    background: var(--surface); border-radius: 20px; padding: 40px 44px; text-align: center;
+    max-width: 400px; width: 100%;
+  }
+  #admin-gate-card .gate-title { font-size: 21px; font-weight: 900; margin-bottom: 6px; }
+  #admin-gate-card .gate-sub { font-size: 14px; color: var(--ink-soft); margin-bottom: 22px; }
+  #admin-gate-input {
+    width: 100%; box-sizing: border-box; font-size: 20px; letter-spacing: 4px; text-align: center;
+    padding: 12px 10px; border: 2px solid var(--line); border-radius: 12px; margin-bottom: 14px; outline: none;
+  }
+  #admin-gate-input:focus { border-color: var(--accent); }
+  #admin-gate-submit {
+    width: 100%; padding: 13px; font-size: 16px; font-weight: 700;
+    background: var(--accent); color: #fff; border: none; border-radius: 12px; cursor: pointer;
+  }
+  #admin-gate-submit:active { background: #1f3a5f; }
+  #admin-gate-error { display: none; color: var(--alert); font-size: 13px; margin-top: 10px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div id="admin-gate-overlay">
+  <div id="admin-gate-card">
+    <div class="gate-title">관리자 비밀번호</div>
+    <div class="gate-sub">전체 데이터를 열람하려면 관리자 비밀번호를 입력하세요</div>
+    <input id="admin-gate-input" type="password" autocomplete="off" />
+    <button id="admin-gate-submit">확인</button>
+    <div id="admin-gate-error">비밀번호가 올바르지 않습니다</div>
+  </div>
+</div>
+
+<div id="topbar">
+  <a class="brand" href="index.html" title="처음 화면으로 이동">서귀포의료원 시설관리팀</a>
+  <div id="topbar-sub">🔒 관리자 전용 · 전체 데이터 열람</div>
+</div>
+
+<div id="tabbar">
+  <button class="tab-btn active" data-tab="tickets">관련업무</button>
+  <button class="tab-btn" data-tab="schedules">일정관리</button>
+  <button class="tab-btn" data-tab="memos">전화 및 메모</button>
+</div>
+
+<div id="content">
+
+  <!-- ══════════ 관련업무 ══════════ -->
+  <div class="panel active" id="panel-tickets">
+    <div class="panel-head">
+      <h2>관련업무 전체 <span class="count-note" id="tickets-count"></span></h2>
+      <button class="btn-primary" id="tickets-export">⬇ 엑셀로 다운로드</button>
+    </div>
+    <div class="filter-bar">
+      <label>검색</label><input type="text" id="tickets-search" placeholder="제목/요청자/담당자" />
+      <label>상태</label>
+      <select id="tickets-status-filter">
+        <option value="all">전체</option>
+        <option value="요청됨">요청됨</option>
+        <option value="진행중">진행중</option>
+        <option value="완료">완료</option>
+        <option value="보류">보류</option>
+      </select>
+      <label>요청일</label>
+      <input type="date" id="tickets-date-from" /> ~ <input type="date" id="tickets-date-to" />
+      <button class="btn-secondary" id="tickets-filter-reset">초기화</button>
+    </div>
+    <div class="table-scroll"><table id="tickets-table">
+      <thead><tr></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+
+  <!-- ══════════ 일정관리 ══════════ -->
+  <div class="panel" id="panel-schedules">
+    <div class="panel-head">
+      <h2>일정관리 전체 <span class="count-note" id="schedules-count"></span></h2>
+      <button class="btn-primary" id="schedules-export">⬇ 엑셀로 다운로드</button>
+    </div>
+    <div class="filter-bar">
+      <label>검색</label><input type="text" id="schedules-search" placeholder="제목/업체/담당" />
+      <label>유형</label>
+      <select id="schedules-type-filter">
+        <option value="all">전체</option>
+        <option value="공사">공사(작업)</option>
+        <option value="미팅">미팅</option>
+        <option value="업무">업무</option>
+      </select>
+      <label>날짜</label>
+      <input type="date" id="schedules-date-from" /> ~ <input type="date" id="schedules-date-to" />
+      <button class="btn-secondary" id="schedules-filter-reset">초기화</button>
+    </div>
+    <div class="table-scroll"><table id="schedules-table">
+      <thead><tr></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+
+  <!-- ══════════ 전화 및 메모 ══════════ -->
+  <div class="panel" id="panel-memos">
+    <div class="panel-head">
+      <h2>전화 및 메모 전체 <span class="count-note" id="memos-count"></span></h2>
+      <button class="btn-primary" id="memos-export">⬇ 엑셀로 다운로드</button>
+    </div>
+    <div class="filter-bar">
+      <label>검색</label><input type="text" id="memos-search" placeholder="용건/담당자/받은사람" />
+      <label>상태</label>
+      <select id="memos-status-filter">
+        <option value="all">전체</option>
+        <option value="미확인">미확인</option>
+        <option value="확인됨">확인됨</option>
+      </select>
+      <label>받은시간</label>
+      <input type="date" id="memos-date-from" /> ~ <input type="date" id="memos-date-to" />
+      <button class="btn-secondary" id="memos-filter-reset">초기화</button>
+    </div>
+    <div class="table-scroll"><table id="memos-table">
+      <thead><tr></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+
+</div>
+
+<script type="module">
+import { ensureAccess } from "./auth-gate.js";
+import {
+  db, collection, onSnapshot, query, orderBy, TEAM_MEMBERS, ADMIN_PASSWORD
+} from "./firebase-config.js";
+
+await ensureAccess();
+
+/* ───────── 관리자 비밀번호 게이트 (팀 접근코드와 별개로 한 번 더 확인) ───────── */
+const ADMIN_SESSION_KEY = "smcfm_admin_ok";
+function checkAdminPassword() {
+  return new Promise((resolve) => {
+    if (sessionStorage.getItem(ADMIN_SESSION_KEY) === "1") { resolve(); return; }
+    const overlay = document.getElementById("admin-gate-overlay");
+    const input = document.getElementById("admin-gate-input");
+    const btn = document.getElementById("admin-gate-submit");
+    const err = document.getElementById("admin-gate-error");
+    overlay.classList.add("open");
+    function trySubmit() {
+      if (input.value === ADMIN_PASSWORD) {
+        sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+        overlay.classList.remove("open");
+        resolve();
+      } else {
+        err.style.display = "block";
+        input.value = "";
+        input.focus();
+      }
+    }
+    btn.addEventListener("click", trySubmit);
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") trySubmit(); });
+    setTimeout(() => input.focus(), 100);
+  });
+}
+await checkAdminPassword();
+
+/* ───────── 공통 helper ───────── */
+function pad(n) { return String(n).padStart(2, "0"); }
+function isoDate(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function fmtTs(ts) {
+  if (!ts) return "-";
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  if (isNaN(d.getTime())) return "-";
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function tsMillis(ts) {
+  if (!ts) return 0;
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  const t = d.getTime();
+  return isNaN(t) ? 0 : t;
+}
+function escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function typeLabel(t) { return t === "공사" ? "공사(작업)" : t; }
+function responsibleArray(rec) {
+  if (Array.isArray(rec.responsible)) return rec.responsible;
+  if (rec.responsible === "전체") return [...TEAM_MEMBERS];
+  if (rec.responsible) return [rec.responsible];
+  return [];
+}
+function formatDateRanges(dates) {
+  if (!dates || !dates.length) return "-";
+  const sorted = [...new Set(dates)].sort();
+  const ranges = [];
+  let start = sorted[0], prev = sorted[0];
+  for (let i = 1; i < sorted.length; i++) {
+    const d = sorted[i];
+    const prevDate = new Date(prev + "T00:00:00");
+    prevDate.setDate(prevDate.getDate() + 1);
+    if (d === isoDate(prevDate)) { prev = d; }
+    else { ranges.push(start === prev ? start : `${start} ~ ${prev}`); start = d; prev = d; }
+  }
+  ranges.push(start === prev ? start : `${start} ~ ${prev}`);
+  return ranges.join(", ");
+}
+function lastHistoryText(rec) {
+  const h = rec.history;
+  return (h && h.length) ? h[h.length - 1].text : "-";
+}
+
+/* ───────── 탭 전환 ───────── */
+function switchTab(name) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + name));
+}
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+});
+
+/* ════════════════════════════════════════════════
+   탭 설정: 관련업무 / 일정관리 / 전화 및 메모
+   각 탭은 동일한 구조(검색+상태/유형필터+기간필터+정렬가능한 헤더+엑셀다운로드)를 공유
+   ════════════════════════════════════════════════ */
+const CONFIGS = {
+  tickets: {
+    collectionName: "requestTickets",
+    orderField: "requestedAt",
+    dateOf: r => tsMillis(r.requestedAt),
+    statusOf: r => r.status || "",
+    searchText: r => [r.title, r.requestedBy, r.assignee].filter(Boolean).join(" "),
+    columns: [
+      { key: "title", label: "제목", get: r => escapeHtml(r.title || "-"), sort: r => r.title || "" },
+      { key: "requestedBy", label: "요청자", get: r => escapeHtml(r.requestedBy || "-"), sort: r => r.requestedBy || "" },
+      { key: "assignee", label: "담당자", get: r => escapeHtml(r.assignee || "미지정"), sort: r => r.assignee || "" },
+      { key: "requestedAt", label: "요청일", get: r => fmtTs(r.requestedAt), sort: r => tsMillis(r.requestedAt) },
+      { key: "dueDate", label: "희망기한", get: r => r.dueDate || "-", sort: r => r.dueDate || "" },
+      { key: "status", label: "상태", get: r => `<span class="badge ${r.status}">${escapeHtml(r.status || "-")}</span>`, sort: r => r.status || "" },
+      { key: "updatedAt", label: "최종수정", get: r => fmtTs(r.updatedAt), sort: r => tsMillis(r.updatedAt) },
+      { key: "lastNote", label: "최근내용", get: r => escapeHtml(lastHistoryText(r)), sort: null },
+      { key: "deleteReq", label: "삭제요청", get: r => r.deleteRequestedBy ? escapeHtml(r.deleteRequestedBy) : "-", sort: null }
+    ],
+    excelRow: r => ({
+      "제목": r.title || "", "요청자": r.requestedBy || "", "담당자": r.assignee || "미지정",
+      "요청일": fmtTs(r.requestedAt), "희망기한": r.dueDate || "", "상태": r.status || "",
+      "최종수정": fmtTs(r.updatedAt), "최근내용": lastHistoryText(r)
+    })
+  },
+  schedules: {
+    collectionName: "schedules",
+    orderField: "registeredAt",
+    dateOf: r => (Array.isArray(r.dates) && r.dates.length) ? new Date([...r.dates].sort()[0] + "T00:00:00").getTime() : 0,
+    statusOf: r => r.type || "",
+    searchText: r => [r.title, r.vendor, ...responsibleArray(r), r.registeredBy].filter(Boolean).join(" "),
+    columns: [
+      { key: "title", label: "제목", get: r => escapeHtml(r.title || "-"), sort: r => r.title || "" },
+      { key: "type", label: "유형", get: r => `<span class="badge type-${r.type}">${escapeHtml(typeLabel(r.type))}</span>`, sort: r => r.type || "" },
+      { key: "dates", label: "날짜", get: r => escapeHtml(formatDateRanges(r.dates)) + (r.time ? " " + escapeHtml(r.time) : ""), sort: r => (Array.isArray(r.dates) && r.dates.length) ? [...r.dates].sort()[0] : "" },
+      { key: "vendor", label: "업체/부서", get: r => escapeHtml(r.vendor || "-"), sort: r => r.vendor || "" },
+      { key: "responsible", label: "담당", get: r => escapeHtml(responsibleArray(r).join(", ") || "미지정"), sort: r => responsibleArray(r).join(", ") },
+      { key: "registeredBy", label: "등록자", get: r => escapeHtml(r.registeredBy || "-"), sort: r => r.registeredBy || "" },
+      { key: "registeredAt", label: "등록일시", get: r => fmtTs(r.registeredAt), sort: r => tsMillis(r.registeredAt) },
+      { key: "deleteReq", label: "삭제요청", get: r => r.deleteRequestedBy ? escapeHtml(r.deleteRequestedBy) : "-", sort: null }
+    ],
+    excelRow: r => ({
+      "제목": r.title || "", "유형": typeLabel(r.type || ""), "날짜": formatDateRanges(r.dates) + (r.time ? " " + r.time : ""),
+      "업체/부서": r.vendor || "", "담당": responsibleArray(r).join(", "), "등록자": r.registeredBy || "",
+      "등록일시": fmtTs(r.registeredAt)
+    })
+  },
+  memos: {
+    collectionName: "phoneMemos",
+    orderField: "receivedAt",
+    dateOf: r => tsMillis(r.receivedAt),
+    statusOf: r => r.status || "",
+    searchText: r => [r.subject, r.assignee, r.receivedBy].filter(Boolean).join(" "),
+    columns: [
+      { key: "assignee", label: "담당자", get: r => escapeHtml(r.assignee || "미지정"), sort: r => r.assignee || "" },
+      { key: "subject", label: "용건", get: r => escapeHtml(r.subject || "-"), sort: r => r.subject || "" },
+      { key: "urgency", label: "긴급도", get: r => `<span class="badge urgency-${r.urgency}">${escapeHtml(r.urgency || "-")}</span>`, sort: r => r.urgency || "" },
+      { key: "receivedBy", label: "받은사람", get: r => escapeHtml(r.receivedBy || "-"), sort: r => r.receivedBy || "" },
+      { key: "receivedAt", label: "받은시간", get: r => fmtTs(r.receivedAt), sort: r => tsMillis(r.receivedAt) },
+      { key: "status", label: "상태", get: r => `<span class="badge status-${r.status}">${escapeHtml(r.status || "-")}</span>`, sort: r => r.status || "" },
+      { key: "confirmedBy", label: "확인자", get: r => escapeHtml(r.confirmedBy || "-"), sort: r => r.confirmedBy || "" },
+      { key: "confirmedAt", label: "확인시간", get: r => fmtTs(r.confirmedAt), sort: r => tsMillis(r.confirmedAt) },
+      { key: "deleteReq", label: "삭제요청", get: r => r.deleteRequestedBy ? escapeHtml(r.deleteRequestedBy) : "-", sort: null }
+    ],
+    excelRow: r => ({
+      "담당자": r.assignee || "미지정", "용건": r.subject || "", "긴급도": r.urgency || "",
+      "받은사람": r.receivedBy || "", "받은시간": fmtTs(r.receivedAt), "상태": r.status || "",
+      "확인자": r.confirmedBy || "", "확인시간": fmtTs(r.confirmedAt)
+    })
+  }
+};
+
+const state = {};
+Object.keys(CONFIGS).forEach(k => {
+  state[k] = { rows: [], search: "", statusFilter: "all", dateFrom: "", dateTo: "", sortKey: null, sortDir: 1 };
+});
+
+function applyFilterSort(type) {
+  const cfg = CONFIGS[type];
+  const st = state[type];
+  let rows = st.rows.slice();
+
+  if (st.search.trim()) {
+    const q = st.search.trim().toLowerCase();
+    rows = rows.filter(r => cfg.searchText(r).toLowerCase().includes(q));
+  }
+  if (st.statusFilter !== "all") {
+    rows = rows.filter(r => cfg.statusOf(r) === st.statusFilter);
+  }
+  if (st.dateFrom) {
+    const fromMs = new Date(st.dateFrom + "T00:00:00").getTime();
+    rows = rows.filter(r => cfg.dateOf(r) >= fromMs);
+  }
+  if (st.dateTo) {
+    const toMs = new Date(st.dateTo + "T23:59:59").getTime();
+    rows = rows.filter(r => cfg.dateOf(r) <= toMs);
+  }
+  if (st.sortKey) {
+    const col = cfg.columns.find(c => c.key === st.sortKey);
+    if (col && col.sort) {
+      rows.sort((a, b) => {
+        const va = col.sort(a), vb = col.sort(b);
+        if (va < vb) return -1 * st.sortDir;
+        if (va > vb) return 1 * st.sortDir;
+        return 0;
+      });
+    }
+  }
+  return rows;
+}
+
+function renderTab(type) {
+  const cfg = CONFIGS[type];
+  const st = state[type];
+  const rows = applyFilterSort(type);
+
+  const table = document.getElementById(type + "-table");
+  const theadRow = table.querySelector("thead tr");
+  theadRow.innerHTML = "";
+  cfg.columns.forEach(col => {
+    const th = document.createElement("th");
+    let arrow = "";
+    if (st.sortKey === col.key) arrow = `<span class="sort-arrow">${st.sortDir === 1 ? "▲" : "▼"}</span>`;
+    th.innerHTML = `${col.label}${arrow}`;
+    if (col.sort) {
+      th.addEventListener("click", () => {
+        if (st.sortKey === col.key) st.sortDir *= -1;
+        else { st.sortKey = col.key; st.sortDir = 1; }
+        renderTab(type);
+      });
+    }
+    theadRow.appendChild(th);
+  });
+
+  const tbody = table.querySelector("tbody");
+  tbody.innerHTML = "";
+  if (!rows.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="${cfg.columns.length}">표시할 데이터가 없습니다</td></tr>`;
+  } else {
+    rows.forEach(r => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = cfg.columns.map(col => `<td>${col.get(r)}</td>`).join("");
+      tbody.appendChild(tr);
+    });
+  }
+  document.getElementById(type + "-count").textContent = `총 ${rows.length}건 (전체 ${st.rows.length}건 중)`;
+}
+
+function wireFilters(type) {
+  document.getElementById(type + "-search").addEventListener("input", (e) => {
+    state[type].search = e.target.value;
+    renderTab(type);
+  });
+  const statusSel = document.getElementById(type + (type === "schedules" ? "-type-filter" : "-status-filter"));
+  statusSel.addEventListener("change", (e) => {
+    state[type].statusFilter = e.target.value;
+    renderTab(type);
+  });
+  document.getElementById(type + "-date-from").addEventListener("change", (e) => {
+    state[type].dateFrom = e.target.value;
+    renderTab(type);
+  });
+  document.getElementById(type + "-date-to").addEventListener("change", (e) => {
+    state[type].dateTo = e.target.value;
+    renderTab(type);
+  });
+  document.getElementById(type + "-filter-reset").addEventListener("click", () => {
+    state[type].search = ""; state[type].statusFilter = "all"; state[type].dateFrom = ""; state[type].dateTo = "";
+    document.getElementById(type + "-search").value = "";
+    statusSel.value = "all";
+    document.getElementById(type + "-date-from").value = "";
+    document.getElementById(type + "-date-to").value = "";
+    renderTab(type);
+  });
+  document.getElementById(type + "-export").addEventListener("click", () => {
+    const rows = applyFilterSort(type);
+    if (!rows.length) { alert("다운로드할 데이터가 없습니다"); return; }
+    const cfg = CONFIGS[type];
+    const data = rows.map(cfg.excelRow);
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "데이터");
+    const today = isoDate(new Date());
+    XLSX.writeFile(wb, `${cfg.collectionName}_${today}.xlsx`);
+  });
+}
+Object.keys(CONFIGS).forEach(wireFilters);
+
+/* ───────── Firestore 구독 (전체 데이터, 실시간 갱신) ───────── */
+Object.keys(CONFIGS).forEach(type => {
+  const cfg = CONFIGS[type];
+  onSnapshot(query(collection(db, cfg.collectionName), orderBy(cfg.orderField, "desc")), (snap) => {
+    state[type].rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderTab(type);
+  }, (err) => {
+    console.error(`${cfg.collectionName} 구독 오류`, err);
+  });
+});
+</script>
+</body>
+</html>
