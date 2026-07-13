@@ -19,6 +19,14 @@
   }
   #topbar .brand { font-size: clamp(18px, 1.6vw, 26px); font-weight: 800; }
   #topbar .brand span { color: var(--ink-soft); font-weight: 500; font-size: 0.7em; margin-left: 8px; }
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; margin-left: 6px; vertical-align: middle;
+    border: 1.5px solid var(--line); border-radius: 8px; background: var(--bg);
+    color: var(--ink-soft); font-size: 14px; line-height: 1; cursor: pointer; padding: 0;
+  }
+  .icon-btn:active { background: var(--line); }
+  .icon-btn.is-active { color: var(--accent); border-color: var(--accent); }
   #clock { font-size: clamp(16px, 1.4vw, 22px); font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
   #topbar-right { display: flex; align-items: center; gap: 16px; }
   .nav-link {
@@ -218,7 +226,7 @@
 <body>
 <div id="app">
   <div id="topbar">
-    <div class="brand">서귀포의료원 시설관리팀 <span>월간일정</span></div>
+    <div class="brand">서귀포의료원 시설관리팀 <span>월간일정</span><button type="button" id="fullscreen-btn" class="icon-btn" title="전체화면">⛶</button></div>
     <div id="topbar-right">
       <div id="clock">--:--</div>
       <a class="nav-link" href="input.html" title="업무 화면으로 이동">
@@ -292,6 +300,33 @@ function tickClock() {
 }
 tickClock();
 setInterval(tickClock, 1000); // 초 단위로 갱신 — 화면이 살아있는지(멈추지 않았는지) 확인용
+
+/* ───────── 전체화면 토글 ───────── */
+const fullscreenBtn = document.getElementById("fullscreen-btn");
+function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+}
+function requestFullscreen(el) {
+  const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  if (fn) fn.call(el);
+}
+function exitFullscreen() {
+  const fn = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+  if (fn) fn.call(document);
+}
+function updateFullscreenBtn() {
+  const on = isFullscreen();
+  fullscreenBtn.classList.toggle("is-active", on);
+  fullscreenBtn.title = on ? "전체화면 종료" : "전체화면";
+}
+fullscreenBtn.addEventListener("click", () => {
+  if (isFullscreen()) exitFullscreen();
+  else requestFullscreen(document.documentElement);
+});
+["fullscreenchange", "webkitfullscreenchange", "MSFullscreenChange"].forEach(ev =>
+  document.addEventListener(ev, updateFullscreenBtn)
+);
+updateFullscreenBtn();
 
 /* ───────── 상태 ───────── */
 let viewYear, viewMonth; // viewMonth: 0-indexed
