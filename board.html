@@ -40,10 +40,9 @@
     --lane-gap: 4px;
     --lane-pad: 4px 8px;
   }
-  /* 여유 공간이 많을 때(일정이 적은 달 등) 기본값보다 더 크게 키우는 단계 */
-  #cal-wrap.density-plus-3 { --chip-font: clamp(20px, 1.9vw, 30px); --daynum-font: clamp(26px, 2.1vw, 36px); --lane-gap: 8px; --lane-pad: 8px 12px; }
-  #cal-wrap.density-plus-2 { --chip-font: clamp(18px, 1.7vw, 27px); --daynum-font: clamp(23px, 1.9vw, 32px); --lane-gap: 7px; --lane-pad: 7px 11px; }
-  #cal-wrap.density-plus-1 { --chip-font: clamp(15.5px, 1.4vw, 22px); --daynum-font: clamp(19px, 1.6vw, 26px); --lane-gap: 5px; --lane-pad: 5px 9px; }
+  /* 여유 공간이 많을 때(일정이 적은 달 등) 기본값보다 살짝 더 크게 키우는 단계 (과하지 않게 소폭만) */
+  #cal-wrap.density-plus-2 { --chip-font: clamp(15px, 1.15vw, 20px); --daynum-font: clamp(18px, 1.4vw, 24px); --lane-gap: 5px; --lane-pad: 5px 9px; }
+  #cal-wrap.density-plus-1 { --chip-font: clamp(14px, 1.1vw, 19px); --daynum-font: clamp(17px, 1.35vw, 23px); --lane-gap: 4px; --lane-pad: 4px 8px; }
   /* 스크롤이 생길 것 같으면 기본값에서부터 단계별로 축소 */
   #cal-wrap.density-1 { --chip-font: clamp(11.5px, 0.9vw, 15px); --daynum-font: clamp(14px, 1.1vw, 19px); --lane-gap: 3px; --lane-pad: 3px 7px; }
   #cal-wrap.density-2 { --chip-font: clamp(10.5px, 0.8vw, 13px); --daynum-font: clamp(13px, 1vw, 16px); --lane-gap: 2px; --lane-pad: 2px 6px; }
@@ -105,7 +104,7 @@
     font-size: var(--chip-font); font-weight: 600; line-height: 1.3;
     padding: var(--lane-pad); border-radius: 7px;
     border-left: 4px solid transparent;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+    overflow: hidden; white-space: normal; overflow-wrap: break-word; word-break: keep-all; cursor: pointer;
   }
   .event-chip.type-공사 { background: var(--type-공사-bg); color: var(--type-공사); border-left-color: var(--type-공사); }
   .event-chip.type-미팅 { background: var(--type-미팅-bg); color: var(--type-미팅); border-left-color: var(--type-미팅); }
@@ -439,7 +438,7 @@ function fitCalendarDensity() {
   const wrap = document.getElementById("cal-wrap");
   const outer = document.getElementById("cal-grid-outer");
   // 큰 순서 → 작은 순서로 하나씩 적용해보고, 스크롤 없이 들어가는 첫 단계를 채택
-  const tiers = ["density-plus-3", "density-plus-2", "density-plus-1", "", "density-1", "density-2", "density-3"];
+  const tiers = ["density-plus-2", "density-plus-1", "", "density-1", "density-2", "density-3"];
   for (const tier of tiers) {
     wrap.className = tier;
     // 클래스 변경 직후 레이아웃을 강제로 다시 계산시켜 정확한 높이를 측정
