@@ -145,6 +145,33 @@
   }
   .name-btn:active { background: var(--accent); color: #fff; }
   #name-cancel { margin-top: 18px; background: none; border: none; color: var(--ink-soft); font-size: 14px; cursor: pointer; }
+
+  /* ── 날짜 확대보기 (노안 배려) ────────────── */
+  .day-cell { cursor: pointer; }
+  #day-detail-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: none; align-items: center; justify-content: center; z-index: 900; padding: 24px;
+  }
+  #day-detail-overlay.open { display: flex; }
+  #day-detail-card {
+    background: var(--surface); border-radius: 24px; padding: 36px 40px;
+    max-width: 720px; width: 100%; max-height: 85vh; overflow-y: auto; position: relative;
+  }
+  #day-detail-close {
+    position: absolute; top: 18px; right: 20px; width: 44px; height: 44px; border-radius: 50%;
+    border: none; background: var(--bg); font-size: 26px; font-weight: 900; color: var(--ink-soft); cursor: pointer;
+  }
+  #day-detail-date { font-size: 30px; font-weight: 900; margin-bottom: 22px; padding-right: 50px; }
+  #day-detail-date .dow { font-size: 20px; font-weight: 700; color: var(--ink-soft); margin-left: 10px; }
+  .day-detail-event {
+    border-left: 6px solid transparent; border-radius: 12px; padding: 16px 18px; margin-bottom: 14px;
+    font-size: 19px; font-weight: 700; line-height: 1.5;
+  }
+  .day-detail-event.type-공사 { background: var(--type-공사-bg); color: var(--type-공사); border-left-color: var(--type-공사); }
+  .day-detail-event.type-미팅 { background: var(--type-미팅-bg); color: var(--type-미팅); border-left-color: var(--type-미팅); }
+  .day-detail-event.type-업무 { background: var(--type-업무-bg); color: var(--type-업무); border-left-color: var(--type-업무); }
+  .day-detail-event .dd-meta { font-size: 15px; font-weight: 600; color: var(--ink-soft); margin-top: 6px; }
+  #day-detail-empty { font-size: 19px; color: var(--dim); text-align: center; padding: 30px 0; }
 </style>
 </head>
 <body>
@@ -191,6 +218,14 @@
     <p id="name-modal-sub">이 항목을 확인한 사람을 선택하세요</p>
     <div id="name-buttons"></div>
     <button id="name-cancel">취소</button>
+  </div>
+</div>
+
+<div id="day-detail-overlay">
+  <div id="day-detail-card">
+    <button id="day-detail-close" aria-label="닫기">×</button>
+    <div id="day-detail-date"></div>
+    <div id="day-detail-events"></div>
   </div>
 </div>
 
@@ -285,9 +320,40 @@ function renderCalendar() {
       cell.appendChild(chip);
     });
 
+    cell.addEventListener("click", () => openDayDetail(iso, c.y, c.m, c.day));
+
     grid.appendChild(cell);
   });
 }
+
+/* ───────── 날짜 확대보기 (노안 배려) ───────── */
+const dayDetailOverlay = document.getElementById("day-detail-overlay");
+function openDayDetail(iso, y, m, d) {
+  const days = ["일","월","화","수","목","금","토"];
+  const dow = days[new Date(y, m, d).getDay()];
+  document.getElementById("day-detail-date").innerHTML =
+    `${y}년 ${m+1}월 ${d}일 <span class="dow">(${dow}요일)</span>`;
+
+  const evEl = document.getElementById("day-detail-events");
+  evEl.innerHTML = "";
+  const dayEvents = schedules.filter(s => Array.isArray(s.dates) && s.dates.includes(iso));
+  if (dayEvents.length === 0) {
+    evEl.innerHTML = `<div id="day-detail-empty">등록된 일정이 없습니다</div>`;
+  } else {
+    dayEvents.forEach(ev => {
+      const div = document.createElement("div");
+      div.className = "day-detail-event type-" + (ev.type || "업무");
+      div.innerHTML = `${escapeHtml(ev.title)}${ev.vendor ? ` (${escapeHtml(ev.vendor)})` : ""}
+        <div class="dd-meta">담당: ${ev.responsible || "-"}${ev.detail ? " · " + escapeHtml(ev.detail) : ""}</div>`;
+      evEl.appendChild(div);
+    });
+  }
+  dayDetailOverlay.classList.add("open");
+}
+document.getElementById("day-detail-close").addEventListener("click", () => dayDetailOverlay.classList.remove("open"));
+dayDetailOverlay.addEventListener("click", (e) => {
+  if (e.target === dayDetailOverlay) dayDetailOverlay.classList.remove("open");
+});
 
 document.getElementById("prev-month").addEventListener("click", () => {
   viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; }

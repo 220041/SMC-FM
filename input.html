@@ -13,7 +13,8 @@
     position: sticky; top: 0; z-index: 50;
   }
   #topbar .brand { font-size: 18px; font-weight: 800; }
-  #user-select-wrap { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-soft); }
+  #user-select-wrap { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink-soft); }
+  #user-select-wrap b { color: var(--ink); font-size: 15px; }
   select, input[type=text], input[type=date], input[type=datetime-local], textarea {
     border: 1.5px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 14px; color: var(--ink);
     background: var(--surface);
@@ -86,9 +87,15 @@
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 
+  .static-value {
+    padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 8px;
+    background: var(--bg); font-weight: 700; color: var(--ink); font-size: 14px; min-height: 18px;
+  }
+
   .date-picker-box { border: 1.5px dashed var(--line); border-radius: 10px; padding: 12px; }
   .date-picker-box .sub-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
   .date-picker-box .sub-label { font-size: 12px; font-weight: 700; color: var(--ink-soft); width: 68px; flex-shrink: 0; }
+  .date-picker-box input.date-input { width: 130px; }
   .chip-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .date-chip {
     background: var(--type-미팅-bg); color: var(--type-미팅); font-size: 12.5px; font-weight: 700;
@@ -102,31 +109,122 @@
   .history-item .meta { color: var(--ink-soft); font-size: 11.5px; margin-bottom: 3px; }
 
   .small-note { font-size: 12px; color: var(--dim); margin-top: 4px; }
+
+  /* ── 작성자 선택 게이트 ─────────────────── */
+  #author-gate-overlay {
+    position: fixed; inset: 0; background: rgba(31,41,51,0.92);
+    display: none; align-items: center; justify-content: center; z-index: 5000; padding: 20px;
+  }
+  #author-gate-overlay.open { display: flex; }
+  #author-gate-card {
+    background: var(--surface); border-radius: 20px; padding: 40px 44px; text-align: center;
+    max-width: 460px; width: 100%;
+  }
+  #author-gate-card .gate-title { font-size: 21px; font-weight: 900; margin-bottom: 6px; }
+  #author-gate-card .gate-sub { font-size: 14px; color: var(--ink-soft); margin-bottom: 24px; }
+  #author-gate-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .name-btn {
+    padding: 18px 10px; font-size: 16px; font-weight: 800; border-radius: 12px;
+    border: 2px solid var(--line); background: var(--bg); cursor: pointer; color: var(--ink); position: relative;
+  }
+  .name-btn:active { background: var(--accent); color: #fff; }
+  .name-btn.last-used { border-color: var(--accent); }
+  .name-btn.last-used::after {
+    content: "최근"; position: absolute; top: -9px; right: -6px; background: var(--accent); color: #fff;
+    font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 8px;
+  }
+
+  /* ── 대시보드 ─────────────────────────── */
+  .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+  .dash-col { background: var(--bg); border-radius: 12px; padding: 14px 16px; border: 1px solid var(--line); }
+  .dash-col h3 { font-size: 14.5px; margin: 0 0 10px; color: var(--ink-soft); display: flex; align-items: center; gap: 6px; }
+  .dash-count { background: var(--accent); color: #fff; font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 8px; }
+  .dash-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    margin-bottom: 8px; cursor: pointer; font-size: 13px;
+  }
+  .dash-card:hover { border-color: var(--accent); }
+  .dash-card .dc-title { font-weight: 800; margin-bottom: 4px; }
+  .dash-card .dc-meta { color: var(--ink-soft); font-size: 11.5px; }
+  .dash-empty { color: var(--dim); font-size: 13px; padding: 14px 0; text-align: center; }
+
+  /* ── 날짜 입력 팝업 캘린더 (주말·공휴일 표시) ── */
+  .dp-popup {
+    position: absolute; z-index: 3000; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.18); padding: 14px; width: 280px;
+    display: none;
+  }
+  .dp-popup.open { display: block; }
+  .dp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .dp-title { font-weight: 800; font-size: 14.5px; }
+  .dp-nav { border: none; background: var(--bg); width: 30px; height: 30px; border-radius: 50%; font-weight: 900; color: var(--accent); cursor: pointer; }
+  .dp-dow-row { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 11.5px; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+  .dp-dow-row .dp-sun { color: var(--alert); }
+  .dp-dow-row .dp-sat { color: var(--accent); }
+  .dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .dp-cell { text-align: center; padding: 7px 0; font-size: 13px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+  .dp-cell.dp-blank { cursor: default; }
+  .dp-cell:not(.dp-blank):hover { background: var(--bg); }
+  .dp-cell.dp-sun { color: var(--alert); }
+  .dp-cell.dp-sat { color: var(--accent); }
+  .dp-cell.dp-holiday { background: var(--alert-bg); color: var(--alert); font-weight: 800; }
+  .dp-cell.dp-today { border: 2px solid var(--accent); }
+  .dp-cell.dp-selected { background: var(--accent); color: #fff; }
 </style>
 </head>
 <body>
 
+<div id="author-gate-overlay">
+  <div id="author-gate-card">
+    <div class="gate-title">작성자를 선택하세요</div>
+    <div class="gate-sub">선택한 이름으로 이후 모든 입력이 기록됩니다 (혼선 방지)</div>
+    <div id="author-gate-buttons"></div>
+  </div>
+</div>
+
 <div id="topbar">
   <div class="brand">시설관리팀 업무입력</div>
   <div id="user-select-wrap">
-    작성자
-    <select id="current-user-select"></select>
+    작성자 <b id="current-user-display">-</b>
+    <button type="button" class="btn-secondary" id="author-change-btn" style="padding:6px 12px; font-size:12.5px;">변경</button>
   </div>
 </div>
 
 <div id="tabbar">
-  <button class="tab-btn active" data-tab="tickets">요청업무관리</button>
+  <button class="tab-btn active" data-tab="dashboard">대시보드</button>
+  <button class="tab-btn" data-tab="tickets">업무관리</button>
   <button class="tab-btn" data-tab="schedules">일정/공사등록</button>
   <button class="tab-btn" data-tab="memos">전화 및 기타메모</button>
 </div>
 
 <div id="content">
 
-  <!-- ══════════ 1. 요청업무관리 ══════════ -->
-  <div class="panel active" id="panel-tickets">
+  <!-- ══════════ 0. 대시보드 ══════════ -->
+  <div class="panel active" id="panel-dashboard">
     <div class="panel-head">
-      <h2>요청업무관리</h2>
-      <button class="btn-primary" id="ticket-new-btn">+ 새 요청 등록</button>
+      <h2>대시보드 · <span id="dash-user-name">-</span> 님</h2>
+    </div>
+    <div class="dash-grid">
+      <div class="dash-col">
+        <h3>내 업무 <span class="dash-count" id="dash-ticket-count">0</span></h3>
+        <div class="dash-list" id="dash-ticket-list"></div>
+      </div>
+      <div class="dash-col">
+        <h3>내 일정 · 공사 <span class="dash-count" id="dash-schedule-count">0</span></h3>
+        <div class="dash-list" id="dash-schedule-list"></div>
+      </div>
+      <div class="dash-col">
+        <h3>내 전화 · 기타메모 <span class="dash-count" id="dash-memo-count">0</span></h3>
+        <div class="dash-list" id="dash-memo-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 1. 업무관리 ══════════ -->
+  <div class="panel" id="panel-tickets">
+    <div class="panel-head">
+      <h2>업무관리</h2>
+      <button class="btn-primary" id="ticket-new-btn">+ 새 업무 등록</button>
     </div>
     <div class="filter-bar">
       <label>상태</label>
@@ -139,11 +237,13 @@
       </select>
       <label>요청자</label>
       <select id="ticket-filter-requester"><option value="all">전체</option></select>
+      <label>담당자</label>
+      <select id="ticket-filter-assignee"><option value="all">전체</option><option value="미지정">미지정</option></select>
       <label><input type="checkbox" id="ticket-filter-overdue" /> 기한초과만</label>
     </div>
     <table>
       <thead><tr>
-        <th>제목</th><th>요청자</th><th>요청일</th><th>희망기한</th><th>상태</th><th>최근업데이트</th>
+        <th>제목</th><th>요청자</th><th>담당자</th><th>요청일</th><th>희망기한</th><th>상태</th><th>최근업데이트</th>
       </tr></thead>
       <tbody id="ticket-tbody"></tbody>
     </table>
@@ -187,16 +287,17 @@
 
 </div>
 
-<!-- ══════════ 모달: 요청업무 상세/등록 ══════════ -->
+<!-- ══════════ 모달: 업무 상세/등록 ══════════ -->
 <div class="modal-overlay" id="ticket-modal-overlay">
   <div class="modal-box">
-    <h3 id="ticket-modal-title">새 요청 등록</h3>
+    <h3 id="ticket-modal-title">새 업무 등록</h3>
     <div id="ticket-new-fields">
       <div class="field"><label>제목</label><input type="text" id="ticket-title" /></div>
       <div class="row2">
-        <div class="field"><label>요청자</label><select id="ticket-requester"></select></div>
-        <div class="field"><label>요청희망기한</label><input type="date" id="ticket-due" /></div>
+        <div class="field"><label>요청자</label><div class="static-value" id="ticket-requester-display">-</div></div>
+        <div class="field"><label>담당자</label><select id="ticket-assignee"></select></div>
       </div>
+      <div class="field"><label>요청희망기한</label><input type="text" id="ticket-due" /></div>
       <div class="field"><label>요청 내용</label><textarea id="ticket-content" placeholder="무엇을 요청하는지 적어주세요"></textarea></div>
     </div>
 
@@ -210,16 +311,18 @@
             <option value="보류">보류</option>
           </select>
         </div>
-        <div class="field"><label>요청희망기한</label><input type="date" id="ticket-due-edit" /></div>
+        <div class="field"><label>요청희망기한</label><input type="text" id="ticket-due-edit" /></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>요청자</label><div class="static-value" id="ticket-requester-display-edit">-</div></div>
+        <div class="field"><label>담당자</label><select id="ticket-assignee-edit"></select></div>
       </div>
       <div class="field"><label>진행 이력</label>
         <div class="history-list" id="ticket-history-list"></div>
       </div>
-      <div class="row2">
-        <div class="field"><label>작성자</label><select id="ticket-note-author"></select></div>
-        <div class="field"><label>&nbsp;</label></div>
+      <div class="field"><label>진행상황 추가 입력 (작성자: <span id="ticket-note-author-display">-</span>)</label>
+        <textarea id="ticket-note-text" placeholder="예: 진행 상황을 입력하세요"></textarea>
       </div>
-      <div class="field"><label>진행상황 추가 입력</label><textarea id="ticket-note-text" placeholder="예: 계약팀에 문의함 / 회신 대기중 등"></textarea></div>
     </div>
 
     <div class="modal-actions">
@@ -240,21 +343,21 @@
       </div>
       <div class="field"><label>담당</label><select id="schedule-responsible"></select></div>
     </div>
-    <div class="field"><label>업체 / 부서</label><input type="text" id="schedule-vendor" placeholder="예: 대상전력, 계약팀 등" /></div>
+    <div class="field"><label>업체 / 부서</label><input type="text" id="schedule-vendor" /></div>
 
     <div class="field">
-      <label>날짜 선택</label>
+      <label>날짜 선택 <span class="small-note" style="display:inline;">(숫자만 입력해도 자동 반영, 또는 달력에서 선택 · 주말·공휴일 색상 표시)</span></label>
       <div class="date-picker-box">
         <div class="sub-row">
           <span class="sub-label">기간</span>
-          <input type="date" id="schedule-range-start" />
+          <input type="text" id="schedule-range-start" />
           <span>~</span>
-          <input type="date" id="schedule-range-end" />
+          <input type="text" id="schedule-range-end" />
           <button type="button" class="btn-secondary" id="schedule-add-range">기간 추가</button>
         </div>
         <div class="sub-row">
           <span class="sub-label">개별</span>
-          <input type="date" id="schedule-single-date" />
+          <input type="text" id="schedule-single-date" />
           <button type="button" class="btn-secondary" id="schedule-add-single">날짜 추가</button>
         </div>
         <div class="chip-list" id="schedule-date-chips"></div>
@@ -263,7 +366,7 @@
     </div>
 
     <div class="field"><label>상세내용</label><textarea id="schedule-detail"></textarea></div>
-    <div class="field"><label>등록자</label><select id="schedule-registrar"></select></div>
+    <div class="field"><label>등록자</label><div class="static-value" id="schedule-registrar-display">-</div></div>
 
     <div class="modal-actions">
       <button class="btn-secondary" id="schedule-delete" style="margin-right:auto; color:#C23B3B; border-color:#C23B3B; display:none;">삭제</button>
@@ -281,7 +384,7 @@
       <div class="field"><label>받은사람 (전달받은 사람)</label><select id="memo-receiver"></select></div>
       <div class="field"><label>담당자 (처리할 사람)</label><select id="memo-assignee"></select></div>
     </div>
-    <div class="field"><label>용건</label><textarea id="memo-subject" placeholder="예: 대상전력 - 신관 공사 일정 문의"></textarea></div>
+    <div class="field"><label>용건</label><textarea id="memo-subject" placeholder="예: 신관 공사 관련 문의"></textarea></div>
     <div class="row2">
       <div class="field"><label>긴급도</label>
         <select id="memo-urgency"><option value="상">상</option><option value="중" selected>중</option><option value="하">하</option></select>
@@ -303,35 +406,64 @@
 <script type="module">
 import { ensureAccess } from "./auth-gate.js";
 import {
-  db, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, TEAM_MEMBERS
+  db, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, TEAM_MEMBERS, KR_HOLIDAYS
 } from "./firebase-config.js";
 
 await ensureAccess();
 
-/* ───────── 현재 사용자 (작성자 기본값) ───────── */
-const userSelect = document.getElementById("current-user-select");
-TEAM_MEMBERS.forEach(n => userSelect.appendChild(new Option(n, n)));
-const savedUser = sessionStorage.getItem("smcfm_current_user");
-if (savedUser && TEAM_MEMBERS.includes(savedUser)) userSelect.value = savedUser;
-userSelect.addEventListener("change", () => sessionStorage.setItem("smcfm_current_user", userSelect.value));
-if (!sessionStorage.getItem("smcfm_current_user")) sessionStorage.setItem("smcfm_current_user", userSelect.value);
-function currentUser() { return userSelect.value; }
+/* ───────── 현재 사용자 (작성자) : 진입 시 반드시 선택 ───────── */
+let currentUserName = "";
+function currentUser() { return currentUserName; }
 
-/* 모든 이름 select 채우기 helper */
+const authGateOverlay = document.getElementById("author-gate-overlay");
+const authGateButtons = document.getElementById("author-gate-buttons");
+function buildAuthGateButtons() {
+  authGateButtons.innerHTML = "";
+  const last = sessionStorage.getItem("smcfm_current_user");
+  TEAM_MEMBERS.forEach(n => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "name-btn" + (n === last ? " last-used" : "");
+    b.textContent = n;
+    b.addEventListener("click", () => selectAuthor(n));
+    authGateButtons.appendChild(b);
+  });
+}
+function selectAuthor(name) {
+  currentUserName = name;
+  sessionStorage.setItem("smcfm_current_user", name);
+  document.getElementById("current-user-display").textContent = name;
+  authGateOverlay.classList.remove("open");
+  renderDashboard();
+}
+document.getElementById("author-change-btn").addEventListener("click", () => {
+  buildAuthGateButtons();
+  authGateOverlay.classList.add("open");
+});
+buildAuthGateButtons();
+authGateOverlay.classList.add("open"); // 진입 시 항상 먼저 선택하도록
+
+/* 담당자 등 이름 select 채우기 helper */
 function fillNameSelect(sel, defaultTo) {
   sel.innerHTML = "";
   TEAM_MEMBERS.forEach(n => sel.appendChild(new Option(n, n)));
   if (defaultTo) sel.value = defaultTo;
 }
+/* 담당자(업무) select: "미지정" 옵션 포함 */
+function fillAssigneeSelect(sel, defaultTo) {
+  sel.innerHTML = "";
+  sel.appendChild(new Option("미지정", ""));
+  TEAM_MEMBERS.forEach(n => sel.appendChild(new Option(n, n)));
+  sel.value = defaultTo || "";
+}
 
 /* ───────── 탭 전환 ───────── */
+function switchTab(name) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + name));
+}
 document.querySelectorAll(".tab-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-    btn.classList.add("active");
-    document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
-  });
+  btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
 
 function pad(n) { return String(n).padStart(2, "0"); }
@@ -347,19 +479,142 @@ function escapeHtml(s) {
 }
 
 /* ════════════════════════════════════════════════
-   1. 요청업무관리
+   날짜 입력 컴포넌트: 숫자 직접입력(탭 불필요) + 팝업 캘린더(주말·공휴일 표시)
+   ════════════════════════════════════════════════ */
+const dpPopup = document.createElement("div");
+dpPopup.id = "dp-popup";
+dpPopup.className = "dp-popup";
+document.body.appendChild(dpPopup);
+
+let dpActiveInput = null;
+let dpViewY, dpViewM;
+
+function dpParse(v) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || "");
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  const dt = new Date(y, mo - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+  return { y, m: mo - 1, d };
+}
+function dpFormat(y, m, d) {
+  return `${y}-${pad(m + 1)}-${pad(d)}`;
+}
+function dpRenderCalendar() {
+  const dow = ["일","월","화","수","목","금","토"];
+  const firstDow = new Date(dpViewY, dpViewM, 1).getDay();
+  const daysInMonth = new Date(dpViewY, dpViewM + 1, 0).getDate();
+  const todayIsoStr = todayIso();
+  const selected = dpActiveInput ? dpParse(dpActiveInput.value) : null;
+
+  let html = `
+    <div class="dp-head">
+      <button type="button" class="dp-nav" data-dir="-1">‹</button>
+      <div class="dp-title">${dpViewY}년 ${dpViewM + 1}월</div>
+      <button type="button" class="dp-nav" data-dir="1">›</button>
+    </div>
+    <div class="dp-dow-row">${dow.map((d,i) => `<div class="${i===0?'dp-sun':i===6?'dp-sat':''}">${d}</div>`).join("")}</div>
+    <div class="dp-grid">`;
+
+  for (let i = 0; i < firstDow; i++) html += `<div class="dp-cell dp-blank"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = dpFormat(dpViewY, dpViewM, d);
+    const dowIdx = new Date(dpViewY, dpViewM, d).getDay();
+    const holidayName = KR_HOLIDAYS[iso];
+    let cls = "dp-cell";
+    if (dowIdx === 0) cls += " dp-sun";
+    if (dowIdx === 6) cls += " dp-sat";
+    if (holidayName) cls += " dp-holiday";
+    if (iso === todayIsoStr) cls += " dp-today";
+    if (selected && selected.y === dpViewY && selected.m === dpViewM && selected.d === d) cls += " dp-selected";
+    html += `<div class="${cls}" data-iso="${iso}" title="${holidayName || ""}">${d}</div>`;
+  }
+  html += `</div>`;
+  dpPopup.innerHTML = html;
+
+  dpPopup.querySelectorAll(".dp-nav").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      dpViewM += +btn.dataset.dir;
+      if (dpViewM < 0) { dpViewM = 11; dpViewY--; }
+      if (dpViewM > 11) { dpViewM = 0; dpViewY++; }
+      dpRenderCalendar();
+    });
+  });
+  dpPopup.querySelectorAll(".dp-cell[data-iso]").forEach(cell => {
+    cell.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (dpActiveInput) {
+        dpActiveInput.value = cell.dataset.iso;
+        dpActiveInput.dispatchEvent(new Event("change"));
+      }
+      dpClose();
+    });
+  });
+}
+function dpOpen(input) {
+  dpActiveInput = input;
+  const parsed = dpParse(input.value) || (() => { const t = new Date(); return { y: t.getFullYear(), m: t.getMonth(), d: t.getDate() }; })();
+  dpViewY = parsed.y; dpViewM = parsed.m;
+  dpRenderCalendar();
+  const rect = input.getBoundingClientRect();
+  dpPopup.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 296)) + "px";
+  dpPopup.style.top = (rect.bottom + window.scrollY + 6) + "px";
+  dpPopup.classList.add("open");
+}
+function dpClose() {
+  dpPopup.classList.remove("open");
+  dpActiveInput = null;
+}
+document.addEventListener("click", (e) => {
+  if (dpPopup.classList.contains("open") && !dpPopup.contains(e.target) && e.target !== dpActiveInput) {
+    dpClose();
+  }
+});
+function dpMask(v) {
+  const digits = v.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 6) return digits.slice(0,4) + "-" + digits.slice(4);
+  return digits.slice(0,4) + "-" + digits.slice(4,6) + "-" + digits.slice(6);
+}
+function initDateField(input) {
+  input.classList.add("date-input");
+  input.setAttribute("placeholder", "YYYY-MM-DD");
+  input.setAttribute("inputmode", "numeric");
+  input.setAttribute("autocomplete", "off");
+  input.addEventListener("input", () => {
+    input.value = dpMask(input.value);
+    if (dpActiveInput === input) dpRenderCalendar();
+  });
+  input.addEventListener("focus", () => dpOpen(input));
+  input.addEventListener("click", (e) => { e.stopPropagation(); dpOpen(input); });
+  input.addEventListener("blur", () => {
+    setTimeout(() => {
+      if (input.value && !dpParse(input.value)) input.value = "";
+    }, 200);
+  });
+}
+["ticket-due", "ticket-due-edit", "schedule-range-start", "schedule-range-end", "schedule-single-date"]
+  .forEach(id => initDateField(document.getElementById(id)));
+
+/* ════════════════════════════════════════════════
+   1. 업무관리
    ════════════════════════════════════════════════ */
 let tickets = [];
 const ticketFilterRequester = document.getElementById("ticket-filter-requester");
 TEAM_MEMBERS.forEach(n => ticketFilterRequester.appendChild(new Option(n, n)));
+const ticketFilterAssignee = document.getElementById("ticket-filter-assignee");
+TEAM_MEMBERS.forEach(n => ticketFilterAssignee.appendChild(new Option(n, n)));
 
 onSnapshot(query(collection(db, "requestTickets"), orderBy("requestedAt", "desc")), (snap) => {
   tickets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   renderTickets();
+  renderDashboard();
 });
 
 document.getElementById("ticket-filter-status").addEventListener("change", renderTickets);
 ticketFilterRequester.addEventListener("change", renderTickets);
+ticketFilterAssignee.addEventListener("change", renderTickets);
 document.getElementById("ticket-filter-overdue").addEventListener("change", renderTickets);
 
 function isTicketOverdue(t) {
@@ -371,11 +626,13 @@ function isTicketOverdue(t) {
 function renderTickets() {
   const statusF = document.getElementById("ticket-filter-status").value;
   const reqF = ticketFilterRequester.value;
+  const assigneeF = ticketFilterAssignee.value;
   const overdueOnly = document.getElementById("ticket-filter-overdue").checked;
 
   let rows = tickets.filter(t => {
     if (statusF !== "all" && t.status !== statusF) return false;
     if (reqF !== "all" && t.requestedBy !== reqF) return false;
+    if (assigneeF !== "all" && (t.assignee || "미지정") !== assigneeF) return false;
     if (overdueOnly && !isTicketOverdue(t)) return false;
     return true;
   });
@@ -383,7 +640,7 @@ function renderTickets() {
   const tbody = document.getElementById("ticket-tbody");
   tbody.innerHTML = "";
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">표시할 요청이 없습니다</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">표시할 업무가 없습니다</td></tr>`;
     return;
   }
   rows.forEach(t => {
@@ -394,6 +651,7 @@ function renderTickets() {
     tr.innerHTML = `
       <td>${escapeHtml(t.title)}</td>
       <td>${t.requestedBy || "-"}</td>
+      <td>${t.assignee || "미지정"}</td>
       <td>${t.requestedAt ? fmtTs(t.requestedAt).slice(0,10) : "-"}</td>
       <td>${t.dueDate || "-"} ${overdue ? "⚠️" : ""}</td>
       <td><span class="badge ${t.status}">${t.status}</span></td>
@@ -409,13 +667,14 @@ let ticketEditingId = null;
 
 document.getElementById("ticket-new-btn").addEventListener("click", () => {
   ticketEditingId = null;
-  document.getElementById("ticket-modal-title").textContent = "새 요청 등록";
+  document.getElementById("ticket-modal-title").textContent = "새 업무 등록";
   document.getElementById("ticket-new-fields").style.display = "block";
   document.getElementById("ticket-detail-fields").style.display = "none";
   document.getElementById("ticket-title").value = "";
   document.getElementById("ticket-due").value = "";
   document.getElementById("ticket-content").value = "";
-  fillNameSelect(document.getElementById("ticket-requester"), currentUser());
+  document.getElementById("ticket-requester-display").textContent = currentUser();
+  fillAssigneeSelect(document.getElementById("ticket-assignee"), null);
   ticketOverlay.classList.add("open");
 });
 
@@ -428,7 +687,9 @@ function openTicketDetail(id) {
   document.getElementById("ticket-detail-fields").style.display = "block";
   document.getElementById("ticket-status-select").value = t.status;
   document.getElementById("ticket-due-edit").value = t.dueDate || "";
-  fillNameSelect(document.getElementById("ticket-note-author"), currentUser());
+  document.getElementById("ticket-requester-display-edit").textContent = t.requestedBy || "-";
+  fillAssigneeSelect(document.getElementById("ticket-assignee-edit"), t.assignee || null);
+  document.getElementById("ticket-note-author-display").textContent = currentUser();
   document.getElementById("ticket-note-text").value = "";
 
   const histEl = document.getElementById("ticket-history-list");
@@ -448,34 +709,39 @@ document.getElementById("ticket-cancel").addEventListener("click", () => ticketO
 
 document.getElementById("ticket-save").addEventListener("click", async () => {
   if (ticketEditingId === null) {
-    // 새 요청 생성
+    // 새 업무 생성
     const title = document.getElementById("ticket-title").value.trim();
     if (!title) { alert("제목을 입력하세요"); return; }
-    const requester = document.getElementById("ticket-requester").value;
+    const requester = currentUser();
+    const assignee = document.getElementById("ticket-assignee").value || null;
     const due = document.getElementById("ticket-due").value || null;
     const content = document.getElementById("ticket-content").value.trim();
     const history = content ? [{ text: content, author: requester, timestamp: new Date() }] : [];
     await addDoc(collection(db, "requestTickets"), {
-      title, requestedBy: requester, requestedAt: serverTimestamp(),
+      title, requestedBy: requester, assignee, requestedAt: serverTimestamp(),
       dueDate: due, status: "요청됨", history, updatedAt: serverTimestamp()
     });
   } else {
-    // 기존 요청 업데이트
+    // 기존 업무 업데이트
     const t = tickets.find(x => x.id === ticketEditingId);
     const newStatus = document.getElementById("ticket-status-select").value;
     const newDue = document.getElementById("ticket-due-edit").value || null;
+    const newAssignee = document.getElementById("ticket-assignee-edit").value || null;
     const noteText = document.getElementById("ticket-note-text").value.trim();
-    const author = document.getElementById("ticket-note-author").value;
+    const author = currentUser();
 
     const history = (t.history || []).slice();
     if (t.status !== newStatus) {
       history.push({ text: `상태변경: ${t.status} → ${newStatus}`, author, timestamp: new Date() });
     }
+    if ((t.assignee || null) !== newAssignee) {
+      history.push({ text: `담당자 변경: ${t.assignee || "미지정"} → ${newAssignee || "미지정"}`, author, timestamp: new Date() });
+    }
     if (noteText) {
       history.push({ text: noteText, author, timestamp: new Date() });
     }
     await updateDoc(doc(db, "requestTickets", ticketEditingId), {
-      status: newStatus, dueDate: newDue, history, updatedAt: serverTimestamp()
+      status: newStatus, dueDate: newDue, assignee: newAssignee, history, updatedAt: serverTimestamp()
     });
   }
   ticketOverlay.classList.remove("open");
@@ -489,6 +755,7 @@ onSnapshot(collection(db, "schedules"), (snap) => {
   schedules = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   schedules.sort((a, b) => (minDate(a.dates) || "").localeCompare(minDate(b.dates) || ""));
   renderSchedules();
+  renderDashboard();
 });
 function minDate(dates) { return (dates && dates.length) ? [...dates].sort()[0] : null; }
 
@@ -540,7 +807,7 @@ function renderDateChips() {
 document.getElementById("schedule-add-range").addEventListener("click", () => {
   const start = document.getElementById("schedule-range-start").value;
   const end = document.getElementById("schedule-range-end").value;
-  if (!start || !end || start > end) { alert("시작일과 종료일을 올바르게 선택하세요"); return; }
+  if (!dpParse(start) || !dpParse(end) || start > end) { alert("시작일과 종료일을 올바르게 입력하세요 (YYYY-MM-DD)"); return; }
   let cur = new Date(start + "T00:00:00");
   const endD = new Date(end + "T00:00:00");
   while (cur <= endD) {
@@ -551,7 +818,7 @@ document.getElementById("schedule-add-range").addEventListener("click", () => {
 });
 document.getElementById("schedule-add-single").addEventListener("click", () => {
   const v = document.getElementById("schedule-single-date").value;
-  if (!v) return;
+  if (!dpParse(v)) { alert("날짜를 올바르게 입력하세요 (YYYY-MM-DD)"); return; }
   scheduleDateSet.add(v);
   renderDateChips();
 });
@@ -563,10 +830,13 @@ function openScheduleNew() {
   document.getElementById("schedule-type").value = "공사";
   document.getElementById("schedule-vendor").value = "";
   document.getElementById("schedule-detail").value = "";
+  document.getElementById("schedule-range-start").value = "";
+  document.getElementById("schedule-range-end").value = "";
+  document.getElementById("schedule-single-date").value = "";
   scheduleDateSet = new Set();
   renderDateChips();
   fillNameSelect(document.getElementById("schedule-responsible"), currentUser());
-  fillNameSelect(document.getElementById("schedule-registrar"), currentUser());
+  document.getElementById("schedule-registrar-display").textContent = currentUser();
   document.getElementById("schedule-delete").style.display = "none";
   scheduleOverlay.classList.add("open");
 }
@@ -581,10 +851,13 @@ function openScheduleEdit(id) {
   document.getElementById("schedule-type").value = s.type || "공사";
   document.getElementById("schedule-vendor").value = s.vendor || "";
   document.getElementById("schedule-detail").value = s.detail || "";
+  document.getElementById("schedule-range-start").value = "";
+  document.getElementById("schedule-range-end").value = "";
+  document.getElementById("schedule-single-date").value = "";
   scheduleDateSet = new Set(s.dates || []);
   renderDateChips();
   fillNameSelect(document.getElementById("schedule-responsible"), s.responsible);
-  fillNameSelect(document.getElementById("schedule-registrar"), s.registeredBy);
+  document.getElementById("schedule-registrar-display").textContent = s.registeredBy || "-";
   document.getElementById("schedule-delete").style.display = "inline-block";
   scheduleOverlay.classList.add("open");
 }
@@ -602,13 +875,15 @@ document.getElementById("schedule-save").addEventListener("click", async () => {
     responsible: document.getElementById("schedule-responsible").value,
     detail: document.getElementById("schedule-detail").value.trim(),
     dates: [...scheduleDateSet],
-    registeredBy: document.getElementById("schedule-registrar").value,
     updatedAt: serverTimestamp()
   };
   if (scheduleEditingId === null) {
+    payload.registeredBy = currentUser();
     payload.registeredAt = serverTimestamp();
     await addDoc(collection(db, "schedules"), payload);
   } else {
+    const orig = schedules.find(x => x.id === scheduleEditingId);
+    payload.registeredBy = orig ? orig.registeredBy : currentUser();
     await updateDoc(doc(db, "schedules", scheduleEditingId), payload);
   }
   scheduleOverlay.classList.remove("open");
@@ -628,6 +903,7 @@ let memos = [];
 onSnapshot(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc")), (snap) => {
   memos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   renderMemos();
+  renderDashboard();
 });
 document.getElementById("memo-filter-status").addEventListener("change", renderMemos);
 
@@ -734,6 +1010,67 @@ document.getElementById("memo-save").addEventListener("click", async () => {
   }
   memoOverlay.classList.remove("open");
 });
+
+/* ════════════════════════════════════════════════
+   0. 대시보드 렌더링
+   ════════════════════════════════════════════════ */
+function renderDashboard() {
+  const me = currentUser();
+  document.getElementById("dash-user-name").textContent = me || "-";
+
+  const myTickets = tickets.filter(t => t.requestedBy === me || t.assignee === me);
+  const tEl = document.getElementById("dash-ticket-list");
+  document.getElementById("dash-ticket-count").textContent = myTickets.length;
+  tEl.innerHTML = "";
+  if (!myTickets.length) {
+    tEl.innerHTML = `<div class="dash-empty">관련 업무가 없습니다</div>`;
+  } else {
+    myTickets.slice(0, 20).forEach(t => {
+      const div = document.createElement("div");
+      div.className = "dash-card";
+      div.innerHTML = `<div class="dc-title">${escapeHtml(t.title)} <span class="badge ${t.status}">${t.status}</span></div>
+        <div class="dc-meta">요청 ${t.requestedBy || "-"} · 담당 ${t.assignee || "미지정"} · 기한 ${t.dueDate || "-"}</div>`;
+      div.addEventListener("click", () => { switchTab("tickets"); openTicketDetail(t.id); });
+      tEl.appendChild(div);
+    });
+  }
+
+  const mySchedules = schedules.filter(s => s.registeredBy === me || s.responsible === me);
+  const sEl = document.getElementById("dash-schedule-list");
+  document.getElementById("dash-schedule-count").textContent = mySchedules.length;
+  sEl.innerHTML = "";
+  if (!mySchedules.length) {
+    sEl.innerHTML = `<div class="dash-empty">관련 일정·공사가 없습니다</div>`;
+  } else {
+    mySchedules.slice(0, 20).forEach(s => {
+      const dates = (s.dates || []).slice().sort();
+      const dateLabel = dates.length > 2 ? `${dates[0]} ~ ${dates[dates.length-1]}` : dates.join(", ");
+      const div = document.createElement("div");
+      div.className = "dash-card";
+      div.innerHTML = `<div class="dc-title">${escapeHtml(s.title)} <span class="badge type-${s.type}">${s.type}</span></div>
+        <div class="dc-meta">${dateLabel || "-"} · 담당 ${s.responsible || "-"}</div>`;
+      div.addEventListener("click", () => { switchTab("schedules"); openScheduleEdit(s.id); });
+      sEl.appendChild(div);
+    });
+  }
+
+  const myMemos = memos.filter(m => m.receivedBy === me || m.assignee === me);
+  const mEl = document.getElementById("dash-memo-list");
+  document.getElementById("dash-memo-count").textContent = myMemos.length;
+  mEl.innerHTML = "";
+  if (!myMemos.length) {
+    mEl.innerHTML = `<div class="dash-empty">관련 메모가 없습니다</div>`;
+  } else {
+    myMemos.slice(0, 20).forEach(m => {
+      const div = document.createElement("div");
+      div.className = "dash-card";
+      div.innerHTML = `<div class="dc-title">${m.assignee || "미지정"} - ${escapeHtml(m.subject || "")} <span class="badge status-${m.status}">${m.status}</span></div>
+        <div class="dc-meta">받은사람 ${m.receivedBy || "-"} · ${fmtTs(m.receivedAt)}</div>`;
+      div.addEventListener("click", () => { switchTab("memos"); openMemoEdit(m.id); });
+      mEl.appendChild(div);
+    });
+  }
+}
 </script>
 </body>
 </html>
