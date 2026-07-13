@@ -12,27 +12,27 @@
   /* ── 상단 바 ───────────────────────────── */
   #topbar {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 28px;
+    padding: 8px 24px;
     background: var(--surface);
     border-bottom: 1px solid var(--line);
     flex-shrink: 0;
   }
-  #topbar .brand { font-size: clamp(18px, 1.6vw, 26px); font-weight: 800; }
+  #topbar .brand { font-size: clamp(15px, 1.35vw, 21px); font-weight: 800; }
   #topbar .brand span { color: var(--ink-soft); font-weight: 500; font-size: 0.7em; margin-left: 8px; }
   .icon-btn {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 26px; height: 26px; margin-left: 6px; vertical-align: middle;
-    border: 1.5px solid var(--line); border-radius: 8px; background: var(--bg);
-    color: var(--ink-soft); font-size: 14px; line-height: 1; cursor: pointer; padding: 0;
+    width: 22px; height: 22px; margin-left: 6px; vertical-align: middle;
+    border: 1.5px solid var(--line); border-radius: 7px; background: var(--bg);
+    color: var(--ink-soft); font-size: 12px; line-height: 1; cursor: pointer; padding: 0;
   }
   .icon-btn:active { background: var(--line); }
   .icon-btn.is-active { color: var(--accent); border-color: var(--accent); }
-  #clock { font-size: clamp(16px, 1.4vw, 22px); font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-  #topbar-right { display: flex; align-items: center; gap: 16px; }
+  #clock { font-size: clamp(13px, 1.15vw, 18px); font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  #topbar-right { display: flex; align-items: center; gap: 12px; }
   .nav-link {
     display: flex; align-items: center; gap: 6px; text-decoration: none;
-    background: var(--bg); color: var(--ink-soft); border: 1.5px solid var(--line); border-radius: 20px;
-    padding: 8px 14px; font-size: 13px; font-weight: 700; flex-shrink: 0;
+    background: var(--bg); color: var(--ink-soft); border: 1.5px solid var(--line); border-radius: 18px;
+    padding: 6px 12px; font-size: 12px; font-weight: 700; flex-shrink: 0;
   }
   .nav-link:active { background: var(--line); }
   .nav-link-icon { font-size: 16px; }
@@ -214,13 +214,37 @@
   #day-detail-date .dow { font-size: 20px; font-weight: 700; color: var(--ink-soft); margin-left: 10px; }
   .day-detail-event {
     border-left: 6px solid transparent; border-radius: 12px; padding: 16px 18px; margin-bottom: 14px;
-    font-size: 19px; font-weight: 700; line-height: 1.5;
+    font-size: 19px; font-weight: 700; line-height: 1.5; cursor: pointer;
   }
+  .day-detail-event:active { filter: brightness(0.95); }
   .day-detail-event.type-공사 { background: var(--type-공사-bg); color: var(--type-공사); border-left-color: var(--type-공사); }
   .day-detail-event.type-미팅 { background: var(--type-미팅-bg); color: var(--type-미팅); border-left-color: var(--type-미팅); }
   .day-detail-event.type-업무 { background: var(--type-업무-bg); color: var(--type-업무); border-left-color: var(--type-업무); }
   .day-detail-event .dd-meta { font-size: 15px; font-weight: 600; color: var(--ink-soft); margin-top: 6px; }
+  .day-detail-event .dd-tap-hint { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); opacity: 0.75; margin-top: 6px; }
   #day-detail-empty { font-size: 19px; color: var(--dim); text-align: center; padding: 30px 0; }
+
+  /* ── 개별 일정 상세내역 ────────────────── */
+  #event-detail-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    display: none; align-items: center; justify-content: center; z-index: 950; padding: 24px;
+  }
+  #event-detail-overlay.open { display: flex; }
+  #event-detail-card {
+    background: var(--surface); border-radius: 22px; padding: 32px 36px;
+    max-width: 640px; width: 100%; max-height: 85vh; overflow-y: auto; position: relative;
+  }
+  #event-detail-close {
+    position: absolute; top: 16px; right: 18px; width: 40px; height: 40px; border-radius: 50%;
+    border: none; background: var(--bg); font-size: 24px; font-weight: 900; color: var(--ink-soft); cursor: pointer;
+  }
+  #event-detail-title { font-size: 24px; font-weight: 900; margin-bottom: 4px; padding-right: 46px; }
+  #event-detail-meta { font-size: 15px; color: var(--ink-soft); margin-bottom: 18px; line-height: 1.6; }
+  #event-detail-meta b { color: var(--ink); }
+  #event-detail-history .eh-item { padding: 10px 0; border-bottom: 1px dashed var(--line); font-size: 14.5px; }
+  #event-detail-history .eh-item:last-child { border-bottom: none; }
+  #event-detail-history .eh-meta { color: var(--ink-soft); font-size: 12.5px; margin-bottom: 3px; }
+  #event-detail-empty-hist { color: var(--dim); font-size: 14px; padding: 6px 0; }
 </style>
 </head>
 <body>
@@ -280,6 +304,15 @@
     <button id="day-detail-close" aria-label="닫기">×</button>
     <div id="day-detail-date"></div>
     <div id="day-detail-events"></div>
+  </div>
+</div>
+
+<div id="event-detail-overlay">
+  <div id="event-detail-card">
+    <button id="event-detail-close" aria-label="닫기">×</button>
+    <div id="event-detail-title"></div>
+    <div id="event-detail-meta"></div>
+    <div id="event-detail-history"></div>
   </div>
 </div>
 
@@ -352,6 +385,29 @@ onSnapshot(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc")), (
 /* ───────── 캘린더 렌더링 ───────── */
 function pad(n) { return String(n).padStart(2, "0"); }
 function isoDate(y, m, d) { return `${y}-${pad(m+1)}-${pad(d)}`; }
+/* "2026-07-15" → "07/15" */
+function mdShort(iso) { return iso.slice(5,7) + "/" + iso.slice(8,10); }
+/* 연속된 날짜들을 "07/15~07/23" 형태의 범위 목록으로 압축 (입력화면과 동일한 방식) */
+function formatDateRanges(dates) {
+  if (!dates || !dates.length) return "-";
+  const sorted = [...new Set(dates)].sort();
+  const ranges = [];
+  let start = sorted[0], prev = sorted[0];
+  for (let i = 1; i < sorted.length; i++) {
+    const d = sorted[i];
+    const prevDate = new Date(prev + "T00:00:00");
+    prevDate.setDate(prevDate.getDate() + 1);
+    const nextIso = isoDate(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
+    if (d === nextIso) {
+      prev = d;
+    } else {
+      ranges.push(start === prev ? mdShort(start) : `${mdShort(start)}~${mdShort(prev)}`);
+      start = d; prev = d;
+    }
+  }
+  ranges.push(start === prev ? mdShort(start) : `${mdShort(start)}~${mdShort(prev)}`);
+  return ranges.join(", ");
+}
 
 function renderCalendar() {
   document.getElementById("month-title").textContent = `${viewYear}년 ${viewMonth+1}월`;
@@ -449,7 +505,11 @@ function renderCalendar() {
         const bar = document.createElement("div");
         bar.className = "event-chip type-" + (seg.s.type || "업무");
         bar.style.gridColumn = `${seg.startCol + 1} / ${seg.endCol + 2}`;
-        bar.textContent = (seg.s.time ? seg.s.time + " " : "") + seg.s.title + (seg.s.vendor ? ` (${seg.s.vendor})` : "");
+        // 장기 연속일정(같은 주 안에서 이틀 이상 이어지는 구간)은 업체 옆에 "07/15~07/23" 범위를 표시
+        const rangeNote = seg.startCol !== seg.endCol ? `${mdShort(weekIsos[seg.startCol])}~${mdShort(weekIsos[seg.endCol])}` : "";
+        const noteParts = [seg.s.vendor, rangeNote].filter(Boolean);
+        const noteText = noteParts.length ? ` (${noteParts.join(" ")})` : "";
+        bar.textContent = (seg.s.time ? seg.s.time + " " : "") + seg.s.title + noteText;
         bar.addEventListener("click", (e) => {
           e.stopPropagation();
           const c = weekCells[seg.startCol];
@@ -506,7 +566,12 @@ function openDayDetail(iso, y, m, d) {
       div.className = "day-detail-event type-" + (ev.type || "업무");
       const lastDetail = Array.isArray(ev.history) && ev.history.length ? ev.history[ev.history.length-1].text : ev.detail;
       div.innerHTML = `${ev.time ? `<b>${escapeHtml(ev.time)}</b> ` : ""}${escapeHtml(ev.title)}${ev.vendor ? ` (${escapeHtml(ev.vendor)})` : ""}
-        <div class="dd-meta">담당: ${ev.responsible || "미지정"}${lastDetail ? " · " + escapeHtml(lastDetail) : ""}</div>`;
+        <div class="dd-meta">담당: ${ev.responsible || "미지정"}${lastDetail ? " · " + escapeHtml(lastDetail) : ""}</div>
+        <div class="dd-tap-hint">👆 눌러서 상세내역 보기</div>`;
+      div.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openEventDetail(ev);
+      });
       evEl.appendChild(div);
     });
   }
@@ -515,6 +580,40 @@ function openDayDetail(iso, y, m, d) {
 document.getElementById("day-detail-close").addEventListener("click", () => dayDetailOverlay.classList.remove("open"));
 dayDetailOverlay.addEventListener("click", (e) => {
   if (e.target === dayDetailOverlay) dayDetailOverlay.classList.remove("open");
+});
+
+/* ───────── 개별 일정 상세내역 ───────── */
+const eventDetailOverlay = document.getElementById("event-detail-overlay");
+function openEventDetail(ev) {
+  document.getElementById("event-detail-title").textContent = ev.title || "-";
+
+  const metaLines = [];
+  metaLines.push(`유형: <b>${escapeHtml(ev.type === "공사" ? "공사(작업)" : (ev.type || "-"))}</b>`);
+  if (ev.vendor) metaLines.push(`업체/부서: <b>${escapeHtml(ev.vendor)}</b>`);
+  metaLines.push(`담당: <b>${escapeHtml(ev.responsible || "미지정")}</b>`);
+  metaLines.push(`날짜: <b>${escapeHtml(formatDateRanges(ev.dates))}</b>${ev.time ? ` <b>${escapeHtml(ev.time)}</b>` : ""}`);
+  metaLines.push(`등록자: <b>${escapeHtml(ev.registeredBy || "-")}</b>`);
+  document.getElementById("event-detail-meta").innerHTML = metaLines.join("<br>");
+
+  const histEl = document.getElementById("event-detail-history");
+  histEl.innerHTML = "";
+  const hist = (ev.history && ev.history.length) ? ev.history
+    : (ev.detail ? [{ text: ev.detail, author: ev.registeredBy, timestamp: ev.registeredAt }] : []);
+  if (!hist.length) {
+    histEl.innerHTML = `<div id="event-detail-empty-hist">등록된 상세내용이 없습니다</div>`;
+  } else {
+    hist.slice().reverse().forEach(h => {
+      const div = document.createElement("div");
+      div.className = "eh-item";
+      div.innerHTML = `<div class="eh-meta">${escapeHtml(h.author || "-")} · ${fmtTimestamp(h.timestamp)}</div><div>${escapeHtml(h.text)}</div>`;
+      histEl.appendChild(div);
+    });
+  }
+  eventDetailOverlay.classList.add("open");
+}
+document.getElementById("event-detail-close").addEventListener("click", () => eventDetailOverlay.classList.remove("open"));
+eventDetailOverlay.addEventListener("click", (e) => {
+  if (e.target === eventDetailOverlay) eventDetailOverlay.classList.remove("open");
 });
 
 document.getElementById("prev-month").addEventListener("click", () => {
