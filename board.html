@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="common.css" />
 <style>
   html, body { height: 100%; overflow: hidden; }
-  #app { display: flex; flex-direction: column; height: 100vh; }
+  #app { display: flex; flex-direction: column; height: 100vh; transition: transform 8s ease-in-out; }
 
   /* ── 상단 바 ───────────────────────────── */
   #topbar {
@@ -152,6 +152,10 @@
     cursor: pointer; border: 1px solid #EFC9C9;
   }
   .alert-card .title-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+  .alert-card .alert-line { display: flex; align-items: baseline; gap: 5px; overflow: hidden; }
+  .alert-card .alert-line .title { flex: 1 1 auto; }
+  .alert-card .alert-sep { color: var(--dim); flex-shrink: 0; }
+  .alert-card .alert-line .assignee-name { flex-shrink: 0; margin-top: 0; }
   .alert-card .title { font-weight: 800; font-size: clamp(13px, 1vw, 16px); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .alert-card .meta { font-size: clamp(11px, 0.8vw, 13px); color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .alert-card .urgency-tag {
@@ -865,14 +869,13 @@ function buildMemoAlertCard(g, now) {
   const receivedMs = g.items[0].receivedAt?.toDate ? g.items[0].receivedAt.toDate().getTime() : now;
   const isOld = (now - receivedMs) > 24 * 60 * 60 * 1000;
   card.className = "alert-card " + (isOld ? "urgent-blink" : "pulsing");
-  const countTag = g.items.length > 1 ? `<span class="count-tag">${g.items.length}건</span>` : "";
+  const countText = g.items.length > 1 ? ` · ${g.items.length}건` : "";
   card.innerHTML = `
-    <div class="title-row">
-      <span class="type-tag">전화</span>
-      <span class="title">${escapeHtml(g.subject || "")}</span>
-      ${countTag}
+    <div class="alert-line">
+      <span class="title">${escapeHtml(g.subject || "")}(전화${countText})</span>
+      <span class="alert-sep">/</span>
+      <span class="assignee-name">${escapeHtml(g.assignee || "미지정")}</span>
     </div>
-    <div class="assignee-line">담당 <b class="assignee-name">${escapeHtml(g.assignee || "미지정")}</b></div>
   `;
   card.addEventListener("click", () => openMemoDetail(g, false));
   return card;
@@ -894,11 +897,11 @@ function buildTicketAlertCard(t, now) {
   const isOld = (now - baseMs) > 24 * 60 * 60 * 1000;
   card.className = "alert-card " + (isOld ? "urgent-blink" : "pulsing");
   card.innerHTML = `
-    <div class="title-row">
-      <span class="type-tag type-tag-ticket">업무</span>
-      <span class="title">${escapeHtml(t.title || "-")}</span>
+    <div class="alert-line">
+      <span class="title">${escapeHtml(t.title || "-")}(업무)</span>
+      <span class="alert-sep">/</span>
+      <span class="assignee-name">${escapeHtml(t.assignee || "미지정")}</span>
     </div>
-    <div class="assignee-line">담당 <b class="assignee-name">${escapeHtml(t.assignee || "미지정")}</b></div>
   `;
   card.addEventListener("click", () => openTicketDetailBoard(t));
   return card;
@@ -1051,6 +1054,23 @@ setInterval(() => {
     location.reload();
   }
 }, AUTO_RELOAD_CHECK_MS);
+
+/* ── 번인(burn-in) 방지: 픽셀 시프트 ──────────────────────
+   상단바/캘린더 격자선처럼 하루 종일 같은 자리에 떠 있는 요소가 계속 정확히 같은
+   픽셀 위치에 고정되면 화면에 옅게 눌어붙는 잔상(번인)이 생길 수 있음.
+   화면 전체를 몇 분마다 1~2px씩, 사람 눈에 안 보일 만큼 미세하게 살짝 이동시켜
+   같은 픽셀이 계속 켜져 있지 않도록 함 */
+const BURNIN_SHIFT_INTERVAL_MS = 3 * 60 * 1000; // 3분마다 위치를 살짝 바꿈
+const BURNIN_SHIFT_OFFSETS = [
+  [0, 0], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]
+];
+let burninShiftIdx = 0;
+const appEl = document.getElementById("app");
+setInterval(() => {
+  burninShiftIdx = (burninShiftIdx + 1) % BURNIN_SHIFT_OFFSETS.length;
+  const [dx, dy] = BURNIN_SHIFT_OFFSETS[burninShiftIdx];
+  appEl.style.transform = `translate(${dx}px, ${dy}px)`;
+}, BURNIN_SHIFT_INTERVAL_MS);
 
 renderCalendar();
 </script>

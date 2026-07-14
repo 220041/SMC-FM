@@ -42,10 +42,15 @@
   .sheet-updated-at { font-size: 12.5px; color: var(--dim); margin-right: 4px; }
   .sheet-status { padding: 26px 4px; color: var(--ink-soft); font-size: 15px; line-height: 1.7; }
   .sheet-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
-  .sheet-table-wrap table { width: 100%; border-collapse: collapse; font-size: 16.5px; table-layout: fixed; }
-  .sheet-table-wrap th, .sheet-table-wrap td { padding: 14px 12px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* 타이트 레이아웃: 열 너비를 내용에 맞춰 자동으로(auto) 잡되, 적요 열만 너무 길어지지 않도록 제한 */
+  .sheet-table-wrap table { width: auto; min-width: 100%; border-collapse: collapse; font-size: 16.5px; }
+  .sheet-table-wrap th, .sheet-table-wrap td { padding: 10px 11px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
   .sheet-table-wrap th { background: var(--bg); font-weight: 800; color: var(--ink-soft); font-size: 15px; position: sticky; top: 0; }
   .sheet-table-wrap tbody tr:hover { background: #FAFBF9; }
+  /* 적요(3번째 열)만 예외적으로 폭 제한 + 말줄임 (전체 내용은 title 툴팁으로 확인) */
+  .sheet-table-wrap th:nth-child(3), .sheet-table-wrap td:nth-child(3) {
+    max-width: 260px; overflow: hidden; text-overflow: ellipsis;
+  }
 </style>
 </head>
 <body>
@@ -118,10 +123,8 @@ function parseCsv(text) {
   return rows;
 }
 
-/* A~G(0~6) 출력, H(7, 빈 열)는 숨기고, I~K(8~10) 출력. 그 뒤(L열 이후, 11~)는 표시하지 않음.
-   I·J·K(발주일/비고/작성일)는 계약팀이 나중에 채워 넣는 칸이라 지금은 비어 있어도 넉넉하게 폭을 확보 */
+/* A~G(0~6) 출력, H(7, 빈 열)는 숨기고, I~K(8~10) 출력. 그 뒤(L열 이후, 11~)는 표시하지 않음 */
 const VISIBLE_COL_INDICES = [0, 1, 2, 3, 4, 5, 6, 8, 9, 10];
-const COL_WIDTH = { 0: 90, 1: 130, 2: 220, 3: 90, 4: 100, 5: 110, 6: 100, 8: 160, 9: 160, 10: 140 };
 function renderSheetTable(rows) {
   const wrap = document.getElementById("sheet-table-wrap");
   const header = rows[0];
@@ -130,7 +133,7 @@ function renderSheetTable(rows) {
   let html = "<table><thead><tr>";
   cols.forEach((ci) => {
     const label = header[ci] && header[ci].trim() ? header[ci] : "열" + (ci + 1);
-    html += `<th style="width:${COL_WIDTH[ci] || 100}px;">${escapeHtml(label)}</th>`;
+    html += `<th>${escapeHtml(label)}</th>`;
   });
   html += "</tr></thead><tbody>";
   body.forEach(r => {
