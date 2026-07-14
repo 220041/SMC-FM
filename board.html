@@ -40,6 +40,7 @@
   .icon-btn.is-active { color: var(--accent); border-color: var(--accent); }
   #clock { font-size: clamp(13px, 1.15vw, 18px); font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
   #topbar-right { display: flex; align-items: center; gap: 12px; justify-self: end; }
+  #sound-toggle.sound-off { color:var(--alert); border-color:var(--alert); }
   .nav-link {
     display: flex; align-items: center; gap: 6px; text-decoration: none;
     background: var(--bg); color: var(--ink-soft); border: 1.5px solid var(--line); border-radius: 18px;
@@ -246,19 +247,15 @@
     font-size: clamp(38px, 6vw, 68px); font-weight: 900; color: var(--ink);
     font-variant-numeric: tabular-nums; letter-spacing: 1px;
   }
-  #aux-body { display: flex; gap: 16px; flex: 1 1 55%; min-height: 0; }
-  #aux-alert-col, #aux-week-col {
-    flex: 1 1 50%; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  #aux-body { display: grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(0,1fr)); gap: 16px; flex: 1; min-height: 0; }
+  #aux-alert-col, #aux-week-col, #aux-due-section, #aux-today-section {
+    min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
     display: flex; flex-direction: column; min-height: 0;
   }
-  #aux-alert-col h3, #aux-week-col h3, #aux-today-section h3 {
+  #aux-alert-col h3, #aux-week-col h3, #aux-due-section h3, #aux-today-section h3 {
     font-size: clamp(14px, 1.1vw, 17px); margin: 0; padding: 12px 16px; flex-shrink: 0; border-bottom: 1px solid var(--line);
   }
-  #aux-alert-list, #aux-week-list, #aux-today-list { flex: 1; overflow-y: auto; padding: 10px 14px; }
-  #aux-today-section {
-    flex: 1 1 30%; min-height: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-    display: flex; flex-direction: column;
-  }
+  #aux-alert-list, #aux-week-list, #aux-due-list, #aux-today-list { flex: 1; overflow-y: auto; padding: 10px 14px; }
   .agenda-row {
     display: flex; align-items: baseline; gap: 9px; padding: 8px 4px; border-bottom: 1px dashed var(--line);
     font-size: clamp(13px, 1vw, 16px); cursor: pointer;
@@ -269,11 +266,22 @@
   }
   .agenda-title { flex: 1 1 auto; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .agenda-assignee { flex-shrink: 0; color: var(--ink-soft); font-size: 0.9em; }
+  .agenda-day-group { padding:0 2px 5px; }
+  .agenda-day-group + .agenda-day-group { border-top:2px solid var(--line); padding-top:8px; margin-top:5px; }
+  .agenda-day-head { font-size:clamp(13px,1vw,16px); font-weight:900; color:var(--accent); margin:0 2px 3px; }
+  .agenda-day-head.is-today { color:var(--today); }
+  .due-label { flex-shrink:0; min-width:78px; font-weight:900; color:var(--accent); }
+  .due-label.is-overdue { color:var(--alert); }
+  .due-label.is-today { color:#B26A00; }
   #aux-back-btn {
     align-self: center; border: none; border-radius: 12px; padding: 12px 26px; font-size: 15px; font-weight: 800;
     background: var(--accent); color: #fff; cursor: pointer; flex-shrink: 0;
   }
   #aux-back-btn:active { background: #1f3a5f; }
+  #aux-screen.clock-only-mode { justify-content:center; align-items:center; }
+  #aux-screen.clock-only-mode #aux-clock-box { width:100%; }
+  #aux-screen.clock-only-mode #aux-date, #aux-screen.clock-only-mode #aux-body, #aux-screen.clock-only-mode #aux-back-btn { display:none; }
+  #aux-screen.clock-only-mode #aux-time { font-size:clamp(110px,18vw,260px); letter-spacing:4px; }
 
   /* ── 이름 선택 모달 ────────────────────── */
   #name-modal-overlay {
@@ -386,6 +394,7 @@
     <div id="topbar-right">
       <button type="button" id="fullscreen-btn" class="icon-btn" title="전체화면">⛶</button>
       <button type="button" id="aux-preview-btn" class="icon-btn" title="보조화면 미리보기">🖥️</button>
+      <button type="button" id="sound-toggle" class="icon-btn sound-off" title="정각 음성 및 알림음 켜기" aria-pressed="false">🔇</button>
       <div id="clock">--:--</div>
       <a class="nav-link" href="input.html" title="업무 화면으로 이동">
         <span class="nav-link-icon">✏️</span><span class="nav-link-text">업무</span>
@@ -441,10 +450,14 @@
         <h3>이번주 일정</h3>
         <div id="aux-week-list" class="scrollbar-thin"></div>
       </div>
-    </div>
-    <div id="aux-today-section">
-      <h3>오늘 일정</h3>
-      <div id="aux-today-list" class="scrollbar-thin"></div>
+      <div id="aux-due-section">
+        <h3>기한 임박 업무</h3>
+        <div id="aux-due-list" class="scrollbar-thin"></div>
+      </div>
+      <div id="aux-today-section">
+        <h3>오늘 일정</h3>
+        <div id="aux-today-list" class="scrollbar-thin"></div>
+      </div>
     </div>
     <button type="button" id="aux-back-btn">🗓️ 월간일정으로 돌아가기</button>
   </div>
@@ -508,6 +521,66 @@ function tickClock() {
 tickClock();
 setInterval(tickClock, 1000); // 초 단위로 갱신 — 화면이 살아있는지(멈추지 않았는지) 확인용
 
+/* ───────── 정각 음성 / 17:26 알림음 ─────────
+   브라우저 자동재생 정책 때문에 상단의 소리 버튼을 한 번 눌러 활성화하도록 한다. */
+const soundToggle = document.getElementById("sound-toggle");
+let soundEnabled = localStorage.getItem("smcfm_board_sound") === "1";
+let boardAudioContext = null;
+function updateSoundToggle() {
+  soundToggle.textContent = soundEnabled ? "🔊" : "🔇";
+  soundToggle.classList.toggle("sound-off", !soundEnabled);
+  soundToggle.setAttribute("aria-pressed", String(soundEnabled));
+  soundToggle.title = soundEnabled ? "정각 음성 및 알림음 켜짐" : "정각 음성 및 알림음 켜기";
+}
+async function ensureBoardAudio() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return false;
+  if (!boardAudioContext) boardAudioContext = new AudioContextClass();
+  if (boardAudioContext.state === "suspended") {
+    try { await boardAudioContext.resume(); } catch (_) { return false; }
+  }
+  return boardAudioContext.state === "running";
+}
+async function playBoardChime() {
+  if (!soundEnabled || !(await ensureBoardAudio())) return false;
+  const start = boardAudioContext.currentTime;
+  [659.25, 783.99, 987.77].forEach((frequency, index) => {
+    const oscillator = boardAudioContext.createOscillator();
+    const gain = boardAudioContext.createGain();
+    const at = start + index * 0.22;
+    oscillator.frequency.value = frequency;
+    oscillator.type = "sine";
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(0.22, at + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.18);
+    oscillator.connect(gain); gain.connect(boardAudioContext.destination);
+    oscillator.start(at); oscillator.stop(at + 0.2);
+  });
+  return true;
+}
+function speakBoard(text) {
+  if (!soundEnabled || !window.speechSynthesis) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "ko-KR";
+  utterance.rate = 0.9;
+  utterance.volume = 1;
+  const koreanVoice = speechSynthesis.getVoices().find(voice => /^ko(-|_)/i.test(voice.lang));
+  if (koreanVoice) utterance.voice = koreanVoice;
+  speechSynthesis.speak(utterance);
+}
+soundToggle.addEventListener("click", async () => {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem("smcfm_board_sound", soundEnabled ? "1" : "0");
+  updateSoundToggle();
+  if (soundEnabled) {
+    const played = await playBoardChime();
+    if (!played) speakBoard("소리가 켜졌습니다");
+  } else if (window.speechSynthesis) {
+    speechSynthesis.cancel();
+  }
+});
+updateSoundToggle();
+
 /* ───────── 전체화면 토글 ───────── */
 const fullscreenBtn = document.getElementById("fullscreen-btn");
 function isFullscreen() {
@@ -560,6 +633,7 @@ onSnapshot(query(collection(db, "schedules"), orderBy("registeredAt", "desc"), l
 onSnapshot(query(collection(db, "requestTickets"), orderBy("updatedAt", "desc"), limit(100)), (snap) => {
   tickets = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => !t.archived && t.status !== "완료");
   renderAlerts();
+  renderAuxDue();
 });
 
 onSnapshot(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc"), limit(100)), (snap) => {
@@ -1170,7 +1244,7 @@ function buildAgendaRow(dateLabel, ev) {
   row.className = "agenda-row";
   const timeText = ev.time ? ` ${ev.time}` : "";
   row.innerHTML = `
-    <span class="agenda-date">${escapeHtml(dateLabel)}</span>
+    ${dateLabel ? `<span class="agenda-date">${escapeHtml(dateLabel)}</span>` : ""}
     <span class="agenda-title">${escapeHtml(ev.title || "-")}${escapeHtml(timeText)}</span>
     <span class="agenda-assignee">${escapeHtml(responsibleArray(ev).join(", ") || "미지정")}</span>
   `;
@@ -1193,22 +1267,58 @@ function weekRangeIsos(base) {
 }
 function renderAuxWeek() {
   const weekIsos = weekRangeIsos(new Date());
-  const rows = [];
+  const groups = [];
   weekIsos.forEach(iso => {
     const d = new Date(iso + "T00:00:00");
     const label = `${d.getMonth()+1}/${d.getDate()}(${AUX_DOW[d.getDay()]})`;
-    schedules.forEach(s => {
-      if (Array.isArray(s.dates) && s.dates.includes(iso)) rows.push({ iso, label, s });
+    const items = schedules.filter(s => Array.isArray(s.dates) && s.dates.includes(iso));
+    items.sort((a, b) => {
+      if (!a.time && !b.time) return 0;
+      if (!a.time) return 1;
+      if (!b.time) return -1;
+      return a.time.localeCompare(b.time);
     });
+    if (items.length) groups.push({ iso, label, items });
   });
-  rows.sort((a, b) => a.iso.localeCompare(b.iso) || (a.s.time || "").localeCompare(b.s.time || ""));
   const el = document.getElementById("aux-week-list");
   el.innerHTML = "";
-  if (!rows.length) {
+  if (!groups.length) {
     el.innerHTML = `<div class="empty-alert">이번주 일정이 없습니다</div>`;
   } else {
-    rows.forEach(({ label, s }) => el.appendChild(buildAgendaRow(label, s)));
+    const today = isoDate(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+    groups.forEach(({ iso, label, items }) => {
+      const group = document.createElement("section");
+      group.className = "agenda-day-group";
+      const head = document.createElement("div");
+      head.className = "agenda-day-head" + (iso === today ? " is-today" : "");
+      head.textContent = iso === today ? `${label} · 오늘` : label;
+      group.appendChild(head);
+      items.forEach(s => group.appendChild(buildAgendaRow(s.time || "종일", s)));
+      el.appendChild(group);
+    });
   }
+}
+function renderAuxDue() {
+  const today = isoDate(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+  const dueItems = tickets.filter(t => !t.archived && t.status !== "완료" && t.dueDate)
+    .map(t => ({ t, days: Math.round((new Date(t.dueDate + "T00:00:00") - new Date(today + "T00:00:00")) / 86400000) }))
+    .filter(item => item.days <= 3)
+    .sort((a, b) => a.days - b.days || updatedMillis(b.t) - updatedMillis(a.t));
+  const el = document.getElementById("aux-due-list");
+  el.innerHTML = "";
+  if (!dueItems.length) {
+    el.innerHTML = `<div class="empty-alert">기한 임박 업무가 없습니다</div>`;
+    return;
+  }
+  dueItems.forEach(({ t, days }) => {
+    const row = document.createElement("div");
+    row.className = "agenda-row";
+    const label = days < 0 ? `초과 ${Math.abs(days)}일` : days === 0 ? "오늘" : `D-${days}`;
+    const labelClass = days < 0 ? " is-overdue" : days === 0 ? " is-today" : "";
+    row.innerHTML = `<span class="due-label${labelClass}">${label}</span><span class="agenda-title">${escapeHtml(t.title || "-")}</span><span class="agenda-assignee">${escapeHtml(t.requestedBy || "-")} → ${escapeHtml(t.assignee || "미지정")}</span>`;
+    row.addEventListener("click", () => openTicketDetailBoard(t));
+    el.appendChild(row);
+  });
 }
 function renderAuxToday() {
   const now = new Date();
@@ -1357,10 +1467,15 @@ const AUX_CYCLE_MS = 30 * 60 * 1000;   // 30분마다
 const AUX_DURATION_MS = 5 * 60 * 1000; // 5분간 표출
 let auxCycleTimeoutId = null;
 let auxDurationTimeoutId = null;
+let clockOnlyTimeoutId = null;
 
-function showAuxScreen() {
-  renderAuxWeek();
-  renderAuxToday();
+function showAuxScreen({ clockOnly = false } = {}) {
+  auxScreenEl.classList.toggle("clock-only-mode", clockOnly);
+  if (!clockOnly) {
+    renderAuxWeek();
+    renderAuxDue();
+    renderAuxToday();
+  }
   topbarEl.classList.add("fade-out");
   mainEl.classList.add("fade-out");
   setTimeout(() => {
@@ -1376,6 +1491,7 @@ function showMainScreen() {
   auxScreenEl.classList.add("fade-out");
   setTimeout(() => {
     auxScreenEl.style.display = "none";
+    auxScreenEl.classList.remove("clock-only-mode");
     topbarEl.style.display = "grid";
     mainEl.style.display = "flex";
     requestAnimationFrame(fitCalendarDensity);
@@ -1396,6 +1512,7 @@ function scheduleAuxCycle() {
 }
 function returnToMainScreen() {
   if (auxDurationTimeoutId) { clearTimeout(auxDurationTimeoutId); auxDurationTimeoutId = null; }
+  if (clockOnlyTimeoutId) { clearTimeout(clockOnlyTimeoutId); clockOnlyTimeoutId = null; }
   showMainScreen();
   scheduleAuxCycle();
 }
@@ -1407,6 +1524,38 @@ document.getElementById("aux-preview-btn").addEventListener("click", () => {
   showAuxScreen();
 });
 scheduleAuxCycle();
+
+function showClockOnlyMoment(now = new Date()) {
+  if (auxCycleTimeoutId) { clearTimeout(auxCycleTimeoutId); auxCycleTimeoutId = null; }
+  if (auxDurationTimeoutId) { clearTimeout(auxDurationTimeoutId); auxDurationTimeoutId = null; }
+  if (clockOnlyTimeoutId) clearTimeout(clockOnlyTimeoutId);
+  showAuxScreen({ clockOnly:true });
+  const untilNextMinute = Math.max(1000, (60 - now.getSeconds()) * 1000 - now.getMilliseconds());
+  clockOnlyTimeoutId = setTimeout(returnToMainScreen, untilNextMinute);
+}
+let lastHourlyAnnouncement = "";
+let lastClockOnlyMoment = "";
+function handleTimedBoardEvents() {
+  const now = new Date();
+  const dateKey = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;
+  if (now.getMinutes() === 0) {
+    const hourKey = `${dateKey}-${now.getHours()}`;
+    if (hourKey !== lastHourlyAnnouncement) {
+      lastHourlyAnnouncement = hourKey;
+      speakBoard(`${now.getHours()}시입니다.`);
+    }
+  }
+  if (now.getHours() === 17 && now.getMinutes() === 26) {
+    const momentKey = `${dateKey}-1726`;
+    if (momentKey !== lastClockOnlyMoment) {
+      lastClockOnlyMoment = momentKey;
+      playBoardChime().then(played => { if (!played) speakBoard("알림입니다"); });
+      showClockOnlyMoment(now);
+    }
+  }
+}
+handleTimedBoardEvents();
+setInterval(handleTimedBoardEvents, 1000);
 
 /* 팝업은 ESC로 닫고, 열린 동안 키보드 포커스가 팝업 안에 머물도록 한다. */
 const boardOverlays = [dayDetailOverlay, eventDetailOverlay, memoDetailOverlay, document.getElementById("name-modal-overlay")];
