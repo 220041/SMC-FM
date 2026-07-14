@@ -164,20 +164,41 @@
   .resp-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
   .resp-chip:disabled { cursor: not-allowed; opacity: 0.55; }
 
-  /* ── 관련업무: 발송/수신 토글 ─────────────── */
+  /* ── 관련업무: 수신/발송 토글(스크롤 이동 버튼) + 개수/업데이트 표시 ─────────────── */
   .dir-toggle { display: flex; gap: 6px; }
   .dir-toggle-btn {
     background: var(--bg); color: var(--ink-soft); border: 1.5px solid var(--line); border-radius: 20px;
     padding: 7px 16px; font-size: 14px; font-weight: 700; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
   }
   .dir-toggle-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .dir-count {
+    background: var(--line); color: var(--ink-soft); font-size: 12px; font-weight: 800;
+    padding: 1px 8px; border-radius: 10px; min-width: 18px; text-align: center;
+  }
+  .dir-toggle-btn.active .dir-count { background: rgba(255,255,255,0.28); color: #fff; }
+  @keyframes dirBtnBlink { 0%, 100% { box-shadow: 0 0 0 0 rgba(194,59,59,0); } 50% { box-shadow: 0 0 0 3px rgba(194,59,59,0.45); } }
+  .dir-toggle-btn.has-update { animation: dirBtnBlink 1.1s ease-in-out infinite; border-color: var(--alert); }
+  .dir-toggle-btn.has-update .dir-count { background: var(--alert); color: #fff; }
 
-  /* ── 관련업무 표: 리스트에서 세부사항(댓글 포함)을 바로 확인할 수 있도록 인라인 표시 ── */
-  .ticket-notes-cell { max-height: 96px; overflow-y: auto; font-size: 13px; line-height: 1.5; text-align: left; white-space: normal; }
+  /* ── 관련업무: 수신/발송 두 섹션을 항상 함께(상단/하단) 보여줌 ── */
+  .ticket-section { margin-top: 22px; }
+  .ticket-section:first-of-type { margin-top: 14px; }
+  .ticket-section h3 { font-size: 17px; margin: 0 0 9px; display: flex; align-items: center; gap: 8px; }
+
+  /* ── 관련업무 표: 리스트에서 세부사항(댓글 포함)을 바로 확인할 수 있도록 인라인 표시 + 줄바꿈 최소화 ── */
+  .ticket-table-compact { font-size: 14px; }
+  .ticket-table-compact th, .ticket-table-compact td { padding: 7px 9px; }
+  .ticket-notes-cell { max-height: 80px; overflow-y: auto; font-size: 12px; line-height: 1.45; text-align: left; white-space: normal; }
   .ticket-notes-cell .tn-item { padding: 3px 0; border-bottom: 1px dashed var(--line); }
   .ticket-notes-cell .tn-item:last-child { border-bottom: none; }
-  .ticket-notes-cell .tn-meta { color: var(--ink-soft); font-size: 11.5px; }
-  .ticket-content-cell { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ticket-notes-cell .tn-meta { color: var(--ink-soft); font-size: 11px; }
+  .ticket-content-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ticket-table-compact td:nth-child(1), .ticket-table-compact td:nth-child(2), .ticket-table-compact td:nth-child(4), .ticket-table-compact td:nth-child(5) {
+    white-space: nowrap;
+  }
+  @keyframes rowUpdatePulse { 0%, 100% { background: var(--alert-bg); } 50% { background: transparent; } }
+  tr.row-update-pulse { animation: rowUpdatePulse 1.6s ease-in-out infinite; }
 
   /* ── 제목 옆 [edit] 아이콘: 작성자 본인일 때만 노출, 클릭시에만 수정 가능 ── */
   .row-edit-btn {
@@ -416,8 +437,8 @@
     <div class="panel-head">
       <h2>관련업무</h2>
       <div class="dir-toggle">
-        <button type="button" class="dir-toggle-btn active" id="ticket-dir-sent" data-dir="발송">📤 발송</button>
-        <button type="button" class="dir-toggle-btn" id="ticket-dir-received" data-dir="수신">📥 수신</button>
+        <button type="button" class="dir-toggle-btn" id="ticket-dir-received" data-dir="수신">📥 수신 <span class="dir-count" id="ticket-count-received">0</span></button>
+        <button type="button" class="dir-toggle-btn" id="ticket-dir-sent" data-dir="발송">📤 발송 <span class="dir-count" id="ticket-count-sent">0</span></button>
       </div>
       <div class="filter-bar">
         <label>상태</label>
@@ -435,12 +456,25 @@
       </div>
       <button class="btn-primary" id="ticket-new-btn">+ 새 업무 등록</button>
     </div>
-    <table>
-      <thead><tr>
-        <th>제목</th><th>요청자</th><th>내용</th><th>요청일(희망기한)</th><th>현상태</th><th>세부사항</th><th class="th-del"></th>
-      </tr></thead>
-      <tbody id="ticket-tbody"></tbody>
-    </table>
+
+    <div class="ticket-section" id="ticket-section-received">
+      <h3>📥 수신 <span class="small-note" id="ticket-section-received-count"></span></h3>
+      <table class="ticket-table-compact">
+        <thead><tr>
+          <th>제목</th><th>요청자</th><th>내용</th><th>요청일(희망기한)</th><th>현상태</th><th>세부사항</th><th class="th-del"></th>
+        </tr></thead>
+        <tbody id="ticket-tbody-received"></tbody>
+      </table>
+    </div>
+    <div class="ticket-section" id="ticket-section-sent">
+      <h3>📤 발송 <span class="small-note" id="ticket-section-sent-count"></span></h3>
+      <table class="ticket-table-compact">
+        <thead><tr>
+          <th>제목</th><th>요청자</th><th>내용</th><th>요청일(희망기한)</th><th>현상태</th><th>세부사항</th><th class="th-del"></th>
+        </tr></thead>
+        <tbody id="ticket-tbody-sent"></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- ══════════ 2. 일정관리 ══════════ -->
@@ -1126,7 +1160,6 @@ function initDateField(input) {
    1. 업무관리
    ════════════════════════════════════════════════ */
 let tickets = [];
-let ticketDirection = "발송"; // "발송"(내가 요청자) | "수신"(그 외 전체)
 const ticketFilterRequester = document.getElementById("ticket-filter-requester");
 TEAM_MEMBERS.forEach(n => ticketFilterRequester.appendChild(new Option(n, n)));
 
@@ -1139,17 +1172,13 @@ onSnapshot(query(collection(db, "requestTickets"), orderBy("requestedAt", "desc"
 document.getElementById("ticket-filter-status").addEventListener("change", renderTickets);
 ticketFilterRequester.addEventListener("change", renderTickets);
 document.getElementById("ticket-filter-overdue").addEventListener("change", renderTickets);
-document.getElementById("ticket-dir-sent").addEventListener("click", () => {
-  ticketDirection = "발송";
-  document.getElementById("ticket-dir-sent").classList.add("active");
-  document.getElementById("ticket-dir-received").classList.remove("active");
-  renderTickets();
-});
+/* 수신/발송 버튼은 더 이상 화면을 전환하지 않고, 두 구역이 항상 함께(위/아래) 보이므로
+   해당 구역으로 부드럽게 스크롤 이동하는 바로가기 역할만 함 */
 document.getElementById("ticket-dir-received").addEventListener("click", () => {
-  ticketDirection = "수신";
-  document.getElementById("ticket-dir-received").classList.add("active");
-  document.getElementById("ticket-dir-sent").classList.remove("active");
-  renderTickets();
+  document.getElementById("ticket-section-received").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+document.getElementById("ticket-dir-sent").addEventListener("click", () => {
+  document.getElementById("ticket-section-sent").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 function isTicketOverdue(t) {
@@ -1158,7 +1187,7 @@ function isTicketOverdue(t) {
   return t.dueDate < todayIso();
 }
 
-/* 세부사항(요청 내용 + 댓글) 전체를 리스트에서 바로 확인할 수 있도록 인라인으로 스택 표시 */
+/* 세부사항(요청 내용 + 추가사항) 전체를 리스트에서 바로 확인할 수 있도록 인라인으로 스택 표시 */
 function buildTicketNotesCell(t) {
   const notes = (t.history || []).filter(h => historyEntryType(h) === "note");
   if (!notes.length) return `<div class="ticket-notes-cell"><span class="small-note">세부사항 없음</span></div>`;
@@ -1168,54 +1197,76 @@ function buildTicketNotesCell(t) {
   return `<div class="ticket-notes-cell">${items}</div>`;
 }
 
+/* "요청일(희망기한)"을 월/일만 간략하게 표시 ("07/14(~07/20)") */
+function ticketDateShort(t) {
+  const reqD = t.requestedAt ? (t.requestedAt.toDate ? t.requestedAt.toDate() : new Date(t.requestedAt)) : null;
+  const reqStr = reqD ? `${pad(reqD.getMonth()+1)}/${pad(reqD.getDate())}` : "-";
+  return t.dueDate ? `${reqStr}(~${mdShort(t.dueDate)})` : reqStr;
+}
+
+function buildTicketRow(t, me) {
+  const overdue = isTicketOverdue(t);
+  const isAuthor = t.requestedBy === me || isAdmin();
+  const unseen = hasUnseenUpdate("ticket", t);
+  const tr = document.createElement("tr");
+  if (overdue) tr.classList.add("row-overdue", "breathing");
+  if (t.status === "완료") tr.classList.add("row-done");
+  if (unseen) tr.classList.add("row-update-pulse");
+  const unseenDot = unseen ? `<span class="blink-dot" title="새 소식이 있습니다"></span>` : "";
+  const firstNote = (t.history || []).find(h => historyEntryType(h) === "note");
+  const contentText = firstNote ? firstNote.text : "-";
+  const editIcon = isAuthor ? `<button type="button" class="row-edit-btn" title="수정">✏️</button>` : "";
+  tr.innerHTML = `
+    <td>${unseenDot}${escapeHtml(t.title)}${deleteRequestBadge(t)}${editIcon}</td>
+    <td>${t.requestedBy || "-"}</td>
+    <td class="ticket-content-cell" title="${escapeHtml(contentText)}">${escapeHtml(contentText)}</td>
+    <td title="${t.requestedAt ? fmtTs(t.requestedAt) : "-"}${t.dueDate ? " (희망기한 " + escapeHtml(t.dueDate) + ")" : ""}">${ticketDateShort(t)} ${overdue ? "⚠️" : ""}</td>
+    <td><span class="badge ${t.status}">${t.status}</span></td>
+    <td>${buildTicketNotesCell(t)}</td>
+    <td class="td-del"><button type="button" class="row-delete-btn" title="삭제">🗑</button></td>
+  `;
+  tr.addEventListener("click", () => openTicketDetail(t.id, true));
+  const editBtn = tr.querySelector(".row-edit-btn");
+  if (editBtn) editBtn.addEventListener("click", (e) => { e.stopPropagation(); openTicketDetail(t.id, false); });
+  tr.querySelector(".row-delete-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    handleDeleteClick("ticket", t);
+  });
+  return tr;
+}
+
+function renderTicketGroup(rows, me, tbodyId, countId, btnId, sectionCountId) {
+  const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = "";
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">표시할 업무가 없습니다</td></tr>`;
+  } else {
+    rows.forEach(t => tbody.appendChild(buildTicketRow(t, me)));
+  }
+  const hasUpdate = rows.some(t => hasUnseenUpdate("ticket", t));
+  document.getElementById(countId).textContent = String(rows.length);
+  document.getElementById(sectionCountId).textContent = `(${rows.length}건)`;
+  document.getElementById(btnId).classList.toggle("has-update", hasUpdate);
+}
+
 function renderTickets() {
   const statusF = document.getElementById("ticket-filter-status").value;
   const reqF = ticketFilterRequester.value;
   const overdueOnly = document.getElementById("ticket-filter-overdue").checked;
   const me = currentUser();
 
-  let rows = tickets.filter(t => {
-    if (ticketDirection === "발송" ? t.requestedBy !== me : t.requestedBy === me) return false;
+  const passesFilters = (t) => {
     if (statusF !== "all" && t.status !== statusF) return false;
     if (reqF !== "all" && t.requestedBy !== reqF) return false;
     if (overdueOnly && !isTicketOverdue(t)) return false;
     return true;
-  });
+  };
 
-  const tbody = document.getElementById("ticket-tbody");
-  tbody.innerHTML = "";
-  if (rows.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">표시할 업무가 없습니다</td></tr>`;
-    return;
-  }
-  rows.forEach(t => {
-    const overdue = isTicketOverdue(t);
-    const isAuthor = t.requestedBy === me || isAdmin();
-    const tr = document.createElement("tr");
-    if (overdue) tr.classList.add("row-overdue", "breathing");
-    if (t.status === "완료") tr.classList.add("row-done");
-    const unseenDot = hasUnseenUpdate("ticket", t) ? `<span class="blink-dot" title="새 소식이 있습니다"></span>` : "";
-    const firstNote = (t.history || []).find(h => historyEntryType(h) === "note");
-    const contentText = firstNote ? firstNote.text : "-";
-    const editIcon = isAuthor ? `<button type="button" class="row-edit-btn" title="수정">✏️</button>` : "";
-    tr.innerHTML = `
-      <td>${unseenDot}${escapeHtml(t.title)}${deleteRequestBadge(t)}${editIcon}</td>
-      <td>${t.requestedBy || "-"}</td>
-      <td class="ticket-content-cell" title="${escapeHtml(contentText)}">${escapeHtml(contentText)}</td>
-      <td>${t.requestedAt ? fmtTs(t.requestedAt).slice(0,10) : "-"}${t.dueDate ? ` (~${escapeHtml(t.dueDate)})` : ""} ${overdue ? "⚠️" : ""}</td>
-      <td><span class="badge ${t.status}">${t.status}</span></td>
-      <td>${buildTicketNotesCell(t)}</td>
-      <td class="td-del"><button type="button" class="row-delete-btn" title="삭제">🗑</button></td>
-    `;
-    tr.addEventListener("click", () => openTicketDetail(t.id, true));
-    const editBtn = tr.querySelector(".row-edit-btn");
-    if (editBtn) editBtn.addEventListener("click", (e) => { e.stopPropagation(); openTicketDetail(t.id, false); });
-    tr.querySelector(".row-delete-btn").addEventListener("click", (e) => {
-      e.stopPropagation();
-      handleDeleteClick("ticket", t);
-    });
-    tbody.appendChild(tr);
-  });
+  const received = tickets.filter(t => t.requestedBy !== me && passesFilters(t));
+  const sent = tickets.filter(t => t.requestedBy === me && passesFilters(t));
+
+  renderTicketGroup(received, me, "ticket-tbody-received", "ticket-count-received", "ticket-dir-received", "ticket-section-received-count");
+  renderTicketGroup(sent, me, "ticket-tbody-sent", "ticket-count-sent", "ticket-dir-sent", "ticket-section-sent-count");
 }
 
 const ticketOverlay = document.getElementById("ticket-modal-overlay");
@@ -1325,49 +1376,18 @@ function renderTicketNoteHistory(t, noteHist) {
   noteHistEl.innerHTML = "";
   if (!noteHist.length) { noteHistEl.innerHTML = `<div class="small-note">세부사항이 없습니다</div>`; return; }
   const candidates = [t.requestedBy];
-  const topLevel = noteHist.filter(h => !h.replyTo);
-  // id가 없는 옛 항목들은 replyTo도 없으므로(undefined===undefined) id 없는 조회는 항상 빈 배열로 처리해
-  // 서로를 자기 자신의 "답글"로 잘못 인식해 무한 재귀에 빠지는 것을 방지
-  const repliesOf = (id) => id ? noteHist.filter(h => h.replyTo === id) : [];
 
-  function renderEntry(h, isReply) {
+  /* 댓글(답글) 기능은 제거하고, 한 업무에 대한 모든 세부사항/추가사항을 시간순(오래된 것이 위)
+     하나의 트리(목록)로 이어서 보여줌 - 계속 업데이트하거나 의견을 더하는 용도이므로 단순한 목록이 더 직관적 */
+  noteHist.forEach(h => {
     const div = document.createElement("div");
     div.className = "history-item";
-    div.style.cssText = isReply ? "margin-left:22px; border-left:2px solid var(--line); padding-left:10px;" : "";
     const readBy = h.id ? noteReadBy(t, h, candidates) : [];
     const readNote = readBy.length ? `<div class="small-note">읽음: ${readBy.map(escapeHtml).join(", ")}</div>` : "";
     div.innerHTML = `<div class="meta">${h.author || "-"} · ${fmtTs(h.timestamp)}${h.editedAt ? " (수정됨)" : ""}</div><div>${escapeHtml(h.text)}</div>${readNote}`;
     if (h.id && ticketEditingId !== null) {
-      const replyBtn = document.createElement("button");
-      replyBtn.type = "button";
-      replyBtn.className = "btn-secondary";
-      replyBtn.style.cssText = "padding:3px 10px; font-size:12.5px; margin-top:6px;";
-      replyBtn.textContent = "댓글";
-      const replyBox = document.createElement("div");
-      replyBox.style.cssText = "display:none; margin-top:8px; gap:6px; flex-direction:column;";
-      const replyTa = document.createElement("textarea");
-      replyTa.placeholder = "댓글을 입력하세요";
-      replyTa.style.cssText = "min-height:50px;";
-      const replySaveBtn = document.createElement("button");
-      replySaveBtn.type = "button";
-      replySaveBtn.className = "btn-primary";
-      replySaveBtn.style.cssText = "padding:6px 14px; font-size:13px; align-self:flex-end;";
-      replySaveBtn.textContent = "등록";
-      replyBtn.addEventListener("click", () => {
-        replyBox.style.display = replyBox.style.display === "none" ? "flex" : "none";
-      });
-      replySaveBtn.addEventListener("click", async () => {
-        const txt = replyTa.value.trim();
-        if (!txt) { alert("댓글 내용을 입력하세요"); return; }
-        await addTicketReply(h.id, txt);
-      });
-      replyBox.appendChild(replyTa);
-      replyBox.appendChild(replySaveBtn);
-      div.appendChild(replyBtn);
-      div.appendChild(replyBox);
-
-      // 본인이 쓴 세부사항/댓글은 수정·삭제 가능(댓글이 달린 세부사항은 수정 막음). 관리자 계정은 예외 없이 전부 수정/삭제 가능
-      const canModify = isAdmin() || (h.author === currentUser() && (isReply || repliesOf(h.id).length === 0));
+      // 본인이 쓴 세부사항은 수정·삭제 가능. 관리자 계정은 예외 없이 전부 수정/삭제 가능
+      const canModify = isAdmin() || h.author === currentUser();
       if (canModify) {
         const editBtn = document.createElement("button");
         editBtn.type = "button";
@@ -1403,29 +1423,16 @@ function renderTicketNoteHistory(t, noteHist) {
           if (!confirm("이 항목을 삭제할까요?")) return;
           await deleteTicketNote(h.id);
         });
-        div.insertBefore(editBtn, replyBtn);
-        div.insertBefore(delBtn, replyBtn);
+        div.appendChild(editBtn);
+        div.appendChild(delBtn);
         div.appendChild(editBox);
       }
     }
     noteHistEl.appendChild(div);
-    repliesOf(h.id).forEach(r => renderEntry(r, true));
-  }
-  topLevel.forEach(h => renderEntry(h, false));
+  });
 }
 
-/* 특정 세부사항에 댓글(답글)을 등록 */
-async function addTicketReply(parentId, text) {
-  if (ticketEditingId === null) return;
-  const t = tickets.find(x => x.id === ticketEditingId);
-  if (!t) return;
-  const history = (t.history || []).slice();
-  history.push({ id: newHistId(), text, author: currentUser(), timestamp: new Date(), type: "note", replyTo: parentId });
-  await updateDoc(doc(db, "requestTickets", ticketEditingId), { history, updatedAt: serverTimestamp() });
-  openTicketDetail(ticketEditingId);
-}
-
-/* 본인이 쓴 세부사항/댓글 수정 (댓글이 달린 세부사항은 renderEntry 단계에서 애초에 버튼을 노출하지 않음) */
+/* 본인이 쓴 세부사항 수정 */
 async function editTicketNote(id, text) {
   if (ticketEditingId === null) return;
   const t = tickets.find(x => x.id === ticketEditingId);
@@ -1922,48 +1929,18 @@ function renderScheduleHistory(s, hist) {
   histEl.innerHTML = "";
   if (!hist.length) { histEl.innerHTML = `<div class="small-note">이력이 없습니다</div>`; return; }
   const candidates = [s.registeredBy, ...responsibleArray(s)];
-  const topLevel = hist.filter(h => !h.replyTo);
-  // id가 없는 옛 항목들이 서로를 자기 자신의 "답글"로 잘못 인식해 무한 재귀에 빠지는 것을 방지
-  const repliesOf = (id) => id ? hist.filter(h => h.replyTo === id) : [];
 
-  function renderEntry(h, isReply) {
+  /* 댓글(답글) 기능은 제거하고, 한 일정에 대한 모든 세부사항/추가사항을 시간순(오래된 것이 위)
+     하나의 트리(목록)로 이어서 보여줌 - 계속 업데이트하거나 의견을 더하는 용도이므로 단순한 목록이 더 직관적 */
+  hist.forEach(h => {
     const div = document.createElement("div");
     div.className = "history-item";
-    div.style.cssText = isReply ? "margin-left:22px; border-left:2px solid var(--line); padding-left:10px;" : "";
     const readBy = h.id ? noteReadBy(s, h, candidates) : [];
     const readNote = readBy.length ? `<div class="small-note">읽음: ${readBy.map(escapeHtml).join(", ")}</div>` : "";
     div.innerHTML = `<div class="meta">${h.author || "-"} · ${fmtTs(h.timestamp)}${h.editedAt ? " (수정됨)" : ""}</div><div>${escapeHtml(h.text)}</div>${readNote}`;
     if (h.id && scheduleEditingId !== null) {
-      const replyBtn = document.createElement("button");
-      replyBtn.type = "button";
-      replyBtn.className = "btn-secondary";
-      replyBtn.style.cssText = "padding:3px 10px; font-size:12.5px; margin-top:6px;";
-      replyBtn.textContent = "댓글";
-      const replyBox = document.createElement("div");
-      replyBox.style.cssText = "display:none; margin-top:8px; gap:6px; flex-direction:column;";
-      const replyTa = document.createElement("textarea");
-      replyTa.placeholder = "댓글을 입력하세요";
-      replyTa.style.cssText = "min-height:50px;";
-      const replySaveBtn = document.createElement("button");
-      replySaveBtn.type = "button";
-      replySaveBtn.className = "btn-primary";
-      replySaveBtn.style.cssText = "padding:6px 14px; font-size:13px; align-self:flex-end;";
-      replySaveBtn.textContent = "등록";
-      replyBtn.addEventListener("click", () => {
-        replyBox.style.display = replyBox.style.display === "none" ? "flex" : "none";
-      });
-      replySaveBtn.addEventListener("click", async () => {
-        const txt = replyTa.value.trim();
-        if (!txt) { alert("댓글 내용을 입력하세요"); return; }
-        await addScheduleReply(h.id, txt);
-      });
-      replyBox.appendChild(replyTa);
-      replyBox.appendChild(replySaveBtn);
-      div.appendChild(replyBtn);
-      div.appendChild(replyBox);
-
-      // 본인이 쓴 세부사항/댓글은 수정·삭제 가능(댓글이 달린 세부사항은 수정 막음). 관리자 계정은 예외 없이 전부 수정/삭제 가능
-      const canModify = isAdmin() || (h.author === currentUser() && (isReply || repliesOf(h.id).length === 0));
+      // 본인이 쓴 세부사항은 수정·삭제 가능. 관리자 계정은 예외 없이 전부 수정/삭제 가능
+      const canModify = isAdmin() || h.author === currentUser();
       if (canModify) {
         const editBtn = document.createElement("button");
         editBtn.type = "button";
@@ -1999,27 +1976,13 @@ function renderScheduleHistory(s, hist) {
           if (!confirm("이 항목을 삭제할까요?")) return;
           await deleteScheduleNote(h.id);
         });
-        div.insertBefore(editBtn, replyBtn);
-        div.insertBefore(delBtn, replyBtn);
+        div.appendChild(editBtn);
+        div.appendChild(delBtn);
         div.appendChild(editBox);
       }
     }
     histEl.appendChild(div);
-    repliesOf(h.id).forEach(r => renderEntry(r, true));
-  }
-  topLevel.forEach(h => renderEntry(h, false));
-}
-
-/* 특정 일정 세부사항에 댓글(답글)을 등록 */
-async function addScheduleReply(parentId, text) {
-  if (scheduleEditingId === null) return;
-  const s = schedules.find(x => x.id === scheduleEditingId);
-  if (!s) return;
-  const history = (s.history && s.history.length ? s.history
-    : (s.detail ? [{ text: s.detail, author: s.registeredBy, timestamp: s.registeredAt }] : [])).slice();
-  history.push({ id: newHistId(), text, author: currentUser(), timestamp: new Date(), type: "note", replyTo: parentId });
-  await updateDoc(doc(db, "schedules", scheduleEditingId), { history, updatedAt: serverTimestamp() });
-  openScheduleEdit(scheduleEditingId);
+  });
 }
 
 /* 본인이 쓴 세부사항/댓글 수정 (댓글이 달린 세부사항은 renderEntry 단계에서 애초에 버튼을 노출하지 않음) */
