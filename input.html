@@ -598,7 +598,13 @@ buildAuthGateButtons();
 // 세션에 이미 선택된 작성자가 남아있으면(같은 브라우저 탭에서 계속 이용 중) 다시 묻지 않고 바로 이어서 사용
 const lastUsedAuthor = sessionStorage.getItem("smcfm_current_user");
 if (lastUsedAuthor && TEAM_MEMBERS.includes(lastUsedAuthor)) {
-  selectAuthor(lastUsedAuthor);
+  // 주의: 여기서 selectAuthor()를 바로 호출하면 renderDashboard()가 즉시 실행되는데,
+  // 이 시점은 스크립트 아래쪽의 tickets/schedules/memos 등이 아직 선언(및 Firestore 구독 등록)되기 전이라
+  // "Cannot access ... before initialization" 오류로 이후 코드 전체가 중단되어 데이터가 하나도 안 뜨는 문제가 있었음.
+  // 화면 표시만 먼저 갱신하고, 실제 데이터 렌더링은 나머지 스크립트가 모두 실행된 다음 틱으로 미룸.
+  currentUserName = lastUsedAuthor;
+  document.getElementById("current-user-display").textContent = lastUsedAuthor;
+  setTimeout(() => { if (typeof renderDashboard === "function") renderDashboard(); }, 0);
 } else {
   authGateOverlay.classList.add("open");
 }
