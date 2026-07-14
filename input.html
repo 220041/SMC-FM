@@ -461,7 +461,7 @@
       <h3>📥 수신 <span class="small-note" id="ticket-section-received-count"></span></h3>
       <table class="ticket-table-compact">
         <thead><tr>
-          <th>제목</th><th>요청자</th><th>내용</th><th>요청일(희망기한)</th><th>현상태</th><th>세부사항</th><th class="th-del"></th>
+          <th>제목</th><th>상대방 / 수신확인</th><th>첫 세부사항</th><th>요청일(희망기한)</th><th>현상태</th><th>세부사항 이력</th><th class="th-del"></th>
         </tr></thead>
         <tbody id="ticket-tbody-received"></tbody>
       </table>
@@ -470,7 +470,7 @@
       <h3>📤 발송 <span class="small-note" id="ticket-section-sent-count"></span></h3>
       <table class="ticket-table-compact">
         <thead><tr>
-          <th>제목</th><th>요청자</th><th>내용</th><th>요청일(희망기한)</th><th>현상태</th><th>세부사항</th><th class="th-del"></th>
+          <th>제목</th><th>상대방 / 수신확인</th><th>첫 세부사항</th><th>요청일(희망기한)</th><th>현상태</th><th>세부사항 이력</th><th class="th-del"></th>
         </tr></thead>
         <tbody id="ticket-tbody-sent"></tbody>
       </table>
@@ -550,8 +550,9 @@
     <div id="ticket-new-fields">
       <div class="field"><label>제목</label><input type="text" id="ticket-title" /></div>
       <div class="field"><label>요청자</label><div class="static-value" id="ticket-requester-display">-</div></div>
+      <div class="field"><label>수신자</label><select id="ticket-assignee"></select></div>
       <div class="field"><label>요청희망기한</label><input type="text" id="ticket-due" /></div>
-      <div class="field"><label>요청 내용</label><textarea id="ticket-content" placeholder="무엇을 요청하는지 적어주세요"></textarea></div>
+      <div class="field"><label>세부사항</label><textarea id="ticket-content" placeholder="첫 세부사항을 작성하세요"></textarea></div>
     </div>
 
     <div id="ticket-detail-fields" style="display:none;">
@@ -560,8 +561,10 @@
       <!-- 열람(비수정) 모드: 입력창 대신 축약된 고정 텍스트로 표시 -->
       <div id="ticket-view-summary" class="static-block" style="display:none; margin-bottom:14px;">
         <div><span class="sb-label">요청자</span><b id="tv-requester">-</b></div>
+        <div><span class="sb-label">수신자</span><b id="tv-assignee">-</b></div>
         <div><span class="sb-label">요청일(희망기한)</span><b id="tv-dates">-</b></div>
         <div><span class="sb-label">현상태</span><b id="tv-status">-</b></div>
+        <div><span class="sb-label">수신확인</span><b id="tv-received">-</b></div>
       </div>
 
       <!-- 수정 모드: 작성자(요청자) 본인일 때, [edit] 버튼을 눌러야만 표시됨 -->
@@ -578,6 +581,7 @@
           <div class="field"><label>요청희망기한</label><input type="text" id="ticket-due-edit" /></div>
         </div>
         <div class="field"><label>요청자</label><div class="static-value" id="ticket-requester-display-edit">-</div></div>
+        <div class="field"><label>수신자</label><div class="static-value" id="ticket-assignee-display-edit">-</div></div>
       </div>
 
       <div class="field"><label id="ticket-status-label">진행상태</label>
@@ -586,8 +590,8 @@
       <div class="field"><label id="ticket-note-label">세부사항</label>
         <div class="history-list" id="ticket-note-history-list"></div>
       </div>
-      <div class="field"><label>추가사항 <span class="small-note" style="display:inline;">(누구나 작성 가능)</span></label>
-        <textarea id="ticket-note-text" placeholder="추가사항을 입력하세요"></textarea>
+      <div class="field"><label>세부사항 작성 <span class="small-note" style="display:inline;">(요청자와 수신자가 함께 작성)</span></label>
+        <textarea id="ticket-note-text" placeholder="새 세부사항을 입력하세요"></textarea>
       </div>
     </div>
 
@@ -756,6 +760,10 @@ function selectAuthor(name) {
   document.getElementById("current-user-display").textContent = name;
   authGateOverlay.classList.remove("open");
   renderDashboard();
+  renderTickets();
+  renderSchedules();
+  renderMemos();
+  if (scheduleViewMode === "calendar") renderScheduleCalendar();
 }
 document.getElementById("author-change-btn").addEventListener("click", () => {
   buildAuthGateButtons();
@@ -979,7 +987,7 @@ function responsibleArray(rec) {
 }
 function roleAOf(type, rec) { return type === "ticket" ? rec.requestedBy : rec.registeredBy; }
 /* 업무(ticket)는 더 이상 담당자 필드가 없음 - 요청자 본인 외의 다른 상대는 두지 않음 */
-function roleBOf(type, rec) { return type === "ticket" ? null : responsibleArray(rec); }
+function roleBOf(type, rec) { return type === "ticket" ? (rec.assignee || null) : responsibleArray(rec); }
 function lastHistoryAuthor(rec) {
   return (rec.history && rec.history.length) ? rec.history[rec.history.length - 1].author : null;
 }
@@ -1215,10 +1223,12 @@ function buildTicketRow(t, me) {
   const unseenDot = unseen ? `<span class="blink-dot" title="새 소식이 있습니다"></span>` : "";
   const firstNote = (t.history || []).find(h => historyEntryType(h) === "note");
   const contentText = firstNote ? firstNote.text : "-";
+  const counterpart = t.requestedBy === me ? (t.assignee || "수신자 미지정") : t.requestedBy;
+  const receiptText = t.receivedAt ? `수신확인 ${t.receivedBy || t.assignee || "-"} · ${fmtTs(t.receivedAt)}` : "수신대기";
   const editIcon = isAuthor ? `<button type="button" class="row-edit-btn" title="수정">✏️</button>` : "";
   tr.innerHTML = `
     <td>${unseenDot}${escapeHtml(t.title)}${deleteRequestBadge(t)}${editIcon}</td>
-    <td>${t.requestedBy || "-"}</td>
+    <td title="${escapeHtml(receiptText)}">${escapeHtml(counterpart || "-")}<div class="small-note">${escapeHtml(receiptText)}</div></td>
     <td class="ticket-content-cell" title="${escapeHtml(contentText)}">${escapeHtml(contentText)}</td>
     <td title="${t.requestedAt ? fmtTs(t.requestedAt) : "-"}${t.dueDate ? " (희망기한 " + escapeHtml(t.dueDate) + ")" : ""}">${ticketDateShort(t)} ${overdue ? "⚠️" : ""}</td>
     <td><span class="badge ${t.status}">${t.status}</span></td>
@@ -1262,7 +1272,8 @@ function renderTickets() {
     return true;
   };
 
-  const received = tickets.filter(t => t.requestedBy !== me && passesFilters(t));
+  // assignee가 없는 기존 자료는 이전 방식대로 요청자 외 전원에게 보이도록 유지한다.
+  const received = tickets.filter(t => (t.assignee ? t.assignee === me : t.requestedBy !== me) && passesFilters(t));
   const sent = tickets.filter(t => t.requestedBy === me && passesFilters(t));
 
   renderTicketGroup(received, me, "ticket-tbody-received", "ticket-count-received", "ticket-dir-received", "ticket-section-received-count");
@@ -1282,6 +1293,10 @@ document.getElementById("ticket-new-btn").addEventListener("click", () => {
   document.getElementById("ticket-due").value = "";
   document.getElementById("ticket-content").value = "";
   document.getElementById("ticket-requester-display").textContent = currentUser();
+  fillAssigneeSelect(document.getElementById("ticket-assignee"), "");
+  Array.from(document.getElementById("ticket-assignee").options).forEach(o => {
+    if (o.value === currentUser() || o.value === "관리자") o.disabled = true;
+  });
   document.getElementById("ticket-delete").style.display = "none";
   ticketOverlay.classList.add("open");
 });
@@ -1300,16 +1315,21 @@ function openTicketDetail(id, forceView) {
   ticketEditingId = id;
   const me = currentUser();
   const isAuthor = t.requestedBy === me || isAdmin();
+  const isRecipient = t.assignee ? t.assignee === me : t.requestedBy !== me;
   const editMode = forceView ? false : isAuthor;
   ticketEditMode = editMode;
 
   /* 요청자 본인이 아닌 사람이 처음 열람하면, "미확인" 상태를 자동으로 "확인됨"으로 전환 */
-  if (!isAuthor && t.status === "미확인") {
+  if (!isAuthor && isRecipient && (t.status === "미확인" || t.status === "요청됨")) {
     const history = (t.history || []).slice();
-    history.push({ id: newHistId(), text: "상태변경: 미확인 → 확인됨", author: me, timestamp: new Date(), type: "status" });
+    history.push({ id: newHistId(), text: `수신확인: ${me}`, author: me, timestamp: new Date(), type: "status" });
     t.status = "확인됨";
     t.history = history;
-    updateDoc(doc(db, "requestTickets", id), { status: "확인됨", history, updatedAt: serverTimestamp() }).catch(() => {});
+    t.receivedBy = me;
+    t.receivedAt = new Date();
+    updateDoc(doc(db, "requestTickets", id), {
+      status: "확인됨", receivedBy: me, receivedAt: serverTimestamp(), history, updatedAt: serverTimestamp()
+    }).catch(() => {});
   }
 
   /* 어떤 부분이 갱신되어 아직 못 본 상태인지 판단 (제목 자체 = 신규등록, 진행상태, 세부사항 중 하나) */
@@ -1335,13 +1355,18 @@ function openTicketDetail(id, forceView) {
     : "작성자(요청자) 본인만 위 항목을 수정할 수 있습니다. 추가사항은 누구나 남길 수 있습니다.";
 
   if (editMode) {
-    document.getElementById("ticket-status-select").value = t.status === "미확인" ? "확인됨" : t.status;
+    document.getElementById("ticket-status-select").value = (t.status === "미확인" || t.status === "요청됨") ? "확인됨" : t.status;
     document.getElementById("ticket-due-edit").value = t.dueDate || "";
     document.getElementById("ticket-requester-display-edit").textContent = t.requestedBy || "-";
+    document.getElementById("ticket-assignee-display-edit").textContent = t.assignee || "미지정(기존 업무)";
   } else {
     document.getElementById("tv-requester").textContent = t.requestedBy || "-";
+    document.getElementById("tv-assignee").textContent = t.assignee || "미지정(기존 업무)";
     document.getElementById("tv-dates").textContent = ticketDatesLabel(t);
     document.getElementById("tv-status").textContent = t.status || "-";
+    document.getElementById("tv-received").textContent = t.receivedAt
+      ? `${t.receivedBy || t.assignee || "-"} · ${fmtTs(t.receivedAt)}`
+      : "아직 수신하지 않음";
   }
   document.getElementById("ticket-note-text").value = "";
 
@@ -1375,7 +1400,7 @@ function renderTicketNoteHistory(t, noteHist) {
   const noteHistEl = document.getElementById("ticket-note-history-list");
   noteHistEl.innerHTML = "";
   if (!noteHist.length) { noteHistEl.innerHTML = `<div class="small-note">세부사항이 없습니다</div>`; return; }
-  const candidates = [t.requestedBy];
+  const candidates = [t.requestedBy, t.assignee];
 
   /* 댓글(답글) 기능은 제거하고, 한 업무에 대한 모든 세부사항/추가사항을 시간순(오래된 것이 위)
      하나의 트리(목록)로 이어서 보여줌 - 계속 업데이트하거나 의견을 더하는 용도이므로 단순한 목록이 더 직관적 */
@@ -1468,6 +1493,8 @@ document.getElementById("ticket-save").addEventListener("click", async () => {
     const title = document.getElementById("ticket-title").value.trim();
     if (!title) { alert("제목을 입력하세요"); return; }
     const requester = currentUser();
+    const assignee = document.getElementById("ticket-assignee").value;
+    if (!assignee) { alert("수신자를 선택하세요"); return; }
     const due = document.getElementById("ticket-due").value || null;
     const content = document.getElementById("ticket-content").value.trim();
     // 신규 등록 자체를 이력에 스탬프로 남겨서, 요청자 본인 외에 아무도 열어보기 전까지 미확인 알림에 표시되게 함
@@ -1475,7 +1502,8 @@ document.getElementById("ticket-save").addEventListener("click", async () => {
     if (content) history.push({ id: newHistId(), text: content, author: requester, timestamp: new Date(), type: "note" });
     await addDoc(collection(db, "requestTickets"), {
       title, requestedBy: requester, requestedAt: serverTimestamp(),
-      dueDate: due, status: "미확인", history, updatedAt: serverTimestamp()
+      assignee, dueDate: due, status: "미확인", receivedBy: null, receivedAt: null,
+      history, updatedAt: serverTimestamp()
     });
   } else {
     const t = tickets.find(x => x.id === ticketEditingId);
@@ -2309,7 +2337,7 @@ function renderDashboard() {
     });
   }
 
-  const myTickets = tickets.filter(t => t.requestedBy === me);
+  const myTickets = tickets.filter(t => t.requestedBy === me || t.assignee === me || (!t.assignee && t.requestedBy !== me));
   const activeTickets = myTickets.filter(t => t.status !== "완료");
   const doneTickets = myTickets.filter(t => t.status === "완료");
   const tEl = document.getElementById("dash-ticket-list");
@@ -2322,7 +2350,7 @@ function renderDashboard() {
       const div = document.createElement("div");
       div.className = "dash-card";
       div.innerHTML = `<div class="dc-title">${escapeHtml(t.title)} <span class="badge ${t.status}">${t.status}</span></div>
-        <div class="dc-meta">기한 ${t.dueDate || "-"}</div>`;
+        <div class="dc-meta">${t.requestedBy === me ? "수신 " + escapeHtml(t.assignee || "미지정") : "요청 " + escapeHtml(t.requestedBy || "-")} · 기한 ${t.dueDate || "-"}</div>`;
       div.addEventListener("click", () => { switchTab("tickets"); openTicketDetail(t.id); });
       tEl.appendChild(div);
     });
@@ -2337,7 +2365,7 @@ function renderDashboard() {
       const div = document.createElement("div");
       div.className = "dash-card dash-card-done";
       div.innerHTML = `<div class="dc-title">${escapeHtml(t.title)} <span class="badge ${t.status}">${t.status}</span></div>
-        <div class="dc-meta">기한 ${t.dueDate || "-"}</div>`;
+        <div class="dc-meta">${t.requestedBy === me ? "수신 " + escapeHtml(t.assignee || "미지정") : "요청 " + escapeHtml(t.requestedBy || "-")} · 기한 ${t.dueDate || "-"}</div>`;
       div.addEventListener("click", () => { switchTab("tickets"); openTicketDetail(t.id); });
       tDoneEl.appendChild(div);
     });
