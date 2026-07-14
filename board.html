@@ -71,7 +71,7 @@
   /* cal-grid-outer를 세로 flex 컨테이너로 만들어, dow-row(고정 높이) 이외의 남는 공간을
      전부 cal-grid에 넘겨주도록 함 (퍼센트 높이 대신 flex로 계산해야 dow-row 높이만큼
      넘치면서 스크롤이 생기는 문제가 없음) */
-  #cal-grid-outer { flex: 1; min-height: 0; overflow-y: auto; border-radius: var(--radius); display: flex; flex-direction: column; }
+  #cal-grid-outer { flex: 1; min-height: 0; overflow: hidden; border-radius: var(--radius); display: flex; flex-direction: column; }
   #dow-row {
     display: grid; grid-template-columns: repeat(7, 1fr);
     background: var(--surface); border-radius: var(--radius) var(--radius) 0 0;
@@ -93,10 +93,10 @@
     overflow: hidden;
     flex: 1 1 auto; min-height: 0; /* 일정이 적어 여유 공간이 남을 때, 그 공간을 주(week)마다 균등하게 나눠 갖도록 함 */
   }
-  .cal-week { border-bottom: 1px solid var(--line); flex: 1 1 auto; display: flex; flex-direction: column; }
+  .cal-week { border-bottom: 1px solid var(--line); flex: 0 0 auto; min-height:0; overflow:hidden; display: flex; flex-direction: column; }
   .cal-week:last-child { border-bottom: none; }
   .cal-daynums {
-    display: grid; grid-template-columns: repeat(7, 1fr);
+    display: grid; grid-template-columns: repeat(7, 1fr); flex-shrink:0;
   }
   .day-cell {
     background: var(--surface); padding: 6px 6px 2px; min-width: 0; min-height: 40px;
@@ -126,6 +126,7 @@
   }
   .event-chip.single-day .event-main { font-weight: 800; line-height: 1.25; }
   .event-chip.single-day .event-sub { margin-top: 2px; font-size: .82em; line-height: 1.2; opacity: .82; }
+  .week-more { flex-shrink:0; text-align:center; padding:2px 6px; border-radius:6px; background:var(--bg); color:var(--accent); font-size:clamp(9px,.72vw,12px); font-weight:900; line-height:1.25; }
   .event-chip.type-공사 { background: var(--type-공사-bg); color: var(--type-공사); border-left-color: var(--type-공사); }
   .event-chip.type-미팅 { background: var(--type-미팅-bg); color: var(--type-미팅); border-left-color: var(--type-미팅); }
   .event-chip.type-업무 { background: var(--type-업무-bg); color: var(--type-업무); border-left-color: var(--type-업무); }
@@ -808,26 +809,95 @@ function renderCalendar() {
   fitCalendarDensity();
 }
 
-/* 전자칠판 화면 기준으로 스크롤이 생기지 않는 한도 내에서 최대한 크게 보이도록,
-   일정이 적어 여유가 있는 달에는 기본값보다 더 크게 키우고,
-   일정이 많아 넘칠 것 같은 달에는 기본값에서부터 단계별로 글자를 줄인다. */
+/* 전자칠판 월간화면 맞춤:
+   1) 일정량에 따라 적은 주의 높이를 줄이고 많은 주에 공간을 더 배정
+   2) 그래도 부족하면 읽을 수 있는 범위(density-2)까지만 글자를 축소
+   3) 마지막으로 넘치는 레인만 숨기고 +N건을 표시
+   이렇게 해서 스크롤 없이 5~6주 전체 날짜가 항상 보이도록 한다. */
+function naturalWeekHeight(week) {
+  const dates = week.querySelector(".cal-daynums");
+  const lanes = week.querySelector(".cal-lanes");
+  return Math.ceil((dates?.scrollHeight || 0) + (lanes?.scrollHeight || 0) + 1);
+}
+function resetWeekOverflow(weeks) {
+  weeks.forEach(week => {
+    week.style.flex = "0 0 auto";
+    week.style.height = "auto";
+    week.querySelectorAll(".cal-lane").forEach(lane => { lane.hidden = false; });
+    week.querySelector(".week-more")?.remove();
+  });
+}
+function distributeWeekHeights(natural, minimum, available) {
+  const heights = minimum.slice();
+  let remaining = Math.max(0, available - heights.reduce((sum, h) => sum + h, 0));
+  for (let pass = 0; pass < 4 && remaining > 0.5; pass++) {
+    const needs = natural.map((h, i) => Math.max(0, h - heights[i]));
+    const totalNeed = needs.reduce((sum, n) => sum + n, 0);
+    if (totalNeed <= 0) break;
+    needs.forEach((need, i) => {
+      const add = Math.min(need, remaining * (need / totalNeed));
+      heights[i] += add;
+    });
+    remaining = Math.max(0, available - heights.reduce((sum, h) => sum + h, 0));
+  }
+  if (remaining > 0) {
+    const weightTotal = natural.reduce((sum, h) => sum + Math.max(1, h), 0);
+    natural.forEach((h, i) => { heights[i] += remaining * (Math.max(1, h) / weightTotal); });
+  }
+  return heights;
+}
+function collapseOverflowingWeek(week) {
+  const lanesEl = week.querySelector(".cal-lanes");
+  if (!lanesEl || week.scrollHeight <= week.clientHeight + 1) return;
+  const laneRows = [...lanesEl.querySelectorAll(".cal-lane")];
+  let hiddenCount = 0;
+  const marker = document.createElement("div");
+  marker.className = "week-more";
+  lanesEl.appendChild(marker);
+  for (let i = laneRows.length - 1; i >= 0 && week.scrollHeight > week.clientHeight + 1; i--) {
+    hiddenCount += laneRows[i].querySelectorAll(".event-chip").length;
+    laneRows[i].hidden = true;
+    marker.textContent = `+ 일정 ${hiddenCount}건 · 날짜를 눌러 전체 확인`;
+  }
+  if (!hiddenCount) marker.remove();
+}
 function fitCalendarDensity() {
   const wrap = document.getElementById("cal-wrap");
-  const outer = document.getElementById("cal-grid-outer");
-  // 큰 순서 → 작은 순서로 하나씩 적용해보고, 스크롤 없이 들어가는 첫 단계를 채택
-  const tiers = ["density-plus-4", "density-plus-3", "density-plus-2", "density-plus-1", "", "density-1", "density-2", "density-3"];
+  const grid = document.getElementById("cal-grid");
+  const weeks = [...grid.querySelectorAll(".cal-week")];
+  const available = grid.clientHeight;
+  if (!weeks.length || available <= 0) return;
+
+  // 과도하게 작아지지 않도록 density-2까지만 사용한다.
+  const tiers = ["density-plus-4", "density-plus-3", "density-plus-2", "density-plus-1", "", "density-1", "density-2"];
+  let natural = [];
+  let minimum = [];
   for (const tier of tiers) {
     wrap.className = tier;
-    // 클래스 변경 직후 레이아웃을 강제로 다시 계산시켜 정확한 높이를 측정
-    void outer.offsetHeight;
-    if (outer.scrollHeight <= outer.clientHeight + 1) return;
+    resetWeekOverflow(weeks);
+    void grid.offsetHeight;
+    natural = weeks.map(naturalWeekHeight);
+    minimum = weeks.map(week => Math.ceil((week.querySelector(".cal-daynums")?.scrollHeight || 0) + 24));
+    if (natural.reduce((sum, h) => sum + h, 0) <= available) break;
   }
+
+  const heights = distributeWeekHeights(natural, minimum, available);
+  let used = 0;
+  weeks.forEach((week, index) => {
+    const height = index === weeks.length - 1 ? Math.max(minimum[index], available - used) : Math.max(minimum[index], Math.floor(heights[index]));
+    week.style.flex = `0 0 ${height}px`;
+    week.style.height = `${height}px`;
+    used += height;
+  });
+  weeks.forEach(collapseOverflowingWeek);
 }
 let densityResizeTimer = null;
 window.addEventListener("resize", () => {
   clearTimeout(densityResizeTimer);
   densityResizeTimer = setTimeout(fitCalendarDensity, 150);
 });
+window.addEventListener("load", fitCalendarDensity);
+if (document.fonts?.ready) document.fonts.ready.then(fitCalendarDensity);
 
 /* ───────── 날짜 확대보기 (노안 배려) ───────── */
 const dayDetailOverlay = document.getElementById("day-detail-overlay");
@@ -1308,6 +1378,7 @@ function showMainScreen() {
     auxScreenEl.style.display = "none";
     topbarEl.style.display = "grid";
     mainEl.style.display = "flex";
+    requestAnimationFrame(fitCalendarDensity);
     topbarEl.classList.add("fade-out");
     mainEl.classList.add("fade-out");
     void topbarEl.offsetHeight;

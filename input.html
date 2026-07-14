@@ -255,19 +255,21 @@
   .dash-card .dc-title { font-weight: 800; margin-bottom: 4.5px; }
   .dash-card .dc-meta { color: var(--ink-soft); font-size: 14px; }
 
-  .dash-update-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .dash-update-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-left:5px solid var(--alert); }
   .dash-update-card .dash-update-body { flex: 1 1 auto; min-width: 0; }
   .dash-confirm-btn {
     flex-shrink: 0; border: none; border-radius: 9px; padding: 8px 17px; font-size: 14px; font-weight: 800;
     background: var(--accent); color: #fff; cursor: pointer;
   }
-  @keyframes dashCardPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-  .dash-update-card.pulsing { animation: dashCardPulse 2s ease-in-out infinite; }
-  @keyframes dashConfirmBlink {
-    0%, 100% { background: var(--accent); transform: scale(1); }
-    50% { background: var(--alert); transform: scale(1.08); }
-  }
-  .dash-confirm-btn.urgent-blink { animation: dashConfirmBlink 0.7s ease-in-out infinite; }
+  .dash-priority-section { background:var(--surface); border:1px solid #EFC9C9; border-radius:14px; padding:16px 18px; margin-bottom:18px; }
+  .dash-section-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+  .dash-section-head h3 { margin:0; font-size:18px; }
+  .attention-badge { display:inline-block; padding:3px 9px; border-radius:999px; background:var(--alert-bg); color:var(--alert); font-size:12px; font-weight:900; }
+  .dash-primary-grid { grid-template-columns:repeat(2,minmax(0,1fr)); margin-bottom:20px; }
+  .dash-wide-section { margin-bottom:20px; }
+  .dash-more-link { border:1px solid var(--line); background:var(--surface); color:var(--accent); border-radius:9px; padding:7px 12px; font-weight:800; cursor:pointer; }
+  .due-overdue { color:var(--alert); font-weight:900; }
+  .due-today { color:#B26A00; font-weight:900; }
 
   /* Premium design for schedule dashboard timeline */
   .dash-timeline {
@@ -484,6 +486,7 @@
     .panel-head-actions button, .filter-bar select, .filter-bar input { flex:1 1 130px; min-width:0; }
     .btn-primary, .btn-secondary { padding:10px 14px; font-size:15px; }
     .dash-grid { grid-template-columns:1fr; gap:12px; }
+    .dash-primary-grid { grid-template-columns:1fr; }
     .dash-col { padding:13px; }
     .dash-activity-section { padding:13px; }
     .ticket-section .table-scroll table, #schedule-table, #panel-memos table { min-width:820px; }
@@ -525,30 +528,34 @@
 
   <!-- ══════════ 0. 대시보드 ══════════ -->
   <div class="panel active" id="panel-dashboard">
-    <div id="dash-delete-requests" style="display:none; margin-bottom: 18px;">
-      <div style="background:var(--alert-bg); border:1px solid #EFC9C9; border-radius:12px; padding:14px 16px;">
-        <h3 style="margin:0 0 10px; font-size:14.5px; color:var(--alert);">🔔 삭제 승인 대기</h3>
-        <div id="dash-delete-list"></div>
+    <section class="dash-priority-section" id="dash-alert-section" aria-labelledby="dash-alert-title">
+      <div class="dash-section-head">
+        <h3 id="dash-alert-title">🔔 내가 확인해야 할 알림</h3>
+        <span class="dash-count" id="dash-alert-count">0</span>
       </div>
-    </div>
-    <div class="dash-grid">
-      <div class="dash-col">
-        <button type="button" class="dash-column-header" data-tab="tickets" title="관련업무 탭으로 이동">업무 <span class="dash-count" id="dash-ticket-count">0</span></button>
+      <div id="dash-alert-list"></div>
+    </section>
+    <div class="dash-grid dash-primary-grid">
+      <section class="dash-col">
+        <button type="button" class="dash-column-header" data-tab="tickets" title="관련업무 탭으로 이동">오늘 및 기한 임박 업무 <span class="dash-count" id="dash-ticket-count">0</span></button>
         <div class="dash-list" id="dash-ticket-list"></div>
-      </div>
-      <div class="dash-col">
-        <button type="button" class="dash-column-header" data-tab="schedules" title="일정관리 탭으로 이동">일정 · 공사 <span class="dash-count" id="dash-schedule-count">0</span></button>
+      </section>
+      <section class="dash-col">
+        <button type="button" class="dash-column-header" data-tab="schedules" title="일정관리 탭으로 이동">오늘 · 다가오는 일정 <span class="dash-count" id="dash-schedule-count">0</span></button>
         <div class="dash-list dash-timeline" id="dash-schedule-list"></div>
-      </div>
-      <div class="dash-col">
-        <button type="button" class="dash-column-header" data-tab="memos" title="전화 및 메모 탭으로 이동">전화 · 메모 <span class="dash-count" id="dash-memo-count">0</span></button>
-        <div class="dash-list" id="dash-memo-list"></div>
-      </div>
+      </section>
     </div>
-    <div class="dash-activity-section" style="margin-top: 24px;">
-      <h3 style="display:flex; align-items:center; gap:8px; font-size:18px; border-bottom:2px solid var(--line); padding-bottom:8px; margin-bottom:12px; font-weight:800; color:var(--ink);">🔔 관련 변경사항 (최근 활동 피드)</h3>
+    <section class="dash-col dash-wide-section">
+      <button type="button" class="dash-column-header" data-tab="memos" title="전화 및 메모 탭으로 이동">☎️ 전화 및 메모 <span class="dash-count" id="dash-memo-count">0</span></button>
+      <div class="dash-list" id="dash-memo-list"></div>
+    </section>
+    <section class="dash-activity-section">
+      <div class="dash-section-head" style="border-bottom:2px solid var(--line); padding-bottom:8px;">
+        <h3>최근 변경사항</h3>
+        <button type="button" class="dash-more-link" id="dash-activity-toggle">전체보기</button>
+      </div>
       <div class="dash-activity-list" id="dash-activity-list"></div>
-    </div>
+    </section>
   </div>
 
   <!-- ══════════ 1. 관련업무 ══════════ -->
@@ -820,18 +827,6 @@
   </div>
 </div>
 
-<!-- ══════════ 모달: 업데이트 확인 게이트 (모두 확인해야 닫힘, 임의로 닫을 수 없음) ══════════ -->
-<div class="modal-overlay" id="update-gate-overlay" role="dialog" aria-modal="true" aria-labelledby="update-gate-title" style="z-index:500; background:rgba(20,24,28,0.68);">
-  <div class="modal-box" tabindex="-1" style="max-width:640px;">
-    <h3>🔔 확인이 필요한 업데이트</h3>
-    <div class="small-note" style="margin-bottom:16px;">아래 항목을 모두 확인해야 화면을 계속 이용할 수 있습니다.</div>
-    <div id="update-gate-list"></div>
-    <div class="small-note" style="text-align:center; margin-top:16px;">
-      다른 계정으로 이용하시나요? <a href="#" id="update-gate-change-author" style="color:var(--accent); font-weight:700; text-decoration:underline;">로그아웃 후 다시 로그인</a>
-    </div>
-  </div>
-</div>
-
 <script type="module">
 import { ensureUserLogin, logoutAccount, changeOwnPassword } from "./account-auth.js";
 import {
@@ -847,10 +842,6 @@ function currentUser() { return currentUserName; }
 function isAdmin() { return accountProfile.role === "admin"; }
 
 document.getElementById("author-change-btn").addEventListener("click", logoutAccount);
-document.getElementById("update-gate-change-author").addEventListener("click", (e) => {
-  e.preventDefault();
-  logoutAccount();
-});
 const passwordBtn = document.createElement("button");
 passwordBtn.type = "button";
 passwordBtn.className = "icon-btn";
@@ -2537,6 +2528,12 @@ onSnapshot(query(collection(db, "userNotifications", currentUser(), "items"), or
   renderDashboard();
 });
 
+let dashboardActivityExpanded = false;
+document.getElementById("dash-activity-toggle").addEventListener("click", () => {
+  dashboardActivityExpanded = !dashboardActivityExpanded;
+  renderDashboard();
+});
+
 function renderDashboard() {
   const me = currentUser();
 
@@ -2548,54 +2545,42 @@ function renderDashboard() {
       if (!seen || seen < updatedMillis(s)) pendingUpdates.push({ type: "schedule", rec: s, label: s.title });
     }
   });
-  const updateGateOverlay = document.getElementById("update-gate-overlay");
-  const updList = document.getElementById("update-gate-list");
-  if (pendingUpdates.length === 0) {
-    updateGateOverlay.classList.remove("open");
-  } else {
-    updateGateOverlay.classList.add("open");
-    updList.innerHTML = "";
-    pendingUpdates.forEach(({ type, rec, label, notification }) => {
-      const writer = notification ? notification.actor : lastHistoryAuthor(rec);
-      const lastText = notification ? notification.message : ((rec.history && rec.history.length) ? rec.history[rec.history.length - 1].text : "업데이트");
-      const div = document.createElement("div");
-      div.className = "dash-card dash-update-card pulsing";
-      div.style.cursor = "default";
-      div.innerHTML = `
-        <div class="dash-update-body">
-          <div class="dc-title">[${LABEL_OF[type]}] ${escapeHtml(label || "항목")}</div>
-          <div class="dc-meta">${escapeHtml(writer || "-")}님이 업데이트: ${escapeHtml(lastText)}</div>
-        </div>
-        <button type="button" class="dash-confirm-btn urgent-blink">확인</button>
-      `;
-      div.querySelector(".dash-confirm-btn").addEventListener("click", async () => {
-        if (notification) await updateDoc(doc(db, "userNotifications", me, "items", notification.id), { readAt: serverTimestamp() });
-        else await markSeen(type, rec.id);
-        renderDashboard();
-      });
-      updList.appendChild(div);
-    });
-  }
-
   /* 삭제 승인 대기 (내가 작성자인 항목에 다른 사람이 삭제를 요청한 경우) */
   const pendingDeletes = [];
   tickets.forEach(t => { if (t.deleteRequestedBy && t.requestedBy === me) pendingDeletes.push({ type: "ticket", rec: t, label: t.title }); });
   schedules.forEach(s => { if (s.deleteRequestedBy && s.registeredBy === me) pendingDeletes.push({ type: "schedule", rec: s, label: s.title }); });
   memos.forEach(m => { if (m.deleteRequestedBy && m.receivedBy === me) pendingDeletes.push({ type: "memo", rec: m, label: m.subject }); });
+  const pendingMemoAlerts = memos.filter(m => m.assignee === me && m.status !== "확인됨");
 
-  const delWrap = document.getElementById("dash-delete-requests");
-  const delList = document.getElementById("dash-delete-list");
-  if (pendingDeletes.length === 0) {
-    delWrap.style.display = "none";
-  } else {
-    delWrap.style.display = "block";
-    delList.innerHTML = "";
-    pendingDeletes.forEach(({ type, rec, label }) => {
+  const alertList = document.getElementById("dash-alert-list");
+  const alertCount = pendingUpdates.length + pendingDeletes.length + pendingMemoAlerts.length;
+  document.getElementById("dash-alert-count").textContent = alertCount;
+  alertList.innerHTML = "";
+  pendingUpdates.forEach(({ type, rec, label, notification }) => {
+    const writer = notification ? notification.actor : lastHistoryAuthor(rec);
+    const lastText = notification ? notification.message : ((rec?.history && rec.history.length) ? rec.history[rec.history.length - 1].text : "업데이트");
+    const div = document.createElement("div");
+    div.className = "dash-card dash-update-card";
+    div.style.cursor = "default";
+    div.innerHTML = `
+      <div class="dash-update-body">
+        <div class="dc-title"><span class="attention-badge">미확인</span> [${LABEL_OF[type]}] ${escapeHtml(label || "항목")}</div>
+        <div class="dc-meta">${escapeHtml(writer || "-")}님이 업데이트: ${escapeHtml(lastText)}</div>
+      </div>
+      <button type="button" class="dash-confirm-btn">확인</button>`;
+    div.querySelector(".dash-confirm-btn").addEventListener("click", async () => {
+      if (notification) await updateDoc(doc(db, "userNotifications", me, "items", notification.id), { readAt: serverTimestamp() });
+      else if (rec) await markSeen(type, rec.id);
+      renderDashboard();
+    });
+    alertList.appendChild(div);
+  });
+  pendingDeletes.forEach(({ type, rec, label }) => {
       const div = document.createElement("div");
-      div.className = "dash-card";
+      div.className = "dash-card dash-update-card";
       div.style.cursor = "default";
-      div.innerHTML = `<div class="dc-title">[${LABEL_OF[type]}] ${escapeHtml(label || "항목")}</div>
-        <div class="dc-meta">${escapeHtml(rec.deleteRequestedBy)}님이 삭제를 요청했습니다 · ${fmtTs(rec.deleteRequestedAt)}</div>`;
+      div.innerHTML = `<div class="dash-update-body"><div class="dc-title"><span class="attention-badge">승인 필요</span> [${LABEL_OF[type]}] ${escapeHtml(label || "항목")}</div>
+        <div class="dc-meta">${escapeHtml(rec.deleteRequestedBy)}님이 삭제를 요청했습니다 · ${fmtTs(rec.deleteRequestedAt)}</div></div>`;
       const btnRow = document.createElement("div");
       btnRow.style.cssText = "display:flex; gap:8px; margin-top:8px;";
       const approveBtn = document.createElement("button");
@@ -2616,37 +2601,59 @@ function renderDashboard() {
       });
       btnRow.appendChild(approveBtn);
       btnRow.appendChild(denyBtn);
-      div.appendChild(btnRow);
-      delList.appendChild(div);
-    });
-  }
+      div.querySelector(".dash-update-body").appendChild(btnRow);
+      alertList.appendChild(div);
+  });
+  pendingMemoAlerts.forEach(memo => {
+    const div = document.createElement("div");
+    div.className = "dash-card dash-update-card";
+    div.style.cursor = "default";
+    div.innerHTML = `<div class="dash-update-body"><div class="dc-title"><span class="attention-badge">${memo.urgency === "상" ? "긴급" : "미확인"}</span> [전화 및 메모] ${escapeHtml(memo.subject || "메모")}</div>
+      <div class="dc-meta">받은사람 ${escapeHtml(memo.receivedBy || "-")} · ${fmtTs(memo.receivedAt)}</div></div>
+      <button type="button" class="dash-confirm-btn">내용 보기</button>`;
+    div.querySelector("button").addEventListener("click", () => openMemoEdit(memo.id));
+    alertList.appendChild(div);
+  });
+  if (!alertCount) alertList.innerHTML = `<div class="dash-empty">확인이 필요한 알림이 없습니다</div>`;
 
+  const today = todayIso();
   const myTickets = isAdmin() ? tickets.slice() : tickets.filter(t => t.requestedBy === me || t.assignee === me || (!t.assignee && t.requestedBy !== me));
   const activeTickets = myTickets.filter(t => t.status !== "완료");
+  const attentionTickets = activeTickets.filter(t => {
+    const days = t.dueDate ? daysDiffIso(today, t.dueDate) : null;
+    return (days !== null && days <= 3) || ["진행중", "보류"].includes(normalizedTicketStatus(t.status));
+  }).sort((a, b) => {
+    const ad = a.dueDate ? daysDiffIso(today, a.dueDate) : 99999;
+    const bd = b.dueDate ? daysDiffIso(today, b.dueDate) : 99999;
+    return ad - bd || updatedMillis(b) - updatedMillis(a);
+  });
   const tEl = document.getElementById("dash-ticket-list");
-  document.getElementById("dash-ticket-count").textContent = activeTickets.length;
+  document.getElementById("dash-ticket-count").textContent = attentionTickets.length;
   tEl.innerHTML = "";
-  if (!activeTickets.length) {
-    tEl.innerHTML = `<div class="dash-empty">관련 업무가 없습니다</div>`;
+  if (!attentionTickets.length) {
+    tEl.innerHTML = `<div class="dash-empty">오늘 또는 3일 이내 처리할 업무가 없습니다</div>`;
   } else {
-    activeTickets.slice(0, 20).forEach(t => {
+    attentionTickets.slice(0, 5).forEach(t => {
+      const days = t.dueDate ? daysDiffIso(today, t.dueDate) : null;
+      const dueText = days === null ? "기한 없음" : days < 0 ? `기한초과 ${Math.abs(days)}일` : days === 0 ? "오늘" : `D-${days}`;
+      const dueClass = days !== null && days < 0 ? "due-overdue" : days === 0 ? "due-today" : "";
       const div = document.createElement("div");
       div.className = "dash-card";
-      div.innerHTML = `<div class="dc-title">${escapeHtml(t.title)} <span class="badge ${t.status}">${t.status}</span></div>
-        <div class="dc-meta">${t.requestedBy === me ? "수신 " + escapeHtml(t.assignee || "미지정") : "요청 " + escapeHtml(t.requestedBy || "-")} · 기한 ${t.dueDate || "-"}</div>`;
+      div.innerHTML = `<div class="dc-title"><span class="${dueClass}">[${dueText}]</span> ${escapeHtml(t.title)} <span class="badge ${normalizedTicketStatus(t.status)}">${normalizedTicketStatus(t.status)}</span></div>
+        <div class="dc-meta">${t.requestedBy === me ? "수신 " + escapeHtml(t.assignee || "미지정") : "요청 " + escapeHtml(t.requestedBy || "-")} · ${t.dueDate || "기한 미지정"}</div>`;
       div.addEventListener("click", () => { openTicketDetail(t.id); });
       tEl.appendChild(div);
     });
+    if (attentionTickets.length > 5) tEl.insertAdjacentHTML("beforeend", `<div class="small-note" style="text-align:center;">외 ${attentionTickets.length - 5}건 · 제목을 눌러 관련업무 전체보기</div>`);
   }
 
   const mySchedules = schedules.filter(s => s.registeredBy === me || responsibleArray(s).includes(me));
   const sEl = document.getElementById("dash-schedule-list");
-  document.getElementById("dash-schedule-count").textContent = mySchedules.length;
   sEl.innerHTML = "";
   if (!mySchedules.length) {
+    document.getElementById("dash-schedule-count").textContent = "0";
     sEl.innerHTML = `<div class="dash-empty">관련 일정·공사가 없습니다</div>`;
   } else {
-    const today = todayIso();
     const nearestUpcoming = (s) => [...new Set(s.dates || [])].sort().find(d => d >= today);
     const todaySchedules = [];
     const futureSchedules = [];
@@ -2659,10 +2666,15 @@ function renderDashboard() {
       else pastSchedules.push(s);
     });
     futureSchedules.sort((a, b) => a.nearest < b.nearest ? -1 : a.nearest > b.nearest ? 1 : 0);
+    todaySchedules.sort((a, b) => (a.time || "99:99").localeCompare(b.time || "99:99"));
+    const upcomingCount = todaySchedules.length + futureSchedules.length;
+    document.getElementById("dash-schedule-count").textContent = upcomingCount;
+    let renderedScheduleCount = 0;
+    if (!upcomingCount) sEl.innerHTML = `<div class="dash-empty">오늘 또는 다가오는 일정이 없습니다</div>`;
 
     /* Premium Timeline: 오늘 일정 */
     if (todaySchedules.length) {
-      todaySchedules.forEach(s => {
+      todaySchedules.slice(0, 5).forEach(s => {
         const div = document.createElement("div");
         div.className = `timeline-item type-${s.type || "업무"}`;
         div.innerHTML = `
@@ -2676,11 +2688,12 @@ function renderDashboard() {
         `;
         div.addEventListener("click", () => { openScheduleEdit(s.id); });
         sEl.appendChild(div);
+        renderedScheduleCount++;
       });
     }
 
     /* Premium Timeline: 다가오는 일정 */
-    futureSchedules.forEach(({ s, nearest }) => {
+    futureSchedules.slice(0, Math.max(0, 5 - renderedScheduleCount)).forEach(({ s, nearest }) => {
       const dday = daysDiffIso(today, nearest);
       const div = document.createElement("div");
       div.className = `timeline-item type-${s.type || "업무"}`;
@@ -2695,7 +2708,9 @@ function renderDashboard() {
       `;
       div.addEventListener("click", () => { openScheduleEdit(s.id); });
       sEl.appendChild(div);
+      renderedScheduleCount++;
     });
+    if (upcomingCount > renderedScheduleCount) sEl.insertAdjacentHTML("beforeend", `<div class="small-note" style="text-align:center;">외 ${upcomingCount - renderedScheduleCount}건 · 제목을 눌러 일정 전체보기</div>`);
   }
 
   const myMemos = memos.filter(m => m.receivedBy === me || m.assignee === me);
@@ -2706,14 +2721,17 @@ function renderDashboard() {
   if (!activeMemos.length) {
     mEl.innerHTML = `<div class="dash-empty">관련 메모가 없습니다</div>`;
   } else {
-    activeMemos.slice(0, 20).forEach(m => {
+    const urgencyRank = { "상":0, "중":1, "하":2 };
+    activeMemos.sort((a, b) => (urgencyRank[a.urgency] ?? 9) - (urgencyRank[b.urgency] ?? 9) || tsMillis(b.receivedAt) - tsMillis(a.receivedAt));
+    activeMemos.slice(0, 5).forEach(m => {
       const div = document.createElement("div");
       div.className = "dash-card";
-      div.innerHTML = `<div class="dc-title">${m.assignee || "미지정"} - ${escapeHtml(m.subject || "")} <span class="badge status-${m.status}">${m.status}</span></div>
+      div.innerHTML = `<div class="dc-title">${m.urgency === "상" ? '<span class="attention-badge">긴급</span> ' : ""}${escapeHtml(m.assignee || "미지정")} - ${escapeHtml(m.subject || "")} <span class="badge status-${m.status}">${m.status}</span></div>
         <div class="dc-meta">받은사람 ${m.receivedBy || "-"} · ${fmtTs(m.receivedAt)}</div>`;
       div.addEventListener("click", () => { openMemoEdit(m.id); });
       mEl.appendChild(div);
     });
+    if (activeMemos.length > 5) mEl.insertAdjacentHTML("beforeend", `<div class="small-note" style="text-align:center;">외 ${activeMemos.length - 5}건 · 제목을 눌러 전화 및 메모 전체보기</div>`);
   }
 
   /* 🔔 관련 변경사항 (최근 활동 피드) 생성 및 렌더링 */
@@ -2794,7 +2812,10 @@ function renderDashboard() {
 
   const actListEl = document.getElementById("dash-activity-list");
   actListEl.innerHTML = "";
-  const visibleActivities = activities.slice(0, 15);
+  const visibleActivities = activities.slice(0, dashboardActivityExpanded ? 20 : 5);
+  const activityToggle = document.getElementById("dash-activity-toggle");
+  activityToggle.style.display = activities.length > 5 ? "inline-block" : "none";
+  activityToggle.textContent = dashboardActivityExpanded ? "접기" : "전체보기";
   if (visibleActivities.length === 0) {
     actListEl.innerHTML = `<div class="dash-empty">관련 변경사항이 없습니다</div>`;
   } else {
@@ -2827,7 +2848,7 @@ document.getElementById("ticket-close-x").addEventListener("click", () => ticket
 document.getElementById("schedule-close-x").addEventListener("click", () => scheduleOverlay.classList.remove("open"));
 document.getElementById("memo-close-x").addEventListener("click", () => memoOverlay.classList.remove("open"));
 const modalReturnFocus = new WeakMap();
-[ticketOverlay, scheduleOverlay, memoOverlay, document.getElementById("update-gate-overlay")].forEach(overlay => {
+[ticketOverlay, scheduleOverlay, memoOverlay].forEach(overlay => {
   if (!overlay) return;
   new MutationObserver(() => {
     if (overlay.classList.contains("open")) {
