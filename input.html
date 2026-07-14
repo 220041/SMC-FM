@@ -130,6 +130,20 @@
   }
   .modal-overlay.open { display: flex; }
   .modal-box { background: var(--surface); border-radius: 17.5px; padding: 32px 34px; width: 100%; max-width: 616px; position: relative; }
+  
+  @media (max-width: 768px) {
+    .modal-overlay {
+      align-items: flex-end;
+      padding: 0;
+    }
+    .modal-box {
+      max-width: 100%;
+      border-radius: 24px 24px 0 0;
+      padding: 24px 20px 40px;
+      margin: 0;
+      box-shadow: 0 -10px 30px rgba(0,0,0,0.15);
+    }
+  }
   .modal-box h3 { margin: 0 0 20px; font-size: 23px; padding-right: 40px; }
   .modal-close-x {
     position: absolute; top: 16px; right: 18px; width: 36px; height: 36px; border-radius: 50%;
@@ -642,7 +656,7 @@
       <div class="field"><label>업체 / 부서</label><input type="text" id="schedule-vendor" /></div>
       <div class="field"><label>시간 (선택)</label>
         <div style="display:flex; align-items:center; gap:9px;">
-          <span style="font-size:19px;">🕐</span>
+          <button type="button" id="schedule-time-picker-btn" style="border:none; background:none; font-size:19px; cursor:pointer; padding:0;" title="시간 선택">🕒</button>
           <input type="time" id="schedule-time" style="flex:1;" />
         </div>
       </div>
@@ -1186,7 +1200,13 @@ function dpMask(v) {
   if (digits.length <= 6) return digits.slice(0,4) + "-" + digits.slice(4);
   return digits.slice(0,4) + "-" + digits.slice(4,6) + "-" + digits.slice(6);
 }
+const isMobileDevice = window.innerWidth <= 768 || ('ontouchstart' in window);
 function initDateField(input) {
+  if (isMobileDevice) {
+    input.type = "date";
+    input.classList.add("date-input");
+    return;
+  }
   input.classList.add("date-input");
   input.setAttribute("placeholder", "YYYY-MM-DD");
   input.setAttribute("inputmode", "numeric");
@@ -2092,6 +2112,15 @@ function openScheduleNew() {
   scheduleOverlay.classList.add("open");
 }
 document.getElementById("schedule-new-btn").addEventListener("click", openScheduleNew);
+document.getElementById("schedule-time-picker-btn").addEventListener("click", () => {
+  const input = document.getElementById("schedule-time");
+  if (typeof input.showPicker === "function") {
+    input.showPicker();
+  } else {
+    input.focus();
+    input.click();
+  }
+});
 
 /* forceView === true 이면 작성자 여부와 관계없이 항상 열람(읽기전용) 모드로 연다.
    forceView가 없으면(=제목 옆 [edit] 아이콘/캘린더뷰/대시보드 등 기존 진입경로) 작성자 본인일 때만 수정 가능 */

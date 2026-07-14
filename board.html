@@ -232,6 +232,13 @@
   #aux-screen {
     display: none; flex: 1; min-height: 0; flex-direction: column; gap: 16px; padding: 22px 26px 18px;
   }
+  .fade-el {
+    transition: opacity 0.6s ease-in-out;
+    opacity: 1;
+  }
+  .fade-el.fade-out {
+    opacity: 0;
+  }
   #aux-clock-box { text-align: center; }
   #aux-date { font-size: clamp(15px, 1.4vw, 20px); font-weight: 700; color: var(--ink-soft); margin-bottom: 4px; }
   #aux-time {
@@ -368,7 +375,7 @@
 </head>
 <body>
 <div id="app">
-  <div id="topbar">
+  <div id="topbar" class="fade-el">
     <a class="brand" href="index.html" title="처음 화면으로 이동">서귀포의료원 시설관리팀</a>
     <div id="topbar-nav">
       <button class="tb-nav-btn" id="prev-month">‹</button>
@@ -388,7 +395,7 @@
     </div>
   </div>
 
-  <div id="main">
+  <div id="main" class="fade-el">
     <div id="cal-wrap">
       <div id="cal-grid-outer" class="scrollbar-thin">
         <div id="dow-row">
@@ -419,7 +426,7 @@
     </div>
   </div>
 
-  <div id="aux-screen">
+  <div id="aux-screen" class="fade-el">
     <div id="aux-clock-box">
       <div id="aux-date">-</div>
       <div id="aux-time">--:--:--</div>
@@ -1277,14 +1284,30 @@ let auxDurationTimeoutId = null;
 function showAuxScreen() {
   renderAuxWeek();
   renderAuxToday();
-  topbarEl.style.display = "none";
-  mainEl.style.display = "none";
-  auxScreenEl.style.display = "flex";
+  topbarEl.classList.add("fade-out");
+  mainEl.classList.add("fade-out");
+  setTimeout(() => {
+    topbarEl.style.display = "none";
+    mainEl.style.display = "none";
+    auxScreenEl.style.display = "flex";
+    auxScreenEl.classList.add("fade-out");
+    void auxScreenEl.offsetHeight;
+    auxScreenEl.classList.remove("fade-out");
+  }, 600);
 }
 function showMainScreen() {
-  auxScreenEl.style.display = "none";
-  topbarEl.style.display = "grid";
-  mainEl.style.display = "flex";
+  auxScreenEl.classList.add("fade-out");
+  setTimeout(() => {
+    auxScreenEl.style.display = "none";
+    topbarEl.style.display = "grid";
+    mainEl.style.display = "flex";
+    topbarEl.classList.add("fade-out");
+    mainEl.classList.add("fade-out");
+    void topbarEl.offsetHeight;
+    void mainEl.offsetHeight;
+    topbarEl.classList.remove("fade-out");
+    mainEl.classList.remove("fade-out");
+  }, 600);
 }
 function scheduleAuxCycle() {
   if (auxCycleTimeoutId) clearTimeout(auxCycleTimeoutId);
