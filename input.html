@@ -192,7 +192,7 @@
 
   /* ── 대시보드 ─────────────────────────── */
   .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(286px, 1fr)); gap: 20px; }
-  .dash-col { background: var(--bg); border-radius: 13px; padding: 15.5px 17.5px; border: 1px solid var(--line); }
+  .dash-col { background: var(--surface); border-radius: 13px; padding: 15.5px 17.5px; border: 1px solid var(--line); }
   .dash-col h3 { font-size: 17.5px; margin: 0 0 11px; color: var(--ink-soft); display: flex; align-items: center; gap: 6.5px; }
   .dash-count { background: var(--accent); color: #fff; font-size: 13px; font-weight: 800; padding: 1px 7.5px; border-radius: 9px; }
   .dash-card {
@@ -348,9 +348,6 @@
 
   <!-- ══════════ 0. 대시보드 ══════════ -->
   <div class="panel active" id="panel-dashboard">
-    <div class="panel-head">
-      <h2>대시보드 · <span id="dash-user-name">-</span> 님</h2>
-    </div>
     <div id="dash-update-requests" style="display:none; margin-bottom: 14px;">
       <div style="background:var(--type-미팅-bg); border:1px solid #C7D3E8; border-radius:12px; padding:14px 16px;">
         <h3 style="margin:0 0 10px; font-size:14.5px; color:var(--type-미팅);">🔔 업데이트 알림</h3>
@@ -2126,7 +2123,6 @@ function daysDiffIso(a, b) {
 }
 function renderDashboard() {
   const me = currentUser();
-  document.getElementById("dash-user-name").textContent = me || "-";
 
   /* 업데이트 알림 (이력/상세내용이 갱신되어 나에게 알려야 하는 항목) */
   const pendingUpdates = [];
