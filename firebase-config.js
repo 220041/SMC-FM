@@ -40,7 +40,7 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 
 // 팀원 목록 (고정 초기값, 필요 시 여기 배열만 수정하면 전체 화면에 반영됨)
-export const TEAM_MEMBERS = ["강보선", "강은석", "박재현", "김준형", "김류현"];
+export const TEAM_MEMBERS = ["강보선", "강은석", "박재현", "김준형", "김류현", "관리자"];
 
 export const ACCESS_CODE = "3813";
 

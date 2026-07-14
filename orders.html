@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>계약팀 발주현황 · 서귀포의료원 시설관리팀</title>
+<link rel="stylesheet" href="common.css" />
+<style>
+  body { padding-bottom: 44px; }
+  #topbar {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    padding: 9px 20px; background: var(--surface); border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 50;
+  }
+  #topbar .brand { font-size: 18px; font-weight: 800; color: var(--ink); text-decoration: none; cursor: pointer; }
+  #topbar .brand:active { color: var(--accent); }
+  #topbar-right { display: flex; align-items: center; gap: 10px; }
+  .nav-link {
+    display: flex; align-items: center; gap: 6px; text-decoration: none;
+    background: var(--bg); color: var(--ink-soft); border: 1.5px solid var(--line); border-radius: 20px;
+    padding: 8px 14px; font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+  .nav-link:active { background: var(--line); }
+  .nav-link-icon { font-size: 16px; }
+
+  #content { max-width: 1210px; margin: 0 auto; padding: 22px; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 11px; margin-bottom: 8px; }
+  .panel-head h2 { font-size: 24px; margin: 0; }
+  .panel-head-actions { display: flex; gap: 9px; align-items: center; flex-shrink: 0; }
+  .panel-sub { color: var(--ink-soft); font-size: 14px; line-height: 1.6; margin: 0 0 18px; padding: 13px 16px; background: var(--bg); border-radius: 11px; }
+
+  .btn-primary {
+    background: var(--accent); color: #fff; border: none; border-radius: 11px;
+    padding: 12px 22px; font-size: 15.5px; font-weight: 700; cursor: pointer;
+  }
+  .btn-primary:active { background: #1f3a5f; }
+  .btn-secondary {
+    background: var(--bg); color: var(--ink); border: 1.5px solid var(--line); border-radius: 11px;
+    padding: 11px 20px; font-size: 15.5px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block;
+  }
+
+  .sheet-updated-at { font-size: 12.5px; color: var(--dim); margin-right: 4px; }
+  .sheet-status { padding: 26px 4px; color: var(--ink-soft); font-size: 15px; line-height: 1.7; }
+  .sheet-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
+  .sheet-table-wrap table { width: 100%; border-collapse: collapse; font-size: 15px; min-width: 100%; }
+  .sheet-table-wrap th, .sheet-table-wrap td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+  .sheet-table-wrap th { background: var(--bg); font-weight: 800; color: var(--ink-soft); font-size: 14px; position: sticky; top: 0; }
+  .sheet-table-wrap tbody tr:hover { background: #FAFBF9; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <a class="brand" href="index.html" title="처음 화면으로 이동">서귀포의료원 시설관리팀</a>
+  <div id="topbar-right">
+    <a class="nav-link" href="input.html" title="업무 화면으로 이동">
+      <span class="nav-link-icon">✏️</span><span class="nav-link-text">업무</span>
+    </a>
+    <a class="nav-link" href="board.html" title="월간일정 화면으로 이동">
+      <span class="nav-link-icon">🗓️</span><span class="nav-link-text">월간일정</span>
+    </a>
+  </div>
+</div>
+
+<div id="content">
+  <div class="panel-head">
+    <h2>계약팀 발주현황</h2>
+    <div class="panel-head-actions">
+      <span id="sheet-updated-at" class="sheet-updated-at"></span>
+      <a class="btn-secondary" id="sheet-open-external" href="https://docs.google.com/spreadsheets/d/1bVcSMFEydyEt5GlBnwAu1HcUUJzSg9hXYirp3v4qst0/edit?gid=0#gid=0" target="_blank" rel="noopener">구글시트에서 열기 ↗</a>
+      <button class="btn-primary" id="sheet-refresh-btn">🔄 새로고침</button>
+    </div>
+  </div>
+  <p class="panel-sub">시설팀에서 수의계약사유서·시행기안 발주 요청 사항과 법인카드 결제 내역을 기재하면, 계약팀에서 발주일과 카드결제 확인 내역을 기재하여 공유하는 구글시트입니다. 이 화면은 해당 시트 내용을 그대로 보여줍니다 (편집은 구글시트에서).</p>
+  <div id="sheet-status" class="sheet-status"></div>
+  <div id="sheet-table-wrap" class="sheet-table-wrap"></div>
+</div>
+
+<script type="module">
+import { ensureAccess } from "./auth-gate.js";
+await ensureAccess();
+
+const SHEET_ID = "1bVcSMFEydyEt5GlBnwAu1HcUUJzSg9hXYirp3v4qst0";
+const SHEET_GID = "0";
+const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${SHEET_GID}`;
+
+function escapeHtml(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [], field = "", inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else {
+        field += c;
+      }
+    } else if (c === '"') {
+      inQuotes = true;
+    } else if (c === ",") {
+      row.push(field); field = "";
+    } else if (c === "\r") {
+      /* skip */
+    } else if (c === "\n") {
+      row.push(field); rows.push(row); row = []; field = "";
+    } else {
+      field += c;
+    }
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+function renderSheetTable(rows) {
+  const wrap = document.getElementById("sheet-table-wrap");
+  const header = rows[0];
+  const body = rows.slice(1);
+  let html = "<table><thead><tr>";
+  header.forEach((h, i) => { html += `<th>${escapeHtml(h && h.trim() ? h : "열" + (i + 1))}</th>`; });
+  html += "</tr></thead><tbody>";
+  body.forEach(r => {
+    html += "<tr>";
+    header.forEach((_, i) => { html += `<td>${escapeHtml(r[i] || "")}</td>`; });
+    html += "</tr>";
+  });
+  html += "</tbody></table>";
+  wrap.innerHTML = html;
+}
+
+let sheetDataLoaded = false;
+async function loadSheetData(force) {
+  if (sheetDataLoaded && !force) return;
+  const status = document.getElementById("sheet-status");
+  const wrap = document.getElementById("sheet-table-wrap");
+  const updatedAt = document.getElementById("sheet-updated-at");
+  status.textContent = "불러오는 중...";
+  status.style.display = "block";
+  wrap.innerHTML = "";
+  try {
+    const res = await fetch(SHEET_CSV_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const text = await res.text();
+    const rows = parseCsv(text).filter(r => r.some(c => (c || "").trim() !== ""));
+    if (rows.length === 0) {
+      status.textContent = "표시할 데이터가 없습니다.";
+      return;
+    }
+    renderSheetTable(rows);
+    status.style.display = "none";
+    sheetDataLoaded = true;
+    updatedAt.textContent = "마지막 갱신 " + new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+  } catch (err) {
+    status.innerHTML = "시트를 불러오지 못했습니다 (" + escapeHtml(err.message || "네트워크 오류") + ").<br>위의 \"구글시트에서 열기\" 버튼으로 원본을 확인해주세요.";
+  }
+}
+
+document.getElementById("sheet-refresh-btn").addEventListener("click", () => loadSheetData(true));
+loadSheetData(false);
+</script>
+</body>
+</html>

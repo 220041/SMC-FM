@@ -72,6 +72,7 @@
   .badge.type-공사 { background: var(--type-공사-bg); color: var(--type-공사); }
   .badge.type-미팅 { background: var(--type-미팅-bg); color: var(--type-미팅); }
   .badge.type-업무 { background: var(--type-업무-bg); color: var(--type-업무); }
+  .badge.type-기타 { background: var(--type-기타-bg); color: var(--type-기타); }
   .badge.urgency-상 { background: #C23B3B; color: #fff; }
   .badge.urgency-중 { background: #E1A63B; color: #fff; }
   .badge.urgency-하 { background: #9AA5B1; color: #fff; }
@@ -80,6 +81,8 @@
 
   tr.row-overdue { background: var(--alert-bg); }
   tr.row-overdue td:first-child { border-left: 4.5px solid var(--alert); }
+  tr.row-active-today { background: var(--bg); }
+  tr.row-active-today td:first-child { border-left: 4.5px solid var(--today); }
   tr.row-done td { color: var(--dim); }
   tr.row-emphasized td { font-weight: 900; }
   tr.row-dimmed td { color: var(--dim); }
@@ -186,12 +189,6 @@
     content: "최근"; position: absolute; top: -10px; right: -6.5px; background: var(--accent); color: #fff;
     font-size: 11px; font-weight: 800; padding: 2px 6.5px; border-radius: 9px;
   }
-  .name-btn .key-num {
-    display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
-    background: var(--bg); color: var(--ink-soft); border: 1.5px solid var(--line); border-radius: 50%;
-    font-size: 12px; font-weight: 800; margin-right: 8px; vertical-align: middle;
-  }
-  .name-btn:active .key-num { background: var(--accent); color: #fff; border-color: var(--accent); }
 
   /* ── 대시보드 ─────────────────────────── */
   .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(286px, 1fr)); gap: 20px; }
@@ -205,6 +202,27 @@
   .dash-card:hover { border-color: var(--accent); }
   .dash-card .dc-title { font-weight: 800; margin-bottom: 4.5px; }
   .dash-card .dc-meta { color: var(--ink-soft); font-size: 14px; }
+
+  .dash-grid-done { margin-top: 20px; }
+  .dash-col-done { opacity: 0.92; }
+  .dash-count-done { background: var(--dim); }
+  .dash-card-done { background: var(--bg); }
+  .dash-card-done .dc-title { color: var(--ink-soft); font-weight: 700; }
+
+  .dash-today-group { border: 1.5px solid var(--today); border-radius: 12px; padding: 11px 13px; margin-bottom: 11px; background: var(--today-bg); }
+  .dash-today-label { font-size: 13px; font-weight: 900; color: var(--today); margin-bottom: 8px; }
+  .dash-today-group .dash-card { background: var(--surface); margin-bottom: 7px; }
+  .dash-today-group .dash-card:last-child { margin-bottom: 0; }
+  .dash-future-ddaybadge { font-weight: 900; color: var(--accent); font-size: 13.5px; }
+
+  .dash-past-list { margin-top: 12px; padding-top: 11px; border-top: 1px dashed var(--line-strong); }
+  .dash-past-card {
+    padding: 6.5px 10px; font-size: 12.5px; color: var(--ink-soft); border-radius: 8px; margin-bottom: 4.5px;
+    background: var(--surface); border: 1px solid var(--line); cursor: pointer; line-height: 1.4;
+  }
+  .dash-past-card:hover { border-color: var(--line-strong); }
+  .dash-past-actions { display: flex; gap: 8px; justify-content: center; margin-top: 7px; }
+  .dash-past-actions button { font-size: 12px; padding: 5px 10px; }
   .dash-empty { color: var(--dim); font-size: 16px; padding: 15.5px 0; text-align: center; }
 
   /* ── 날짜 입력 팝업 캘린더 (주말·공휴일 표시) ── */
@@ -246,10 +264,10 @@
   .cal-dow-row div:first-child { color: var(--alert); }
   .cal-dow-row div:last-child { color: var(--accent); }
   #sched-cal-grid { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 0 0 11px 11px; overflow: hidden; }
-  .cal-week { border-bottom: 1px solid var(--line); }
+  .cal-week { border-bottom: 1px solid var(--line); flex: 1 1 auto; display: flex; flex-direction: column; }
   .cal-week:last-child { border-bottom: none; }
   .cal-daynums { display: grid; grid-template-columns: repeat(7, 1fr); }
-  .day-cell { background: var(--surface); padding: 5.5px 5.5px 2px; min-width: 0; min-height: 40.5px; }
+  .day-cell { background: var(--surface); padding: 7px 7px 3px; min-width: 0; min-height: 64px; }
   .day-cell.other-month { background: #F7F8F6; }
   .day-cell.other-month .day-num { color: var(--dim); }
   .day-num { font-size: 16px; font-weight: 800; padding: 2px 3.5px; display: flex; align-items: center; gap: 4.5px; }
@@ -259,15 +277,27 @@
     font-size: 10.5px; font-weight: 700; color: var(--alert);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; min-width: 0;
   }
-  .cal-lanes { display: flex; flex-direction: column; gap: 2px; padding: 0 4.5px 6.5px; }
-  .cal-lane { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .cal-lanes { display: flex; flex-direction: column; gap: 3px; padding: 0 5px 8px; }
+  .cal-lane { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
   .event-chip {
-    font-size: 13px; font-weight: 600; line-height: 1.25; padding: 2px 6.5px; border-radius: 6.5px;
-    border-left: 3.5px solid transparent; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+    font-size: 13px; font-weight: 600; line-height: 1.3; padding: 3px 7px; border-radius: 6.5px;
+    border-left: 3.5px solid transparent; overflow: hidden; white-space: normal; overflow-wrap: break-word; word-break: keep-all; cursor: pointer;
   }
   .event-chip.type-공사 { background: var(--type-공사-bg); color: var(--type-공사); border-left-color: var(--type-공사); }
   .event-chip.type-미팅 { background: var(--type-미팅-bg); color: var(--type-미팅); border-left-color: var(--type-미팅); }
   .event-chip.type-업무 { background: var(--type-업무-bg); color: var(--type-업무); border-left-color: var(--type-업무); }
+  .event-chip.type-기타 { background: var(--type-기타-bg); color: var(--type-기타); border-left-color: var(--type-기타); }
+  .event-chip.cont-prev { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+  .event-chip.cont-next { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+
+  /* ── 월간보기 하단 범례 (board.html과 동일) ───────── */
+  #sched-cal-legend { display: flex; gap: 16px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+  .sched-legend-item { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 700; color: var(--ink-soft); }
+  .sched-legend-dot { width: 11px; height: 11px; border-radius: 3px; }
+  .sched-legend-dot.type-공사 { background: var(--type-공사); }
+  .sched-legend-dot.type-미팅 { background: var(--type-미팅); }
+  .sched-legend-dot.type-업무 { background: var(--type-업무); }
+  .sched-legend-dot.type-기타 { background: var(--type-기타); }
 </style>
 </head>
 <body>
@@ -331,6 +361,16 @@
         <div class="dash-list" id="dash-memo-list"></div>
       </div>
     </div>
+    <div class="dash-grid dash-grid-done">
+      <div class="dash-col dash-col-done">
+        <h3>완료된 업무 <span class="dash-count dash-count-done" id="dash-ticket-done-count">0</span></h3>
+        <div class="dash-list" id="dash-ticket-done-list"></div>
+      </div>
+      <div class="dash-col dash-col-done">
+        <h3>완료된 전화메모 <span class="dash-count dash-count-done" id="dash-memo-done-count">0</span></h3>
+        <div class="dash-list" id="dash-memo-done-list"></div>
+      </div>
+    </div>
   </div>
 
   <!-- ══════════ 1. 관련업무 ══════════ -->
@@ -389,6 +429,12 @@
         <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
       </div>
       <div id="sched-cal-grid"></div>
+      <div id="sched-cal-legend">
+        <div class="sched-legend-item"><div class="sched-legend-dot type-공사"></div>공사(작업)</div>
+        <div class="sched-legend-item"><div class="sched-legend-dot type-미팅"></div>미팅</div>
+        <div class="sched-legend-item"><div class="sched-legend-dot type-업무"></div>업무</div>
+        <div class="sched-legend-item"><div class="sched-legend-dot type-기타"></div>기타</div>
+      </div>
     </div>
   </div>
 
@@ -417,6 +463,7 @@
       <tbody id="memo-tbody"></tbody>
     </table>
   </div>
+
 
 </div>
 
@@ -479,14 +526,19 @@
     <div class="field"><label>제목</label><input type="text" id="schedule-title" /></div>
     <div class="row2">
       <div class="field"><label>유형</label>
-        <select id="schedule-type"><option value="공사">공사(작업)</option><option value="미팅">미팅</option><option value="업무">업무</option></select>
+        <select id="schedule-type"><option value="공사">공사(작업)</option><option value="미팅">미팅</option><option value="업무">업무</option><option value="기타">기타</option></select>
       </div>
       <div class="field"><label>담당 <span class="small-note" style="display:inline;">(복수 선택 가능)</span></label>
         <div class="chip-list" id="schedule-responsible-checks"></div>
       </div>
     </div>
     <div class="field"><label>업체 / 부서</label><input type="text" id="schedule-vendor" /></div>
-    <div class="field"><label>시간 (선택)</label><input type="time" id="schedule-time" /></div>
+    <div class="field"><label>시간 (선택)</label>
+      <div style="display:flex; align-items:center; gap:9px;">
+        <span style="font-size:19px;">🕐</span>
+        <input type="time" id="schedule-time" style="flex:1;" />
+      </div>
+    </div>
 
     <div class="field">
       <label>날짜 선택 <span class="small-note" style="display:inline;">(숫자만 입력해도 자동 반영, 또는 달력에서 선택 · 주말·공휴일 색상 표시)</span></label>
@@ -504,7 +556,7 @@
           <button type="button" class="btn-secondary" id="schedule-add-single">추가</button>
         </div>
         <div class="chip-list" id="schedule-date-chips"></div>
-        <div class="small-note">연속된 기간은 <b>기간</b>에, 개별 날짜는 <b>개별</b>에 입력한 후 <b>추가</b> 버튼을 꼭 눌러주세요.</div>
+        <div class="small-note" style="color:#B5524C; font-weight:700;">연속된 기간은 <b>기간</b>에, 개별 날짜는 <b>개별</b>에 입력한 후 <b>추가</b> 버튼을 꼭 눌러주세요.</div>
         <div class="small-note">기간과 개별 날짜를 함께 조합할 수 있습니다. 연속된 기간은 목록에 "몇일~몇일"로 표시됩니다.</div>
       </div>
     </div>
@@ -515,7 +567,7 @@
     </div>
     <div class="field">
       <label id="schedule-detail-label">추가사항</label>
-      <textarea id="schedule-detail-input" placeholder="추가사항을 입력하세요"></textarea>
+      <textarea id="schedule-detail-input" placeholder="상세사항 기재란"></textarea>
     </div>
     <div class="field"><label>등록자</label><div class="static-value" id="schedule-registrar-display">-</div></div>
 
@@ -559,7 +611,7 @@
 <script type="module">
 import { ensureAccess } from "./auth-gate.js";
 import {
-  db, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, TEAM_MEMBERS, KR_HOLIDAYS
+  db, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, TEAM_MEMBERS, KR_HOLIDAYS, ADMIN_PASSWORD
 } from "./firebase-config.js";
 
 await ensureAccess();
@@ -567,32 +619,32 @@ await ensureAccess();
 /* ───────── 현재 사용자 (작성자) : 진입 시 반드시 선택 ───────── */
 let currentUserName = "";
 function currentUser() { return currentUserName; }
+/* "관리자" 계정으로 선택했을 때만 true - 다른 사람이 작성한 항목도 전부 수정/삭제 가능 */
+function isAdmin() { return currentUserName === "관리자"; }
 
 const authGateOverlay = document.getElementById("author-gate-overlay");
 const authGateButtons = document.getElementById("author-gate-buttons");
 function buildAuthGateButtons() {
   authGateButtons.innerHTML = "";
   const last = sessionStorage.getItem("smcfm_current_user");
-  TEAM_MEMBERS.forEach((n, idx) => {
+  TEAM_MEMBERS.forEach(n => {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "name-btn" + (n === last ? " last-used" : "");
-    const shortcutNum = idx + 1;
-    b.innerHTML = shortcutNum <= 9 ? `<span class="key-num">${shortcutNum}</span>${escapeHtml(n)}` : escapeHtml(n);
-    b.title = shortcutNum <= 9 ? `단축키: 숫자 ${shortcutNum}` : "";
+    b.textContent = n === "관리자" ? "🔒 관리자" : n;
     b.addEventListener("click", () => selectAuthor(n));
     authGateButtons.appendChild(b);
   });
 }
-/* 작성자 선택 화면이 열려있을 때 숫자키(1~5)로 바로 선택 가능 */
-document.addEventListener("keydown", (e) => {
-  if (!authGateOverlay.classList.contains("open")) return;
-  const n = parseInt(e.key, 10);
-  if (n >= 1 && n <= TEAM_MEMBERS.length) {
-    selectAuthor(TEAM_MEMBERS[n - 1]);
-  }
-});
+const ADMIN_AUTHOR_SESSION_KEY = "smcfm_admin_author_ok";
 function selectAuthor(name) {
+  // "관리자" 계정은 admin.html과 동일한 비밀번호로 한 번 더 확인 (세션 동안 재확인 안 함)
+  if (name === "관리자" && sessionStorage.getItem(ADMIN_AUTHOR_SESSION_KEY) !== "1") {
+    const pw = prompt("관리자 계정 비밀번호를 입력하세요");
+    if (pw === null) return;
+    if (pw !== ADMIN_PASSWORD) { alert("비밀번호가 올바르지 않습니다"); return; }
+    sessionStorage.setItem(ADMIN_AUTHOR_SESSION_KEY, "1");
+  }
   currentUserName = name;
   sessionStorage.setItem("smcfm_current_user", name);
   document.getElementById("current-user-display").textContent = name;
@@ -751,7 +803,7 @@ async function handleDeleteClick(type, rec) {
   const me = currentUser();
   const author = authorOf(type, rec);
   const label = rec.title || rec.subject || "항목";
-  if (rec.deleteRequestedBy) {
+  if (rec.deleteRequestedBy && !isAdmin()) {
     if (me === author) {
       alert("이미 삭제 요청이 대기 중입니다. 대시보드에서 승인/거절할 수 있습니다.");
     } else {
@@ -759,7 +811,7 @@ async function handleDeleteClick(type, rec) {
     }
     return false;
   }
-  if (me === author) {
+  if (me === author || isAdmin()) {
     if (!confirm(`"${label}" 항목을 삭제할까요?`)) return false;
     await deleteDoc(doc(db, COLLECTION_OF[type], rec.id));
     return true;
@@ -790,8 +842,8 @@ async function bulkDelete(type, allItems, selectedSet) {
   const me = currentUser();
   const already = items.filter(x => x.deleteRequestedBy);
   const actionable = items.filter(x => !x.deleteRequestedBy);
-  const mine = actionable.filter(x => authorOf(type, x) === me);
-  const others = actionable.filter(x => authorOf(type, x) !== me);
+  const mine = actionable.filter(x => authorOf(type, x) === me || isAdmin());
+  const others = actionable.filter(x => authorOf(type, x) !== me && !isAdmin());
   let msg = `총 ${items.length}건 선택됨\n- 즉시 삭제: ${mine.length}건\n- 삭제 요청 전송(작성자 승인 필요): ${others.length}건`;
   if (already.length) msg += `\n- 이미 삭제 요청 중이라 건너뜀: ${already.length}건`;
   if (!confirm(msg)) return;
@@ -1191,8 +1243,8 @@ function renderTicketNoteHistory(t, noteHist) {
       div.appendChild(replyBtn);
       div.appendChild(replyBox);
 
-      // 본인이 쓴 세부사항/댓글은 수정·삭제 가능. 단, 댓글이 달린 세부사항(top-level)은 수정을 막음
-      const canModify = h.author === currentUser() && (isReply || repliesOf(h.id).length === 0);
+      // 본인이 쓴 세부사항/댓글은 수정·삭제 가능(댓글이 달린 세부사항은 수정 막음). 관리자 계정은 예외 없이 전부 수정/삭제 가능
+      const canModify = isAdmin() || (h.author === currentUser() && (isReply || repliesOf(h.id).length === 0));
       if (canModify) {
         const editBtn = document.createElement("button");
         editBtn.type = "button";
@@ -1361,6 +1413,8 @@ function renderSchedules() {
       tbody.appendChild(divider);
     }
     const tr = document.createElement("tr");
+    // 오늘 날짜를 포함해서 진행 중인 일정(며칠짜리 공사 등)은 "오늘" 구분선과 이어지는 느낌이 나도록 강조
+    if (Array.isArray(s.dates) && s.dates.includes(today)) tr.classList.add("row-active-today");
     const respArr = responsibleArray(s);
     tr.innerHTML = `
       <td class="td-check"><input type="checkbox" class="row-check" ${selectedScheduleIds.has(s.id) ? "checked" : ""} /></td>
@@ -1405,6 +1459,56 @@ let schedCalViewY, schedCalViewM;
   const t = new Date();
   schedCalViewY = t.getFullYear();
   schedCalViewM = t.getMonth();
+}
+/* 다음 날짜 iso 계산 (주 경계 넘어 이어지는 일정인지 판단용, board.html과 동일 로직) */
+function addDaysIso(iso, delta) {
+  const d = new Date(iso + "T00:00:00");
+  d.setDate(d.getDate() + delta);
+  return isoDate(d);
+}
+/* 일정별 고유 색조 자동 부여 (board.html과 동일 로직) - 같은 유형 안에서도 항목마다 살짝 다른 색조를 고정 배정 */
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+function hexToHsl(hex) {
+  hex = hex.replace("#", "");
+  const r = parseInt(hex.substr(0,2),16)/255, g = parseInt(hex.substr(2,2),16)/255, b = parseInt(hex.substr(4,2),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h, s; const l = (max+min)/2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      default: h = (r - g) / d + 4;
+    }
+    h /= 6;
+  }
+  return [h*360, s*100, l*100];
+}
+const SCHED_TYPE_VAR = { "공사": "--type-공사", "미팅": "--type-미팅", "업무": "--type-업무", "기타": "--type-기타" };
+const schedColorCache = {};
+function scheduleColorVariant(type, id) {
+  const cacheKey = (type || "업무") + "|" + id;
+  if (schedColorCache[cacheKey]) return schedColorCache[cacheKey];
+  const baseHex = getComputedStyle(document.documentElement).getPropertyValue(SCHED_TYPE_VAR[type] || SCHED_TYPE_VAR["업무"]).trim();
+  const [h, s, l] = hexToHsl(baseHex);
+  const hash = hashStr(String(id || ""));
+  const hueShift = (hash % 25) - 12;
+  const lightShift = ((hash >> 5) % 14) - 7;
+  const hue = (h + hueShift + 360) % 360;
+  const fgL = Math.max(20, Math.min(45, l + lightShift));
+  const bgL = Math.max(88, Math.min(96, 92 + lightShift / 2));
+  const variant = {
+    fg: `hsl(${hue.toFixed(0)}, ${s.toFixed(0)}%, ${fgL.toFixed(0)}%)`,
+    bg: `hsl(${hue.toFixed(0)}, ${Math.max(20, s - 10).toFixed(0)}%, ${bgL.toFixed(0)}%)`
+  };
+  schedColorCache[cacheKey] = variant;
+  return variant;
 }
 function renderScheduleCalendar() {
   document.getElementById("sched-cal-title").textContent = `${schedCalViewY}년 ${schedCalViewM + 1}월`;
@@ -1484,7 +1588,21 @@ function renderScheduleCalendar() {
         const bar = document.createElement("div");
         bar.className = "event-chip type-" + (seg.s.type || "업무");
         bar.style.gridColumn = `${seg.startCol + 1} / ${seg.endCol + 2}`;
-        bar.textContent = (seg.s.time ? seg.s.time + " " : "") + seg.s.title + (seg.s.vendor ? ` (${seg.s.vendor})` : "");
+        // 장기 연속일정은 업체 옆에 "07/15~07/23" 범위를 표시 (board.html과 동일)
+        const rangeNote = seg.startCol !== seg.endCol ? `${mdShort(weekIsos[seg.startCol])}~${mdShort(weekIsos[seg.endCol])}` : "";
+        const noteParts = [seg.s.vendor, rangeNote].filter(Boolean);
+        const noteText = noteParts.length ? ` (${noteParts.join(" ")})` : "";
+        // 주 경계를 넘어 이어지는 일정은 각진 모서리 + 화살표로 이어짐을 표시
+        const contPrev = seg.startCol === 0 && Array.isArray(seg.s.dates) && seg.s.dates.includes(addDaysIso(weekIsos[0], -1));
+        const contNext = seg.endCol === 6 && Array.isArray(seg.s.dates) && seg.s.dates.includes(addDaysIso(weekIsos[6], 1));
+        bar.classList.toggle("cont-prev", contPrev);
+        bar.classList.toggle("cont-next", contNext);
+        bar.textContent = (contPrev ? "◀ " : "") + (seg.s.time ? seg.s.time + " " : "") + seg.s.title + noteText + (contNext ? " ▶" : "");
+        // 일정별 고유 색조 부여 (같은 유형 안에서도 항목마다 구분되도록)
+        const variant = scheduleColorVariant(seg.s.type, seg.s.id);
+        bar.style.backgroundColor = variant.bg;
+        bar.style.color = variant.fg;
+        bar.style.borderLeftColor = variant.fg;
         bar.title = "클릭하면 상세보기가 열립니다";
         bar.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -1615,7 +1733,7 @@ function openScheduleEdit(id) {
   const s = schedules.find(x => x.id === id);
   if (!s) return;
   scheduleEditingId = id;
-  const isAuthor = s.registeredBy === currentUser();
+  const isAuthor = s.registeredBy === currentUser() || isAdmin();
   document.getElementById("schedule-modal-title").textContent = "일정 수정" + (isAuthor ? "" : " (열람)");
   document.getElementById("schedule-title").value = s.title || "";
   document.getElementById("schedule-type").value = s.type || "공사";
@@ -1694,8 +1812,8 @@ function renderScheduleHistory(s, hist) {
       div.appendChild(replyBtn);
       div.appendChild(replyBox);
 
-      // 본인이 쓴 세부사항/댓글은 수정·삭제 가능. 단, 댓글이 달린 세부사항(top-level)은 수정을 막음
-      const canModify = h.author === currentUser() && (isReply || repliesOf(h.id).length === 0);
+      // 본인이 쓴 세부사항/댓글은 수정·삭제 가능(댓글이 달린 세부사항은 수정 막음). 관리자 계정은 예외 없이 전부 수정/삭제 가능
+      const canModify = isAdmin() || (h.author === currentUser() && (isReply || repliesOf(h.id).length === 0));
       if (canModify) {
         const editBtn = document.createElement("button");
         editBtn.type = "button";
@@ -1782,7 +1900,7 @@ document.getElementById("schedule-cancel").addEventListener("click", () => sched
 
 document.getElementById("schedule-save").addEventListener("click", async () => {
   const orig = scheduleEditingId !== null ? schedules.find(x => x.id === scheduleEditingId) : null;
-  const isAuthor = !orig || orig.registeredBy === currentUser();
+  const isAuthor = !orig || orig.registeredBy === currentUser() || isAdmin();
   const noteText = document.getElementById("schedule-detail-input").value.trim();
 
   if (orig && !isAuthor) {
@@ -1984,6 +2102,12 @@ document.getElementById("memo-save").addEventListener("click", async () => {
 /* ════════════════════════════════════════════════
    0. 대시보드 렌더링
    ════════════════════════════════════════════════ */
+let dashPastShowCount = 3; // 지난 일정 기본 표시 개수 (더보기/줄이기로 조절)
+function daysDiffIso(a, b) {
+  const da = new Date(a + "T00:00:00");
+  const db = new Date(b + "T00:00:00");
+  return Math.round((db - da) / 86400000);
+}
 function renderDashboard() {
   const me = currentUser();
   document.getElementById("dash-user-name").textContent = me || "-";
@@ -2069,19 +2193,36 @@ function renderDashboard() {
   }
 
   const myTickets = tickets.filter(t => t.requestedBy === me || t.assignee === me);
+  const activeTickets = myTickets.filter(t => t.status !== "완료");
+  const doneTickets = myTickets.filter(t => t.status === "완료");
   const tEl = document.getElementById("dash-ticket-list");
-  document.getElementById("dash-ticket-count").textContent = myTickets.length;
+  document.getElementById("dash-ticket-count").textContent = activeTickets.length;
   tEl.innerHTML = "";
-  if (!myTickets.length) {
+  if (!activeTickets.length) {
     tEl.innerHTML = `<div class="dash-empty">관련 업무가 없습니다</div>`;
   } else {
-    myTickets.slice(0, 20).forEach(t => {
+    activeTickets.slice(0, 20).forEach(t => {
       const div = document.createElement("div");
       div.className = "dash-card";
       div.innerHTML = `<div class="dc-title">${escapeHtml(t.title)} <span class="badge ${t.status}">${t.status}</span></div>
         <div class="dc-meta">요청 ${t.requestedBy || "-"} · 담당 ${t.assignee || "미지정"} · 기한 ${t.dueDate || "-"}</div>`;
       div.addEventListener("click", () => { switchTab("tickets"); openTicketDetail(t.id); });
       tEl.appendChild(div);
+    });
+  }
+  const tDoneEl = document.getElementById("dash-ticket-done-list");
+  document.getElementById("dash-ticket-done-count").textContent = doneTickets.length;
+  tDoneEl.innerHTML = "";
+  if (!doneTickets.length) {
+    tDoneEl.innerHTML = `<div class="dash-empty">완료된 업무가 없습니다</div>`;
+  } else {
+    doneTickets.slice(0, 20).forEach(t => {
+      const div = document.createElement("div");
+      div.className = "dash-card dash-card-done";
+      div.innerHTML = `<div class="dc-title">${escapeHtml(t.title)} <span class="badge ${t.status}">${t.status}</span></div>
+        <div class="dc-meta">요청 ${t.requestedBy || "-"} · 담당 ${t.assignee || "미지정"} · 기한 ${t.dueDate || "-"}</div>`;
+      div.addEventListener("click", () => { switchTab("tickets"); openTicketDetail(t.id); });
+      tDoneEl.appendChild(div);
     });
   }
 
@@ -2092,30 +2233,123 @@ function renderDashboard() {
   if (!mySchedules.length) {
     sEl.innerHTML = `<div class="dash-empty">관련 일정·공사가 없습니다</div>`;
   } else {
-    mySchedules.slice(0, 20).forEach(s => {
+    const today = todayIso();
+    const todayD = new Date(today + "T00:00:00");
+    const todayLabel = `${todayD.getFullYear()}년 ${todayD.getMonth() + 1}월 ${todayD.getDate()}일`;
+    const nearestUpcoming = (s) => [...new Set(s.dates || [])].sort().find(d => d >= today);
+    const latestDate = (s) => { const arr = [...new Set(s.dates || [])].sort(); return arr.length ? arr[arr.length - 1] : ""; };
+    const todaySchedules = [];
+    const futureSchedules = [];
+    const pastSchedules = [];
+    mySchedules.forEach(s => {
+      const dates = Array.isArray(s.dates) ? s.dates : [];
+      if (dates.includes(today)) { todaySchedules.push(s); return; }
+      const nu = nearestUpcoming(s);
+      if (nu) futureSchedules.push({ s, nearest: nu });
+      else pastSchedules.push(s);
+    });
+    futureSchedules.sort((a, b) => a.nearest < b.nearest ? -1 : a.nearest > b.nearest ? 1 : 0);
+    pastSchedules.sort((a, b) => { const ma = latestDate(a), mb = latestDate(b); return ma < mb ? 1 : ma > mb ? -1 : 0; });
+
+    /* 오늘 구분 + 오늘에 포함된 일정 */
+    const todayGroup = document.createElement("div");
+    todayGroup.className = "dash-today-group";
+    let todayHtml = `<div class="dash-today-label">오늘 · ${todayLabel}</div>`;
+    if (todaySchedules.length) {
+      todaySchedules.forEach(s => {
+        todayHtml += `<div class="dash-card" data-id="${s.id}"><div class="dc-title">${escapeHtml(s.title)} <span class="badge type-${s.type}">${escapeHtml(typeLabel(s.type))}</span></div>
+          <div class="dc-meta">${formatDateRanges(s.dates)}${s.time ? " " + escapeHtml(s.time) : ""} · 담당 ${escapeHtml(responsibleArray(s).join(", ") || "미지정")}</div></div>`;
+      });
+    } else {
+      todayHtml += `<div class="dash-empty" style="padding:6px 0; font-size:14px;">오늘 해당하는 일정이 없습니다</div>`;
+    }
+    todayGroup.innerHTML = todayHtml;
+    sEl.appendChild(todayGroup);
+    todayGroup.querySelectorAll(".dash-card[data-id]").forEach(card => {
+      card.addEventListener("click", () => { switchTab("schedules"); openScheduleEdit(card.dataset.id); });
+    });
+
+    /* 다가오는 일정: 제목 / 분류 / D-day */
+    futureSchedules.forEach(({ s, nearest }) => {
+      const dday = daysDiffIso(today, nearest);
       const div = document.createElement("div");
       div.className = "dash-card";
-      div.innerHTML = `<div class="dc-title">${escapeHtml(s.title)} <span class="badge type-${s.type}">${typeLabel(s.type)}</span></div>
-        <div class="dc-meta">${formatDateRanges(s.dates)}${s.time ? ` ${s.time}` : ""} · 담당 ${responsibleArray(s).join(", ") || "미지정"}</div>`;
+      div.innerHTML = `<div class="dc-title">${escapeHtml(s.title)} <span class="badge type-${s.type}">${escapeHtml(typeLabel(s.type))}</span> <span class="dash-future-ddaybadge">D-${dday}일부터</span></div>
+        <div class="dc-meta">${formatDateRanges(s.dates)}${s.time ? " " + escapeHtml(s.time) : ""} · 담당 ${escapeHtml(responsibleArray(s).join(", ") || "미지정")}</div>`;
       div.addEventListener("click", () => { switchTab("schedules"); openScheduleEdit(s.id); });
       sEl.appendChild(div);
     });
+
+    /* 지난 일정: 축약 표시 + 더보기/줄이기 */
+    if (pastSchedules.length) {
+      const wrap = document.createElement("div");
+      wrap.className = "dash-past-list";
+      const visible = pastSchedules.slice(0, dashPastShowCount);
+      visible.forEach(s => {
+        const row = document.createElement("div");
+        row.className = "dash-past-card";
+        row.innerHTML = `${escapeHtml(s.title)} · <span class="badge type-${s.type}">${escapeHtml(typeLabel(s.type))}</span> · ${formatDateRangesShort(s.dates)}`;
+        row.addEventListener("click", () => { switchTab("schedules"); openScheduleEdit(s.id); });
+        wrap.appendChild(row);
+      });
+      const remaining = pastSchedules.length - visible.length;
+      const actions = document.createElement("div");
+      actions.className = "dash-past-actions";
+      if (remaining > 0) {
+        const moreBtn = document.createElement("button");
+        moreBtn.type = "button";
+        moreBtn.className = "btn-secondary";
+        moreBtn.textContent = dashPastShowCount <= 3 ? `지난 일정 ${remaining}개 더보기` : `▲ 더보기 (${remaining}개 남음)`;
+        moreBtn.addEventListener("click", () => {
+          dashPastShowCount = dashPastShowCount <= 3 ? Math.min(5, pastSchedules.length) : Math.min(dashPastShowCount + 5, pastSchedules.length);
+          renderDashboard();
+        });
+        actions.appendChild(moreBtn);
+      }
+      if (dashPastShowCount > 3) {
+        const lessBtn = document.createElement("button");
+        lessBtn.type = "button";
+        lessBtn.className = "btn-secondary";
+        lessBtn.textContent = "줄이기";
+        lessBtn.addEventListener("click", () => { dashPastShowCount = 3; renderDashboard(); });
+        actions.appendChild(lessBtn);
+      }
+      if (actions.children.length) wrap.appendChild(actions);
+      sEl.appendChild(wrap);
+    }
   }
 
   const myMemos = memos.filter(m => m.receivedBy === me || m.assignee === me);
+  const activeMemos = myMemos.filter(m => m.status !== "확인됨");
+  const doneMemos = myMemos.filter(m => m.status === "확인됨");
   const mEl = document.getElementById("dash-memo-list");
-  document.getElementById("dash-memo-count").textContent = myMemos.length;
+  document.getElementById("dash-memo-count").textContent = activeMemos.length;
   mEl.innerHTML = "";
-  if (!myMemos.length) {
+  if (!activeMemos.length) {
     mEl.innerHTML = `<div class="dash-empty">관련 메모가 없습니다</div>`;
   } else {
-    myMemos.slice(0, 20).forEach(m => {
+    activeMemos.slice(0, 20).forEach(m => {
       const div = document.createElement("div");
       div.className = "dash-card";
       div.innerHTML = `<div class="dc-title">${m.assignee || "미지정"} - ${escapeHtml(m.subject || "")} <span class="badge status-${m.status}">${m.status}</span></div>
         <div class="dc-meta">받은사람 ${m.receivedBy || "-"} · ${fmtTs(m.receivedAt)}</div>`;
       div.addEventListener("click", () => { switchTab("memos"); openMemoEdit(m.id); });
       mEl.appendChild(div);
+    });
+  }
+  const mDoneEl = document.getElementById("dash-memo-done-list");
+  document.getElementById("dash-memo-done-count").textContent = doneMemos.length;
+  mDoneEl.innerHTML = "";
+  if (!doneMemos.length) {
+    mDoneEl.innerHTML = `<div class="dash-empty">완료된 전화메모가 없습니다</div>`;
+  } else {
+    doneMemos.slice(0, 20).forEach(m => {
+      const div = document.createElement("div");
+      div.className = "dash-card dash-card-done";
+      div.innerHTML = `<div class="dc-title">${m.assignee || "미지정"} - ${escapeHtml(m.subject || "")} <span class="badge status-${m.status}">${m.status}</span></div>
+        <div class="dc-meta">받은사람 ${m.receivedBy || "-"} · ${fmtTs(m.receivedAt)}</div>`;
+      div.addEventListener("click", () => { switchTab("memos"); openMemoEdit(m.id); });
+      mDoneEl.appendChild(div);
     });
   }
 }
