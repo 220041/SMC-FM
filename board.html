@@ -49,7 +49,7 @@
   .nav-link-icon { font-size: 16px; }
 
   /* ── 메인 영역: 캘린더 + 알림패널 ───────── */
-  #main { display: flex; flex: 1; min-height: 0; padding: 18px 24px; gap: 20px; }
+  #main { display: flex; flex: 1; min-height: 0; padding: 10px 24px 14px; gap: 20px; }
 
   /* ── 캘린더 ────────────────────────────── */
   #cal-wrap {
@@ -68,14 +68,18 @@
   #cal-wrap.density-1 { --chip-font: clamp(11.5px, 0.9vw, 15px); --daynum-font: clamp(14px, 1.1vw, 19px); --lane-gap: 3px; --lane-pad: 3px 7px; }
   #cal-wrap.density-2 { --chip-font: clamp(10.5px, 0.8vw, 13px); --daynum-font: clamp(13px, 1vw, 16px); --lane-gap: 2px; --lane-pad: 2px 6px; }
   #cal-wrap.density-3 { --chip-font: clamp(9.5px, 0.7vw, 11.5px); --daynum-font: clamp(12px, 0.9vw, 14px); --lane-gap: 2px; --lane-pad: 2px 5px; }
-  #cal-grid-outer { flex: 1; min-height: 0; overflow-y: auto; border-radius: var(--radius); }
+  /* cal-grid-outer를 세로 flex 컨테이너로 만들어, dow-row(고정 높이) 이외의 남는 공간을
+     전부 cal-grid에 넘겨주도록 함 (퍼센트 높이 대신 flex로 계산해야 dow-row 높이만큼
+     넘치면서 스크롤이 생기는 문제가 없음) */
+  #cal-grid-outer { flex: 1; min-height: 0; overflow-y: auto; border-radius: var(--radius); display: flex; flex-direction: column; }
   #dow-row {
     display: grid; grid-template-columns: repeat(7, 1fr);
     background: var(--surface); border-radius: var(--radius) var(--radius) 0 0;
     border: 1px solid var(--line); border-bottom: none;
+    flex-shrink: 0;
   }
   #dow-row div {
-    text-align: center; padding: 10px 0; font-weight: 800;
+    text-align: center; padding: 6px 0; font-weight: 800;
     font-size: clamp(13px, 1vw, 17px); color: var(--ink-soft);
   }
   #dow-row div:first-child { color: var(--alert); }
@@ -87,7 +91,7 @@
     border: 1px solid var(--line);
     border-radius: 0 0 var(--radius) var(--radius);
     overflow: hidden;
-    min-height: 100%; /* 일정이 적어 여유 공간이 남을 때, 그 공간을 주(week)마다 균등하게 나눠 갖도록 함 */
+    flex: 1 1 auto; min-height: 0; /* 일정이 적어 여유 공간이 남을 때, 그 공간을 주(week)마다 균등하게 나눠 갖도록 함 */
   }
   .cal-week { border-bottom: 1px solid var(--line); flex: 1 1 auto; display: flex; flex-direction: column; }
   .cal-week:last-child { border-bottom: none; }
