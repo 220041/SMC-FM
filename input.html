@@ -1377,8 +1377,8 @@ function renderTickets() {
   };
 
   // assignee가 없는 기존 자료는 이전 방식대로 요청자 외 전원에게 보이도록 유지한다.
-  const received = tickets.filter(t => (t.assignee ? t.assignee === me : t.requestedBy !== me) && passesFilters(t));
-  const sent = tickets.filter(t => t.requestedBy === me && passesFilters(t));
+  const received = tickets.filter(t => (isAdmin() || (t.assignee ? t.assignee === me : t.requestedBy !== me)) && passesFilters(t));
+  const sent = isAdmin() ? [] : tickets.filter(t => t.requestedBy === me && passesFilters(t));
 
   renderTicketGroup(received, me, "ticket-tbody-received", "ticket-count-received", "ticket-dir-received", "ticket-section-received-count");
   renderTicketGroup(sent, me, "ticket-tbody-sent", "ticket-count-sent", "ticket-dir-sent", "ticket-section-sent-count");
@@ -2509,7 +2509,7 @@ function renderDashboard() {
     });
   }
 
-  const myTickets = tickets.filter(t => t.requestedBy === me || t.assignee === me || (!t.assignee && t.requestedBy !== me));
+  const myTickets = isAdmin() ? tickets.slice() : tickets.filter(t => t.requestedBy === me || t.assignee === me || (!t.assignee && t.requestedBy !== me));
   const activeTickets = myTickets.filter(t => t.status !== "완료");
   const doneTickets = myTickets.filter(t => t.status === "완료");
   const tEl = document.getElementById("dash-ticket-list");
