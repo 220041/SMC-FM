@@ -266,6 +266,10 @@
   .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(286px, 1fr)); gap: 20px; }
   .dash-col { background: var(--surface); border-radius: 13px; padding: 15.5px 17.5px; border: 1px solid var(--line); }
   .dash-col h3 { font-size: 17.5px; margin: 0 0 11px; color: var(--ink-soft); display: flex; align-items: center; gap: 6.5px; }
+  .dash-column-header { transition: color 0.15s; }
+  .dash-column-header:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 4px; }
+  .dash-column-header::after { content: " →"; font-size: 13px; opacity: 0; transition: opacity 0.15s; }
+  .dash-column-header:hover::after { opacity: 0.7; }
   .dash-count { background: var(--accent); color: #fff; font-size: 13px; font-weight: 800; padding: 1px 7.5px; border-radius: 9px; }
   .dash-card {
     background: var(--surface); border: 1px solid var(--line); border-radius: 11px; padding: 12px 14.5px;
@@ -289,16 +293,62 @@
   }
   .dash-confirm-btn.urgent-blink { animation: dashConfirmBlink 0.7s ease-in-out infinite; }
 
-  .dash-grid-done { margin-top: 20px; }
-  .dash-count-done { background: var(--type-업무-bg); color: var(--type-업무); }
-  .dash-card-done { background: var(--surface); border-left: 3px solid var(--type-업무); }
-  .dash-card-done .dc-title { color: var(--ink); font-weight: 800; }
+  /* Premium design for schedule dashboard timeline */
+  .dash-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .timeline-item {
+    position: relative;
+    padding: 14px 16px;
+    background: var(--surface);
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    border-left: 5px solid var(--accent);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    margin-bottom: 8px;
+  }
+  .timeline-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    border-color: var(--line-strong);
+  }
+  .timeline-item.type-공사 { border-left-color: var(--type-공사); }
+  .timeline-item.type-미팅 { border-left-color: var(--type-미팅); }
+  .timeline-item.type-업무 { border-left-color: var(--type-업무); }
+  .timeline-item.type-기타 { border-left-color: var(--type-기타); }
 
-  .dash-today-group { border: 1.5px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px; padding: 11px 13px; margin-bottom: 11px; background: var(--bg); }
-  .dash-today-label { font-size: 13px; font-weight: 900; color: var(--accent); margin-bottom: 8px; }
-  .dash-today-group .dash-card { background: var(--surface); margin-bottom: 7px; }
-  .dash-today-group .dash-card:last-child { margin-bottom: 0; }
-  .dash-future-ddaybadge { font-weight: 900; color: var(--accent); font-size: 13.5px; }
+  .timeline-dday {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--alert);
+    background: var(--alert-bg);
+    padding: 2.5px 8.5px;
+    border-radius: 20px;
+    float: right;
+  }
+  .timeline-title {
+    font-size: 15.5px;
+    font-weight: 800;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+  .timeline-meta {
+    font-size: 13px;
+    color: var(--ink-soft);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .timeline-meta span {
+    background: var(--bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
 
   .dash-past-list { margin-top: 12px; padding-top: 11px; border-top: 1px dashed var(--line-strong); }
   .dash-past-card {
@@ -309,6 +359,57 @@
   .dash-past-actions { display: flex; gap: 8px; justify-content: center; margin-top: 7px; }
   .dash-past-actions button { font-size: 12px; padding: 5px 10px; }
   .dash-empty { color: var(--dim); font-size: 16px; padding: 15.5px 0; text-align: center; }
+
+  /* Activity Feed Section */
+  .dash-activity-section {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+  }
+  .dash-activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .activity-feed-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 11px 14px;
+    background: var(--bg);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+  .activity-feed-item:hover {
+    background: var(--line);
+  }
+  .activity-feed-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .activity-feed-content {
+    flex: 1;
+    font-size: 14.5px;
+    color: var(--ink);
+  }
+  .activity-feed-meta {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-top: 4px;
+  }
+  .activity-feed-time {
+    font-size: 12px;
+    color: var(--dim);
+    margin-left: auto;
+    align-self: center;
+    white-space: nowrap;
+  }
 
   /* ── 날짜 입력 팝업 캘린더 (주말·공휴일 표시) ── */
   .dp-popup {
@@ -428,27 +529,21 @@
     </div>
     <div class="dash-grid">
       <div class="dash-col">
-        <h3>업무 <span class="dash-count" id="dash-ticket-count">0</span></h3>
+        <h3 class="dash-column-header" data-tab="tickets" style="cursor:pointer; user-select:none;" title="클릭하면 관련업무 탭으로 이동">업무 <span class="dash-count" id="dash-ticket-count">0</span></h3>
         <div class="dash-list" id="dash-ticket-list"></div>
       </div>
       <div class="dash-col">
-        <h3>일정 · 공사 <span class="dash-count" id="dash-schedule-count">0</span></h3>
-        <div class="dash-list" id="dash-schedule-list"></div>
+        <h3 class="dash-column-header" data-tab="schedules" style="cursor:pointer; user-select:none;" title="클릭하면 일정관리 탭으로 이동">일정 · 공사 <span class="dash-count" id="dash-schedule-count">0</span></h3>
+        <div class="dash-list dash-timeline" id="dash-schedule-list"></div>
       </div>
       <div class="dash-col">
-        <h3>전화 · 메모 <span class="dash-count" id="dash-memo-count">0</span></h3>
+        <h3 class="dash-column-header" data-tab="memos" style="cursor:pointer; user-select:none;" title="클릭하면 전화 및 메모 탭으로 이동">전화 · 메모 <span class="dash-count" id="dash-memo-count">0</span></h3>
         <div class="dash-list" id="dash-memo-list"></div>
       </div>
     </div>
-    <div class="dash-grid dash-grid-done">
-      <div class="dash-col dash-col-done">
-        <h3>완료된 업무 <span class="dash-count dash-count-done" id="dash-ticket-done-count">0</span></h3>
-        <div class="dash-list" id="dash-ticket-done-list"></div>
-      </div>
-      <div class="dash-col dash-col-done">
-        <h3>완료된 전화메모 <span class="dash-count dash-count-done" id="dash-memo-done-count">0</span></h3>
-        <div class="dash-list" id="dash-memo-done-list"></div>
-      </div>
+    <div class="dash-activity-section" style="margin-top: 24px;">
+      <h3 style="display:flex; align-items:center; gap:8px; font-size:18px; border-bottom:2px solid var(--line); padding-bottom:8px; margin-bottom:12px; font-weight:800; color:var(--ink);">🔔 관련 변경사항 (최근 활동 피드)</h3>
+      <div class="dash-activity-list" id="dash-activity-list"></div>
     </div>
   </div>
 
@@ -878,6 +973,13 @@ function switchTab(name) {
 }
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+});
+/* 대시보드 열 헤더 클릭 → 해당 탭으로 전환 */
+document.querySelectorAll(".dash-column-header[data-tab]").forEach(h => {
+  h.addEventListener("click", (e) => {
+    if (e.target.classList.contains("dash-count")) return; // 배지 클릭 시 무시
+    switchTab(h.dataset.tab);
+  });
 });
 
 function pad(n) { return String(n).padStart(2, "0"); }
@@ -2557,7 +2659,6 @@ function renderDashboard() {
 
   const myTickets = isAdmin() ? tickets.slice() : tickets.filter(t => t.requestedBy === me || t.assignee === me || (!t.assignee && t.requestedBy !== me));
   const activeTickets = myTickets.filter(t => t.status !== "완료");
-  const doneTickets = myTickets.filter(t => t.status === "완료");
   const tEl = document.getElementById("dash-ticket-list");
   document.getElementById("dash-ticket-count").textContent = activeTickets.length;
   tEl.innerHTML = "";
@@ -2569,23 +2670,8 @@ function renderDashboard() {
       div.className = "dash-card";
       div.innerHTML = `<div class="dc-title">${escapeHtml(t.title)} <span class="badge ${t.status}">${t.status}</span></div>
         <div class="dc-meta">${t.requestedBy === me ? "수신 " + escapeHtml(t.assignee || "미지정") : "요청 " + escapeHtml(t.requestedBy || "-")} · 기한 ${t.dueDate || "-"}</div>`;
-      div.addEventListener("click", () => { switchTab("tickets"); openTicketDetail(t.id); });
+      div.addEventListener("click", () => { openTicketDetail(t.id); });
       tEl.appendChild(div);
-    });
-  }
-  const tDoneEl = document.getElementById("dash-ticket-done-list");
-  document.getElementById("dash-ticket-done-count").textContent = doneTickets.length;
-  tDoneEl.innerHTML = "";
-  if (!doneTickets.length) {
-    tDoneEl.innerHTML = `<div class="dash-empty">완료된 업무가 없습니다</div>`;
-  } else {
-    doneTickets.slice(0, 20).forEach(t => {
-      const div = document.createElement("div");
-      div.className = "dash-card dash-card-done";
-      div.innerHTML = `<div class="dc-title">${escapeHtml(t.title)} <span class="badge ${t.status}">${t.status}</span></div>
-        <div class="dc-meta">${t.requestedBy === me ? "수신 " + escapeHtml(t.assignee || "미지정") : "요청 " + escapeHtml(t.requestedBy || "-")} · 기한 ${t.dueDate || "-"}</div>`;
-      div.addEventListener("click", () => { switchTab("tickets"); openTicketDetail(t.id); });
-      tDoneEl.appendChild(div);
     });
   }
 
@@ -2597,10 +2683,7 @@ function renderDashboard() {
     sEl.innerHTML = `<div class="dash-empty">관련 일정·공사가 없습니다</div>`;
   } else {
     const today = todayIso();
-    const todayD = new Date(today + "T00:00:00");
-    const todayLabel = `${todayD.getFullYear()}년 ${todayD.getMonth() + 1}월 ${todayD.getDate()}일`;
     const nearestUpcoming = (s) => [...new Set(s.dates || [])].sort().find(d => d >= today);
-    const latestDate = (s) => { const arr = [...new Set(s.dates || [])].sort(); return arr.length ? arr[arr.length - 1] : ""; };
     const todaySchedules = [];
     const futureSchedules = [];
     const pastSchedules = [];
@@ -2612,79 +2695,47 @@ function renderDashboard() {
       else pastSchedules.push(s);
     });
     futureSchedules.sort((a, b) => a.nearest < b.nearest ? -1 : a.nearest > b.nearest ? 1 : 0);
-    pastSchedules.sort((a, b) => { const ma = latestDate(a), mb = latestDate(b); return ma < mb ? 1 : ma > mb ? -1 : 0; });
 
-    /* 오늘 구분 + 오늘에 포함된 일정 */
-    const todayGroup = document.createElement("div");
-    todayGroup.className = "dash-today-group";
-    let todayHtml = `<div class="dash-today-label">오늘 · ${todayLabel}</div>`;
+    /* Premium Timeline: 오늘 일정 */
     if (todaySchedules.length) {
       todaySchedules.forEach(s => {
-        todayHtml += `<div class="dash-card" data-id="${s.id}"><div class="dc-title">${escapeHtml(s.title)} <span class="badge type-${s.type}">${escapeHtml(typeLabel(s.type))}</span></div>
-          <div class="dc-meta">${formatDateRanges(s.dates)}${s.time ? " " + escapeHtml(s.time) : ""} · 담당 ${escapeHtml(responsibleArray(s).join(", ") || "미지정")}</div></div>`;
+        const div = document.createElement("div");
+        div.className = `timeline-item type-${s.type || "업무"}`;
+        div.innerHTML = `
+          <span class="timeline-dday" style="color: var(--today); background: var(--today-bg);">오늘</span>
+          <div class="timeline-title">${escapeHtml(s.title)}</div>
+          <div class="timeline-meta">
+            <span>${escapeHtml(typeLabel(s.type))}</span>
+            <span>${formatDateRanges(s.dates)}${s.time ? " " + escapeHtml(s.time) : ""}</span>
+            <span>담당: ${escapeHtml(responsibleArray(s).join(", ") || "미지정")}</span>
+          </div>
+        `;
+        div.addEventListener("click", () => { openScheduleEdit(s.id); });
+        sEl.appendChild(div);
       });
-    } else {
-      todayHtml += `<div class="dash-empty" style="padding:6px 0; font-size:14px;">오늘 해당하는 일정이 없습니다</div>`;
     }
-    todayGroup.innerHTML = todayHtml;
-    sEl.appendChild(todayGroup);
-    todayGroup.querySelectorAll(".dash-card[data-id]").forEach(card => {
-      card.addEventListener("click", () => { switchTab("schedules"); openScheduleEdit(card.dataset.id); });
-    });
 
-    /* 다가오는 일정: 제목 / 분류 / D-day */
+    /* Premium Timeline: 다가오는 일정 */
     futureSchedules.forEach(({ s, nearest }) => {
       const dday = daysDiffIso(today, nearest);
       const div = document.createElement("div");
-      div.className = "dash-card";
-      div.innerHTML = `<div class="dc-title">${escapeHtml(s.title)} <span class="badge type-${s.type}">${escapeHtml(typeLabel(s.type))}</span> <span class="dash-future-ddaybadge">D-${dday}일부터</span></div>
-        <div class="dc-meta">${formatDateRanges(s.dates)}${s.time ? " " + escapeHtml(s.time) : ""} · 담당 ${escapeHtml(responsibleArray(s).join(", ") || "미지정")}</div>`;
-      div.addEventListener("click", () => { switchTab("schedules"); openScheduleEdit(s.id); });
+      div.className = `timeline-item type-${s.type || "업무"}`;
+      div.innerHTML = `
+        <span class="timeline-dday">D-${dday}</span>
+        <div class="timeline-title">${escapeHtml(s.title)}</div>
+        <div class="timeline-meta">
+          <span>${escapeHtml(typeLabel(s.type))}</span>
+          <span>${formatDateRanges(s.dates)}${s.time ? " " + escapeHtml(s.time) : ""}</span>
+          <span>담당: ${escapeHtml(responsibleArray(s).join(", ") || "미지정")}</span>
+        </div>
+      `;
+      div.addEventListener("click", () => { openScheduleEdit(s.id); });
       sEl.appendChild(div);
     });
-
-    /* 지난 일정: 축약 표시 + 더보기/줄이기 */
-    if (pastSchedules.length) {
-      const wrap = document.createElement("div");
-      wrap.className = "dash-past-list";
-      const visible = pastSchedules.slice(0, dashPastShowCount);
-      visible.forEach(s => {
-        const row = document.createElement("div");
-        row.className = "dash-past-card";
-        row.innerHTML = `${escapeHtml(s.title)} · <span class="badge type-${s.type}">${escapeHtml(typeLabel(s.type))}</span> · ${formatDateRangesShort(s.dates)}`;
-        row.addEventListener("click", () => { switchTab("schedules"); openScheduleEdit(s.id); });
-        wrap.appendChild(row);
-      });
-      const remaining = pastSchedules.length - visible.length;
-      const actions = document.createElement("div");
-      actions.className = "dash-past-actions";
-      if (remaining > 0) {
-        const moreBtn = document.createElement("button");
-        moreBtn.type = "button";
-        moreBtn.className = "btn-secondary";
-        moreBtn.textContent = dashPastShowCount <= 3 ? `지난 일정 ${remaining}개 더보기` : `▲ 더보기 (${remaining}개 남음)`;
-        moreBtn.addEventListener("click", () => {
-          dashPastShowCount = dashPastShowCount <= 3 ? Math.min(5, pastSchedules.length) : Math.min(dashPastShowCount + 5, pastSchedules.length);
-          renderDashboard();
-        });
-        actions.appendChild(moreBtn);
-      }
-      if (dashPastShowCount > 3) {
-        const lessBtn = document.createElement("button");
-        lessBtn.type = "button";
-        lessBtn.className = "btn-secondary";
-        lessBtn.textContent = "줄이기";
-        lessBtn.addEventListener("click", () => { dashPastShowCount = 3; renderDashboard(); });
-        actions.appendChild(lessBtn);
-      }
-      if (actions.children.length) wrap.appendChild(actions);
-      sEl.appendChild(wrap);
-    }
   }
 
   const myMemos = memos.filter(m => m.receivedBy === me || m.assignee === me);
   const activeMemos = myMemos.filter(m => m.status !== "확인됨");
-  const doneMemos = myMemos.filter(m => m.status === "확인됨");
   const mEl = document.getElementById("dash-memo-list");
   document.getElementById("dash-memo-count").textContent = activeMemos.length;
   mEl.innerHTML = "";
@@ -2696,23 +2747,111 @@ function renderDashboard() {
       div.className = "dash-card";
       div.innerHTML = `<div class="dc-title">${m.assignee || "미지정"} - ${escapeHtml(m.subject || "")} <span class="badge status-${m.status}">${m.status}</span></div>
         <div class="dc-meta">받은사람 ${m.receivedBy || "-"} · ${fmtTs(m.receivedAt)}</div>`;
-      div.addEventListener("click", () => { switchTab("memos"); openMemoEdit(m.id); });
+      div.addEventListener("click", () => { openMemoEdit(m.id); });
       mEl.appendChild(div);
     });
   }
-  const mDoneEl = document.getElementById("dash-memo-done-list");
-  document.getElementById("dash-memo-done-count").textContent = doneMemos.length;
-  mDoneEl.innerHTML = "";
-  if (!doneMemos.length) {
-    mDoneEl.innerHTML = `<div class="dash-empty">완료된 전화메모가 없습니다</div>`;
+
+  /* 🔔 관련 변경사항 (최근 활동 피드) 생성 및 렌더링 */
+  const activities = [];
+  
+  // 1. 업무 이력 추가
+  myTickets.forEach(t => {
+    if (t.history) {
+      t.history.forEach(h => {
+        activities.push({
+          type: "ticket",
+          id: t.id,
+          title: t.title,
+          author: h.author || t.requestedBy || "미지정",
+          text: h.text,
+          timestamp: h.timestamp ? (h.timestamp.toDate ? h.timestamp.toDate() : new Date(h.timestamp)) : new Date(),
+          icon: "✏️"
+        });
+      });
+    }
+  });
+
+  // 2. 일정/공사 이력 추가
+  mySchedules.forEach(s => {
+    if (s.history) {
+      s.history.forEach(h => {
+        activities.push({
+          type: "schedule",
+          id: s.id,
+          title: s.title,
+          author: h.author || s.registeredBy || "미지정",
+          text: h.text,
+          timestamp: h.timestamp ? (h.timestamp.toDate ? h.timestamp.toDate() : new Date(h.timestamp)) : new Date(),
+          icon: "🗓️"
+        });
+      });
+    } else if (s.detail) {
+      activities.push({
+        type: "schedule",
+        id: s.id,
+        title: s.title,
+        author: s.registeredBy || "미지정",
+        text: s.detail,
+        timestamp: s.registeredAt ? (s.registeredAt.toDate ? s.registeredAt.toDate() : new Date(s.registeredAt)) : new Date(),
+        icon: "🗓️"
+      });
+    }
+  });
+
+  // 3. 전화/메모 이력 추가
+  myMemos.forEach(m => {
+    if (m.receivedAt) {
+      activities.push({
+        type: "memo",
+        id: m.id,
+        title: `${m.assignee || "미지정"} - ${m.subject}`,
+        author: m.receivedBy || "미지정",
+        text: "전화메모 등록",
+        timestamp: m.receivedAt.toDate ? m.receivedAt.toDate() : new Date(m.receivedAt),
+        icon: "📞"
+      });
+    }
+    if (m.status === "확인됨" && m.confirmedAt) {
+      activities.push({
+        type: "memo",
+        id: m.id,
+        title: `${m.assignee || "미지정"} - ${m.subject}`,
+        author: m.confirmedBy || "미지정",
+        text: "전화메모 확인 완료",
+        timestamp: m.confirmedAt.toDate ? m.confirmedAt.toDate() : new Date(m.confirmedAt),
+        icon: "✅"
+      });
+    }
+  });
+
+  // 시간 역순(최신이 위로) 정렬
+  activities.sort((a, b) => b.timestamp - a.timestamp);
+
+  const actListEl = document.getElementById("dash-activity-list");
+  actListEl.innerHTML = "";
+  const visibleActivities = activities.slice(0, 15);
+  if (visibleActivities.length === 0) {
+    actListEl.innerHTML = `<div class="dash-empty">관련 변경사항이 없습니다</div>`;
   } else {
-    doneMemos.slice(0, 20).forEach(m => {
+    visibleActivities.forEach(act => {
       const div = document.createElement("div");
-      div.className = "dash-card dash-card-done";
-      div.innerHTML = `<div class="dc-title">${m.assignee || "미지정"} - ${escapeHtml(m.subject || "")} <span class="badge status-${m.status}">${m.status}</span></div>
-        <div class="dc-meta">받은사람 ${m.receivedBy || "-"} · ${fmtTs(m.receivedAt)}</div>`;
-      div.addEventListener("click", () => { switchTab("memos"); openMemoEdit(m.id); });
-      mDoneEl.appendChild(div);
+      div.className = "activity-feed-item";
+      const timeStr = act.timestamp.toLocaleDateString("ko-KR", { month: "short", day: "numeric" }) + " " + act.timestamp.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+      div.innerHTML = `
+        <div class="activity-feed-icon">${act.icon}</div>
+        <div class="activity-feed-content">
+          <div style="font-weight: 800; font-size: 14.5px;">[${LABEL_OF[act.type]}] ${escapeHtml(act.title)}</div>
+          <div class="activity-feed-meta"><b>${escapeHtml(act.author)}</b> · ${escapeHtml(act.text)}</div>
+        </div>
+        <div class="activity-feed-time">${timeStr}</div>
+      `;
+      div.addEventListener("click", () => {
+        if (act.type === "ticket") openTicketDetail(act.id, false);
+        else if (act.type === "schedule") openScheduleEdit(act.id, false);
+        else if (act.type === "memo") openMemoEdit(act.id);
+      });
+      actListEl.appendChild(div);
     });
   }
 }
