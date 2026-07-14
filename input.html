@@ -729,14 +729,12 @@
 </div>
 
 <script type="module">
-import { ensureAccess } from "./auth-gate.js";
 import { ensureUserLogin, logoutAccount, changeOwnPassword } from "./account-auth.js";
 import {
   db, auth, collection, doc, addDoc, updateDoc, deleteDoc, setDoc, onSnapshot, query, orderBy, serverTimestamp,
   getDocs, getDoc, limit, where, writeBatch, TEAM_MEMBERS, KR_HOLIDAYS, ADMIN_PASSWORD
 } from "./firebase-config.js";
 
-await ensureAccess();
 const accountProfile = await ensureUserLogin();
 
 /* ───────── 현재 사용자 (작성자) : 진입 시 반드시 선택 ───────── */
@@ -786,8 +784,11 @@ document.getElementById("update-gate-change-author").addEventListener("click", (
 });
 const passwordBtn = document.createElement("button");
 passwordBtn.type = "button";
-passwordBtn.className = "btn-secondary";
-passwordBtn.textContent = "비밀번호 변경";
+passwordBtn.className = "icon-btn";
+passwordBtn.textContent = "🔑";
+passwordBtn.title = "비밀번호 변경";
+passwordBtn.setAttribute("aria-label", "비밀번호 변경");
+passwordBtn.style.cssText = "width:28px;height:28px;padding:0;margin-left:5px;border-radius:8px;font-size:14px;vertical-align:middle;";
 passwordBtn.addEventListener("click", changeOwnPassword);
 document.getElementById("author-change-btn").insertAdjacentElement("beforebegin", passwordBtn);
 /* 실제 Firebase 계정으로 로그인했으므로 이름 선택 방식은 사용하지 않는다. */

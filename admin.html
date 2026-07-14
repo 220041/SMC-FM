@@ -345,14 +345,12 @@
 </div>
 
 <script type="module">
-import { ensureAccess } from "./auth-gate.js";
 import { ensureUserLogin, logoutAccount, sendResetForLoginId } from "./account-auth.js";
 import {
   db, auth, collection, doc, addDoc, deleteDoc, updateDoc, setDoc, onSnapshot, query, orderBy, limit, startAfter, getDocs, where, writeBatch,
   TEAM_MEMBERS, USER_ACCOUNTS, ADMIN_PASSWORD, serverTimestamp
 } from "./firebase-config.js";
 
-await ensureAccess();
 const adminProfile = await ensureUserLogin({ adminOnly: true });
 
 /* ───────── 관리자 비밀번호 게이트 (팀 접근코드와 별개로 한 번 더 확인) ───────── */
@@ -810,6 +808,13 @@ Object.keys(CONFIGS).forEach(wireFilters);
    변경사항 이력 (활동 피드): 각 컬렉션 최근 N건을 불러와 history를 펼쳐서 시간순으로 합산 표시
    ════════════════════════════════════════════════ */
 const activityState = { pageSize: 20, rows: [] };
+const AUDIT_ACTION_LABELS = {
+  ticket_created: "관련업무 생성", ticket_opened: "업무 열람", status_changed: "상태 변경",
+  ticket_reopened: "완료 업무 재개", detail_added: "세부사항 추가", detail_edited: "세부사항 수정",
+  detail_archived: "세부사항 삭제", ticket_updated: "관련업무 수정", admin_updated: "관리자 수정",
+  ticket_archived: "자료보관 이동", legacy_assignee_assigned: "기존 업무 수신자 지정"
+};
+const AUDIT_COLLECTION_LABELS = { requestTickets: "관련업무", schedules: "일정관리", phoneMemos: "전화 및 메모" };
 function memoEvents(r) {
   const events = [];
   if (r.receivedAt) events.push({ coll: "전화메모", title: r.subject || "-", text: "메모 등록", author: r.receivedBy || "-", timestamp: r.receivedAt });
@@ -826,7 +831,12 @@ async function loadActivity() {
     const auditSnap = await getDocs(query(collection(db, "auditLogs"), orderBy("createdAt", "desc"), limit(n)));
     const items = auditSnap.docs.map(d => {
       const r = d.data();
-      return { coll: r.targetCollection || "-", title: r.targetId || "-", text: r.action || "-", author: r.actorName || "-", timestamp: r.createdAt };
+      return {
+        coll: AUDIT_COLLECTION_LABELS[r.targetCollection] || r.targetCollection || "-",
+        title: (r.after && r.after.title) || (r.before && r.before.title) || r.targetId || "-",
+        text: AUDIT_ACTION_LABELS[r.action] || r.action || "-",
+        author: r.actorName || "-", timestamp: r.createdAt
+      };
     });
     activityState.rows = items;
     renderActivity();

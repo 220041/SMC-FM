@@ -12,7 +12,7 @@ function addStyles() {
   if (document.getElementById("account-auth-style")) return;
   const style = document.createElement("style");
   style.id = "account-auth-style";
-  style.textContent = `.account-overlay{position:fixed;inset:0;z-index:12000;background:#1f2933;display:flex;align-items:center;justify-content:center;padding:18px}.account-card{width:min(420px,100%);background:#fff;border-radius:18px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.4)}.account-card h2{margin:0 0 6px;font-size:22px}.account-card p{margin:0 0 20px;color:#5a6572;font-size:14px}.account-card label{display:block;margin:12px 0 6px;font-weight:700;font-size:13px}.account-card select,.account-card input{width:100%;padding:12px;border:1.5px solid #c7cdd3;border-radius:10px;font-size:16px}.account-card button{width:100%;margin-top:14px;padding:12px;border:0;border-radius:10px;background:#2b4c7e;color:#fff;font-weight:800;font-size:15px;cursor:pointer}.account-card .secondary{background:#eef0f1;color:#1f2933}.account-error{color:#c23b3b;margin-top:10px;font-size:13px;min-height:18px}`;
+  style.textContent = `.account-overlay{position:fixed;inset:0;z-index:12000;background:#1f2933;display:flex;align-items:center;justify-content:center;padding:18px}.account-card{width:min(460px,100%);background:#fff;border-radius:18px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.4)}.account-card h2{margin:0 0 6px;font-size:22px}.account-card p{margin:0 0 20px;color:#5a6572;font-size:14px}.account-card label{display:block;margin:12px 0 6px;font-weight:700;font-size:13px}.account-card input{width:100%;padding:12px;border:1.5px solid #c7cdd3;border-radius:10px;font-size:16px}.account-card>button{width:100%;margin-top:14px;padding:12px;border:0;border-radius:10px;background:#2b4c7e;color:#fff;font-weight:800;font-size:15px;cursor:pointer}.account-card .secondary{background:#eef0f1;color:#1f2933}.account-error{color:#c23b3b;margin-top:10px;font-size:13px;min-height:18px}.account-choices{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.account-choice{border:2px solid #dce1e5;border-radius:12px;background:#f5f6f4;color:#1f2933;padding:13px 5px;cursor:pointer;font-weight:800}.account-choice .icon{display:block;font-size:23px;margin-bottom:4px}.account-choice.selected{border-color:#2b4c7e;background:#e7edf6;color:#2b4c7e}.account-back{background:transparent!important;color:#5a6572!important;border:1px solid #dce1e5!important}`;
   document.head.appendChild(style);
 }
 
@@ -56,12 +56,14 @@ export async function ensureUserLogin({ adminOnly = false } = {}) {
   if (auth.currentUser) await signOut(auth);
   const overlay = document.createElement("div");
   overlay.className = "account-overlay";
-  const choices = Object.entries(USER_ACCOUNTS).filter(([, a]) => !adminOnly || a.role === "admin").map(([id]) => `<option value="${id}">${id === "admin" ? "관리자" : id}</option>`).join("");
-  overlay.innerHTML = `<div class="account-card"><h2>${adminOnly ? "관리자 로그인" : "사용자 로그인"}</h2><p>본인 계정과 비밀번호를 입력하세요.</p><label>아이디</label><select id="account-id">${choices}</select><label>비밀번호</label><input id="account-pw" type="password"><button id="account-login">로그인</button><button class="secondary" id="account-reset">비밀번호 재설정 메일</button><div class="account-error" id="account-error"></div></div>`;
+  const accountIds = Object.entries(USER_ACCOUNTS).filter(([, a]) => !adminOnly || a.role === "admin").map(([id]) => id);
+  let selectedId = accountIds[0];
+  const choices = accountIds.map((id, index) => `<button type="button" class="account-choice ${index === 0 ? "selected" : ""}" data-id="${id}"><span class="icon">${id === "admin" ? "🛡️" : "👤"}</span>${id === "admin" ? "관리자" : id}</button>`).join("");
+  overlay.innerHTML = `<div class="account-card"><h2>${adminOnly ? "관리자 로그인" : "사용자 로그인"}</h2><p>본인 계정을 선택하고 비밀번호를 입력하세요.</p><div class="account-choices">${choices}</div><label>비밀번호</label><input id="account-pw" type="password"><button id="account-login">로그인</button><button class="secondary" id="account-reset">비밀번호 재설정 메일</button>${adminOnly ? `<button class="account-back" id="account-back">← 시작 화면으로 돌아가기</button>` : ""}<div class="account-error" id="account-error"></div></div>`;
   document.body.appendChild(overlay);
   return new Promise(resolve => {
     const submit = async () => {
-      const id = overlay.querySelector("#account-id").value;
+      const id = selectedId;
       const password = overlay.querySelector("#account-pw").value;
       const err = overlay.querySelector("#account-error");
       try {
@@ -73,14 +75,21 @@ export async function ensureUserLogin({ adminOnly = false } = {}) {
         resolve(p);
       } catch (e) { err.textContent = "아이디 또는 비밀번호를 확인하세요."; }
     };
+    overlay.querySelectorAll(".account-choice").forEach(button => button.onclick = () => {
+      selectedId = button.dataset.id;
+      overlay.querySelectorAll(".account-choice").forEach(b => b.classList.toggle("selected", b === button));
+      overlay.querySelector("#account-pw").focus();
+    });
     overlay.querySelector("#account-login").onclick = submit;
     overlay.querySelector("#account-pw").onkeydown = e => { if (e.key === "Enter") submit(); };
     overlay.querySelector("#account-reset").onclick = async () => {
-      const account = USER_ACCOUNTS[overlay.querySelector("#account-id").value];
+      const account = USER_ACCOUNTS[selectedId];
       const err = overlay.querySelector("#account-error");
       try { await sendPasswordResetEmail(auth, account.email); err.style.color = "#1f7a5c"; err.textContent = `${account.email}로 재설정 메일을 보냈습니다.`; }
       catch (e) { err.textContent = "재설정 메일을 보내지 못했습니다."; }
     };
+    const back = overlay.querySelector("#account-back");
+    if (back) back.onclick = () => { location.href = "index.html"; };
   });
 }
 
