@@ -621,6 +621,9 @@
     <h3>🔔 확인이 필요한 업데이트</h3>
     <div class="small-note" style="margin-bottom:16px;">아래 항목을 모두 확인해야 화면을 계속 이용할 수 있습니다.</div>
     <div id="update-gate-list"></div>
+    <div class="small-note" style="text-align:center; margin-top:16px;">
+      작성자를 잘못 선택하셨나요? <a href="#" id="update-gate-change-author" style="color:var(--accent); font-weight:700; text-decoration:underline;">변경하기</a>
+    </div>
   </div>
 </div>
 
@@ -668,6 +671,11 @@ function selectAuthor(name) {
   renderDashboard();
 }
 document.getElementById("author-change-btn").addEventListener("click", () => {
+  buildAuthGateButtons();
+  authGateOverlay.classList.add("open");
+});
+document.getElementById("update-gate-change-author").addEventListener("click", (e) => {
+  e.preventDefault();
   buildAuthGateButtons();
   authGateOverlay.classList.add("open");
 });
