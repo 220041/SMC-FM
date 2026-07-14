@@ -1,6 +1,6 @@
 import {
   auth, db, doc, getDoc, setDoc, serverTimestamp,
-  signInWithEmailAndPassword, updatePassword, sendPasswordResetEmail, signOut,
+  signInWithEmailAndPassword, updatePassword, sendPasswordResetEmail, signOut, onAuthStateChanged,
   USER_ACCOUNTS, INITIAL_PASSWORD
 } from "./firebase-config.js";
 
@@ -51,6 +51,9 @@ async function forceInitialPasswordChange(user) {
 
 export async function ensureUserLogin({ adminOnly = false } = {}) {
   addStyles();
+  await new Promise(resolve => {
+    const unsubscribe = onAuthStateChanged(auth, () => { unsubscribe(); resolve(); });
+  });
   let profile = profileForUser(auth.currentUser);
   if (profile && (!adminOnly || profile.role === "admin")) { await persistProfile(profile); return profile; }
   if (auth.currentUser) await signOut(auth);

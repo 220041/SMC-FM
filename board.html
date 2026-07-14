@@ -747,15 +747,18 @@ function renderCalendar() {
         bar.className = "event-chip type-" + (seg.s.type || "업무");
         bar.style.gridColumn = `${seg.startCol + 1} / ${seg.endCol + 2}`;
         // 장기 연속일정(같은 주 안에서 이틀 이상 이어지는 구간)은 업체 옆에 "07/15~07/23" 범위를 표시
-        const rangeNote = seg.startCol !== seg.endCol ? `${mdShort(weekIsos[seg.startCol])}~${mdShort(weekIsos[seg.endCol])}` : "";
-        const noteParts = [seg.s.vendor, rangeNote].filter(Boolean);
-        const noteText = noteParts.length ? ` (${noteParts.join(" ")})` : "";
+        const allDates = [...new Set(Array.isArray(seg.s.dates) ? seg.s.dates : [])].sort();
+        const fullRange = allDates.length
+          ? (allDates[0] === allDates[allDates.length - 1] ? mdShort(allDates[0]) : `${mdShort(allDates[0])}~${mdShort(allDates[allDates.length - 1])}`)
+          : "";
+        const vendorText = seg.s.vendor ? ` (${seg.s.vendor})` : "";
+        const timeText = seg.s.time ? ` ${seg.s.time}` : "";
         // 주 경계를 넘어 이어지는 일정은 각진 모서리 + 화살표로 이어짐을 표시 (다른 일정과 혼동 방지)
         const contPrev = seg.startCol === 0 && Array.isArray(seg.s.dates) && seg.s.dates.includes(addDaysIso(weekIsos[0], -1));
         const contNext = seg.endCol === 6 && Array.isArray(seg.s.dates) && seg.s.dates.includes(addDaysIso(weekIsos[6], 1));
         bar.classList.toggle("cont-prev", contPrev);
         bar.classList.toggle("cont-next", contNext);
-        bar.textContent = (contPrev ? "◀ " : "") + (seg.s.time ? seg.s.time + " " : "") + seg.s.title + noteText + (contNext ? " ▶" : "");
+        bar.textContent = (contPrev ? "◀ " : "") + seg.s.title + vendorText + (fullRange ? ` ${fullRange}` : "") + timeText + (contNext ? " ▶" : "");
         // 일정별 고유 색조 부여 (같은 유형 안에서도 항목마다 구분되도록)
         const variant = scheduleColorVariant(seg.s.type, seg.s.id);
         bar.style.backgroundColor = variant.bg;
