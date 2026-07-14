@@ -270,6 +270,17 @@
   .agenda-day-group + .agenda-day-group { border-top:2px solid var(--line); padding-top:8px; margin-top:5px; }
   .agenda-day-head { font-size:clamp(13px,1vw,16px); font-weight:900; color:var(--accent); margin:0 2px 3px; }
   .agenda-day-head.is-today { color:var(--today); }
+  .week-columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; align-items:start; }
+  .week-column { min-width:0; }
+  .week-column + .week-column { border-left:2px solid var(--line); padding-left:10px; }
+  .today-grid { display:grid; grid-template-columns:repeat(var(--today-columns,1),minmax(0,1fr)); gap:7px; align-content:start; }
+  .today-grid .agenda-row {
+    display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:7px; align-content:center;
+    border:1px solid var(--line); border-radius:8px; background:#fff;
+  }
+  .today-grid .agenda-date { grid-row:1 / span 2; min-width:auto; align-self:center; }
+  .today-grid .agenda-title { grid-column:2; }
+  .today-grid .agenda-assignee { grid-column:2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .due-label { flex-shrink:0; min-width:78px; font-weight:900; color:var(--accent); }
   .due-label.is-overdue { color:var(--alert); }
   .due-label.is-today { color:#B26A00; }
@@ -293,6 +304,9 @@
   #aux-screen.aux-density-2 .alert-card .title, #aux-screen.aux-density-3 .alert-card .title, #aux-screen.aux-density-4 .alert-card .title { font-size:var(--aux-font); }
   #aux-screen.aux-density-2 .alert-card .assignee-line, #aux-screen.aux-density-3 .alert-card .assignee-line, #aux-screen.aux-density-4 .alert-card .assignee-line { margin-top:2px; font-size:var(--aux-font); }
   #aux-screen.aux-density-2 .agenda-day-head, #aux-screen.aux-density-3 .agenda-day-head, #aux-screen.aux-density-4 .agenda-day-head { font-size:calc(var(--aux-font) + 1px); }
+  #aux-screen.aux-density-2 .week-columns, #aux-screen.aux-density-3 .week-columns, #aux-screen.aux-density-4 .week-columns { gap:6px; }
+  #aux-screen.aux-density-2 .week-column + .week-column, #aux-screen.aux-density-3 .week-column + .week-column, #aux-screen.aux-density-4 .week-column + .week-column { padding-left:6px; }
+  #aux-screen.aux-density-3 .today-grid, #aux-screen.aux-density-4 .today-grid { gap:4px; }
 
   /* ── 이름 선택 모달 ────────────────────── */
   #name-modal-overlay {
@@ -1271,7 +1285,7 @@ function renderAuxWeek() {
     el.innerHTML = `<div class="empty-alert">이번주 일정이 없습니다</div>`;
   } else {
     const today = isoDate(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
-    groups.forEach(({ iso, label, items }) => {
+    const makeDayGroup = ({ iso, label, items }) => {
       const group = document.createElement("section");
       group.className = "agenda-day-group";
       const head = document.createElement("div");
@@ -1279,8 +1293,31 @@ function renderAuxWeek() {
       head.textContent = iso === today ? `${label} · 오늘` : label;
       group.appendChild(head);
       items.forEach(s => group.appendChild(buildAgendaRow(s.time || "종일", s)));
-      el.appendChild(group);
-    });
+      return group;
+    };
+
+    if (groups.length === 1) {
+      el.appendChild(makeDayGroup(groups[0]));
+    } else {
+      const half = groups.length / 2;
+      const splitCandidates = [...new Set([Math.floor(half), Math.ceil(half)])].filter(index => index > 0 && index < groups.length);
+      const groupLoad = group => group.items.length + 0.7;
+      const splitIndex = splitCandidates.reduce((best, candidate) => {
+        const leftLoad = groups.slice(0, candidate).reduce((sum, group) => sum + groupLoad(group), 0);
+        const rightLoad = groups.slice(candidate).reduce((sum, group) => sum + groupLoad(group), 0);
+        const score = Math.abs(leftLoad - rightLoad);
+        return score < best.score ? { index:candidate, score } : best;
+      }, { index:splitCandidates[0], score:Infinity }).index;
+      const columns = document.createElement("div");
+      columns.className = "week-columns";
+      [groups.slice(0, splitIndex), groups.slice(splitIndex)].forEach(columnGroups => {
+        const column = document.createElement("div");
+        column.className = "week-column";
+        columnGroups.forEach(group => column.appendChild(makeDayGroup(group)));
+        columns.appendChild(column);
+      });
+      el.appendChild(columns);
+    }
   }
   scheduleAuxFit();
 }
@@ -1320,9 +1357,14 @@ function renderAuxToday() {
   });
   const el = document.getElementById("aux-today-list");
   el.innerHTML = "";
+  el.classList.remove("today-grid");
+  el.style.removeProperty("--today-columns");
   if (!items.length) {
     el.innerHTML = `<div class="empty-alert">오늘 일정이 없습니다</div>`;
   } else {
+    const columns = items.length === 1 ? 1 : items.length <= 4 ? 2 : 3;
+    el.style.setProperty("--today-columns", columns);
+    el.classList.add("today-grid");
     items.forEach(s => el.appendChild(buildAgendaRow(s.time || "종일", s)));
   }
   scheduleAuxFit();
@@ -1461,6 +1503,17 @@ let auxFitFrame = null;
 
 function auxListUnits(id) {
   const list = document.getElementById(id);
+  const weekColumns = list.querySelector(".week-columns");
+  if (weekColumns) {
+    const columnLoads = [...weekColumns.querySelectorAll(".week-column")].map(column =>
+      column.querySelectorAll(".agenda-row").length + column.querySelectorAll(".agenda-day-group").length * 0.7
+    );
+    return Math.max(...columnLoads, 0.5);
+  }
+  if (list.classList.contains("today-grid")) {
+    const columns = Number(list.style.getPropertyValue("--today-columns")) || 1;
+    return Math.ceil(list.querySelectorAll(".agenda-row").length / columns) * 1.25 + 0.5;
+  }
   return [...list.children].reduce((sum, child) => {
     if (child.classList.contains("agenda-day-group")) return sum + 0.7 + child.querySelectorAll(".agenda-row").length;
     if (child.classList.contains("empty-alert")) return sum + 0.7;
