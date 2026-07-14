@@ -203,14 +203,27 @@
   .dash-card .dc-title { font-weight: 800; margin-bottom: 4.5px; }
   .dash-card .dc-meta { color: var(--ink-soft); font-size: 14px; }
 
-  .dash-grid-done { margin-top: 20px; }
-  .dash-col-done { opacity: 0.92; }
-  .dash-count-done { background: var(--dim); }
-  .dash-card-done { background: var(--bg); }
-  .dash-card-done .dc-title { color: var(--ink-soft); font-weight: 700; }
+  .dash-update-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .dash-update-card .dash-update-body { flex: 1 1 auto; min-width: 0; }
+  .dash-confirm-btn {
+    flex-shrink: 0; border: none; border-radius: 9px; padding: 8px 17px; font-size: 14px; font-weight: 800;
+    background: var(--accent); color: #fff; cursor: pointer;
+  }
+  @keyframes dashCardPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+  .dash-update-card.pulsing { animation: dashCardPulse 2s ease-in-out infinite; }
+  @keyframes dashConfirmBlink {
+    0%, 100% { background: var(--accent); transform: scale(1); }
+    50% { background: var(--alert); transform: scale(1.08); }
+  }
+  .dash-confirm-btn.urgent-blink { animation: dashConfirmBlink 0.7s ease-in-out infinite; }
 
-  .dash-today-group { border: 1.5px solid var(--today); border-radius: 12px; padding: 11px 13px; margin-bottom: 11px; background: var(--today-bg); }
-  .dash-today-label { font-size: 13px; font-weight: 900; color: var(--today); margin-bottom: 8px; }
+  .dash-grid-done { margin-top: 20px; }
+  .dash-count-done { background: var(--type-업무-bg); color: var(--type-업무); }
+  .dash-card-done { background: var(--surface); border-left: 3px solid var(--type-업무); }
+  .dash-card-done .dc-title { color: var(--ink); font-weight: 800; }
+
+  .dash-today-group { border: 1.5px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px; padding: 11px 13px; margin-bottom: 11px; background: var(--bg); }
+  .dash-today-label { font-size: 13px; font-weight: 900; color: var(--accent); margin-bottom: 8px; }
   .dash-today-group .dash-card { background: var(--surface); margin-bottom: 7px; }
   .dash-today-group .dash-card:last-child { margin-bottom: 0; }
   .dash-future-ddaybadge { font-weight: 900; color: var(--accent); font-size: 13.5px; }
@@ -2140,12 +2153,22 @@ function renderDashboard() {
       const writer = lastHistoryAuthor(rec);
       const lastText = rec.history[rec.history.length - 1].text;
       const div = document.createElement("div");
-      div.className = "dash-card";
-      div.innerHTML = `<div class="dc-title">[${LABEL_OF[type]}] ${escapeHtml(label || "항목")}</div>
-        <div class="dc-meta">${escapeHtml(writer || "-")}님이 업데이트: ${escapeHtml(lastText)}</div>`;
+      div.className = "dash-card dash-update-card pulsing";
+      div.innerHTML = `
+        <div class="dash-update-body">
+          <div class="dc-title">[${LABEL_OF[type]}] ${escapeHtml(label || "항목")}</div>
+          <div class="dc-meta">${escapeHtml(writer || "-")}님이 업데이트: ${escapeHtml(lastText)}</div>
+        </div>
+        <button type="button" class="dash-confirm-btn urgent-blink">확인</button>
+      `;
       div.addEventListener("click", () => {
         if (type === "ticket") { switchTab("tickets"); openTicketDetail(rec.id); }
         else { switchTab("schedules"); openScheduleEdit(rec.id); }
+      });
+      div.querySelector(".dash-confirm-btn").addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await markSeen(type, rec.id);
+        renderDashboard();
       });
       updList.appendChild(div);
     });

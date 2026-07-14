@@ -185,8 +185,8 @@
   .assignee-name { font-size: clamp(14px, 1.08vw, 18px); font-weight: 900; color: var(--ink); margin-left: 3px; }
 
   /* 24시간 이내: 은은하게 밝아졌다 어두워지는 디밍 효과 / 24시간 경과: 빨간색으로 또렷하게 깜빡임 */
-  @keyframes alert-dim-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.66; } }
-  .alert-card.pulsing { animation: alert-dim-pulse 2.2s ease-in-out infinite; }
+  @keyframes alert-dim-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.28; transform: scale(0.985); } }
+  .alert-card.pulsing { animation: alert-dim-pulse 1.6s ease-in-out infinite; }
   @keyframes alert-red-blink {
     0%, 100% { background-color: var(--alert-bg); border-color: #EFC9C9; }
     50% { background-color: #F3A0A0; border-color: var(--alert); }
