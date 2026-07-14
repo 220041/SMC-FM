@@ -146,6 +146,8 @@
   <button class="tab-btn" data-tab="memos">전화 및 메모</button>
   <button class="tab-btn" data-tab="activity">변경사항 이력</button>
   <button class="tab-btn" data-tab="holidays">공휴일 관리</button>
+  <button class="tab-btn" data-tab="archive">자료보관</button>
+  <button class="tab-btn" data-tab="users">사용자 관리</button>
 </div>
 
 <div id="content">
@@ -175,8 +177,9 @@
       <label>상태</label>
       <select id="tickets-status-filter">
         <option value="all">전체</option>
-        <option value="미확인">미확인</option>
-        <option value="확인됨">확인됨</option>
+        <option value="미수신">미수신</option>
+        <option value="열람">열람</option>
+        <option value="접수">접수</option>
         <option value="진행중">진행중</option>
         <option value="완료">완료</option>
         <option value="보류">보류</option>
@@ -314,15 +317,32 @@
     </table></div>
   </div>
 
+  <div class="panel" id="panel-archive">
+    <div class="panel-head"><h2>자료보관 <span class="count-note" id="archive-count"></span></h2><button class="btn-primary" id="archive-load">조회</button></div>
+    <div class="small-note" style="margin-bottom:12px;">사용자가 삭제한 관련업무입니다. 복원하거나 영구 삭제할 수 있습니다.</div>
+    <div class="table-scroll"><table><thead><tr><th>제목</th><th>요청자</th><th>수신자</th><th>보관자</th><th>보관일</th><th></th></tr></thead><tbody id="archive-tbody"></tbody></table></div>
+  </div>
+
+  <div class="panel" id="panel-users">
+    <div class="panel-head"><h2>사용자 관리</h2></div>
+    <div class="small-note" style="margin-bottom:12px;">초기 계정은 Firebase Authentication에서 생성합니다. 여기서는 재설정 메일을 발송합니다.</div>
+    <div class="table-scroll"><table><thead><tr><th>아이디</th><th>이메일</th><th>역할</th><th></th></tr></thead><tbody id="users-tbody"></tbody></table></div>
+    <div class="panel-head" style="margin-top:24px;"><h2>기존 업무 수신자 지정</h2><button class="btn-primary" id="unassigned-load">미지정 업무 조회</button></div>
+    <div class="table-scroll"><table><thead><tr><th>제목</th><th>요청자</th><th>수신자 지정</th></tr></thead><tbody id="unassigned-tbody"></tbody></table></div>
+  </div>
+
 </div>
 
 <script type="module">
 import { ensureAccess } from "./auth-gate.js";
+import { ensureUserLogin, logoutAccount, sendResetForLoginId } from "./account-auth.js";
 import {
-  db, collection, doc, deleteDoc, setDoc, onSnapshot, query, orderBy, limit, startAfter, getDocs, TEAM_MEMBERS, ADMIN_PASSWORD
+  db, collection, doc, deleteDoc, updateDoc, setDoc, onSnapshot, query, orderBy, limit, startAfter, getDocs, where, writeBatch,
+  TEAM_MEMBERS, USER_ACCOUNTS, ADMIN_PASSWORD, serverTimestamp
 } from "./firebase-config.js";
 
 await ensureAccess();
+const adminProfile = await ensureUserLogin({ adminOnly: true });
 
 /* ───────── 관리자 비밀번호 게이트 (팀 접근코드와 별개로 한 번 더 확인) ───────── */
 const ADMIN_SESSION_KEY = "smcfm_admin_ok_v2";
@@ -350,14 +370,10 @@ function checkAdminPassword() {
     setTimeout(() => input.focus(), 100);
   });
 }
-await checkAdminPassword();
+document.getElementById("admin-gate-overlay").classList.remove("open");
 
 /* ───────── 로그아웃 ───────── */
-document.getElementById("logout-btn").addEventListener("click", () => {
-  if (!confirm("로그아웃할까요? 다음에 접속하면 관리자 비밀번호를 다시 입력해야 합니다.")) return;
-  sessionStorage.removeItem(ADMIN_SESSION_KEY);
-  location.reload();
-});
+document.getElementById("logout-btn").addEventListener("click", logoutAccount);
 
 /* ───────── 공통 helper ───────── */
 function pad(n) { return String(n).padStart(2, "0"); }
@@ -499,6 +515,7 @@ function applyFilterSort(type) {
   const cfg = CONFIGS[type];
   const st = state[type];
   let rows = st.rows.slice();
+  if (type === "tickets") rows = rows.filter(r => !r.archived);
 
   if (st.search.trim()) {
     const q = st.search.trim().toLowerCase();
@@ -709,23 +726,11 @@ async function loadActivity() {
   btn.disabled = true;
   try {
     const n = activityState.pageSize;
-    const [ticketSnap, scheduleSnap, memoSnap] = await Promise.all([
-      getDocs(query(collection(db, "requestTickets"), orderBy("requestedAt", "desc"), limit(n))),
-      getDocs(query(collection(db, "schedules"), orderBy("registeredAt", "desc"), limit(n))),
-      getDocs(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc"), limit(n)))
-    ]);
-    const items = [];
-    ticketSnap.docs.forEach(d => {
+    const auditSnap = await getDocs(query(collection(db, "auditLogs"), orderBy("createdAt", "desc"), limit(n)));
+    const items = auditSnap.docs.map(d => {
       const r = d.data();
-      (r.history || []).forEach(h => items.push({ coll: "관련업무", title: r.title || "-", text: h.text, author: h.author || "-", timestamp: h.timestamp }));
+      return { coll: r.targetCollection || "-", title: r.targetId || "-", text: r.action || "-", author: r.actorName || "-", timestamp: r.createdAt };
     });
-    scheduleSnap.docs.forEach(d => {
-      const r = d.data();
-      (r.history || []).forEach(h => items.push({ coll: "일정관리", title: r.title || "-", text: h.text, author: h.author || "-", timestamp: h.timestamp }));
-    });
-    memoSnap.docs.forEach(d => memoEvents(d.data()).forEach(ev => items.push(ev)));
-
-    items.sort((a, b) => tsMillis(b.timestamp) - tsMillis(a.timestamp));
     activityState.rows = items;
     renderActivity();
   } catch (e) {
@@ -804,6 +809,68 @@ document.getElementById("holiday-add-btn").addEventListener("click", async () =>
     console.error("공휴일 등록 오류", e);
     alert("등록 중 오류가 발생했습니다");
   }
+});
+
+async function loadArchive() {
+  const tbody = document.getElementById("archive-tbody");
+  tbody.innerHTML = `<tr><td colspan="6">불러오는 중...</td></tr>`;
+  const snap = await getDocs(query(collection(db, "requestTickets"), where("archived", "==", true), limit(100)));
+  const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  tbody.innerHTML = "";
+  rows.forEach(row => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${escapeHtml(row.title || "-")}</td><td>${escapeHtml(row.requestedBy || "-")}</td><td>${escapeHtml(row.assignee || "-")}</td><td>${escapeHtml(row.archivedBy || "-")}</td><td>${fmtTs(row.archivedAt)}</td><td><button class="restore-btn btn-secondary">복원</button> <button class="purge-btn row-delete-btn">영구삭제</button></td>`;
+    tr.querySelector(".restore-btn").onclick = async () => { await updateDoc(doc(db, "requestTickets", row.id), { archived: false, restoredAt: serverTimestamp(), restoredBy: "관리자" }); await loadArchive(); };
+    tr.querySelector(".purge-btn").onclick = async () => {
+      if (!confirm("세부사항을 포함해 영구 삭제합니다. 복구할 수 없습니다. 계속할까요?")) return;
+      const details = await getDocs(collection(db, "requestTickets", row.id, "details"));
+      const batch = writeBatch(db);
+      details.docs.slice(0, 450).forEach(d => batch.delete(d.ref));
+      batch.delete(doc(db, "requestTickets", row.id));
+      await batch.commit();
+      await loadArchive();
+    };
+    tbody.appendChild(tr);
+  });
+  if (!rows.length) tbody.innerHTML = `<tr><td colspan="6">보관된 자료가 없습니다.</td></tr>`;
+  document.getElementById("archive-count").textContent = `총 ${rows.length}건`;
+}
+document.getElementById("archive-load").addEventListener("click", loadArchive);
+
+function renderUserAdmin() {
+  const tbody = document.getElementById("users-tbody");
+  tbody.innerHTML = "";
+  Object.entries(USER_ACCOUNTS).forEach(([id, account]) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${escapeHtml(id)}</td><td>${escapeHtml(account.email)}</td><td>${escapeHtml(account.role)}</td><td><button class="btn-secondary reset-mail-btn">재설정 메일 발송</button></td>`;
+    tr.querySelector("button").onclick = async () => {
+      try { await sendResetForLoginId(id); alert(`${account.email}로 비밀번호 재설정 메일을 보냈습니다.`); }
+      catch (e) { alert("메일을 보내지 못했습니다."); }
+    };
+    tbody.appendChild(tr);
+  });
+}
+renderUserAdmin();
+
+document.getElementById("unassigned-load").addEventListener("click", async () => {
+  const tbody = document.getElementById("unassigned-tbody");
+  tbody.innerHTML = `<tr><td colspan="3">불러오는 중...</td></tr>`;
+  const snap = await getDocs(query(collection(db, "requestTickets"), orderBy("requestedAt", "desc"), limit(100)));
+  const rows = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => !t.assignee && !t.archived);
+  tbody.innerHTML = "";
+  rows.forEach(ticket => {
+    const tr = document.createElement("tr");
+    const options = TEAM_MEMBERS.filter(n => n !== "관리자" && n !== ticket.requestedBy).map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+    tr.innerHTML = `<td>${escapeHtml(ticket.title || "-")}</td><td>${escapeHtml(ticket.requestedBy || "-")}</td><td><select>${options}</select> <button class="btn-primary">지정</button></td>`;
+    tr.querySelector("button").onclick = async () => {
+      const assignee = tr.querySelector("select").value;
+      await updateDoc(doc(db, "requestTickets", ticket.id), { assignee, status: "미수신", receivedAt: null, receivedBy: null, updatedAt: serverTimestamp() });
+      await setDoc(doc(collection(db, "auditLogs")), { targetCollection: "requestTickets", targetId: ticket.id, action: "legacy_assignee_assigned", actorName: "관리자", before: { assignee: null }, after: { assignee }, createdAt: serverTimestamp() });
+      tr.remove();
+    };
+    tbody.appendChild(tr);
+  });
+  if (!rows.length) tbody.innerHTML = `<tr><td colspan="3">수신자 미지정 업무가 없습니다.</td></tr>`;
 });
 </script>
 </body>

@@ -66,6 +66,9 @@
   tbody tr:hover { background: #FAFBF9; }
   .badge { display: inline-block; padding: 3.5px 11px; border-radius: 7.5px; font-size: 14px; font-weight: 800; }
   .badge.요청됨 { background: var(--type-미팅-bg); color: var(--type-미팅); }
+  .badge.미수신 { background: var(--alert-bg); color: var(--alert); }
+  .badge.열람 { background: #fff3cd; color: #856404; }
+  .badge.접수 { background: var(--type-미팅-bg); color: var(--type-미팅); }
   .badge.미확인 { background: var(--alert-bg); color: var(--alert); }
   .badge.확인됨 { background: var(--type-미팅-bg); color: var(--type-미팅); }
   .badge.진행중 { background: #FDF2D9; color: #A9740A; }
@@ -194,6 +197,9 @@
   .ticket-notes-cell .tn-item:last-child { border-bottom: none; }
   .ticket-notes-cell .tn-meta { color: var(--ink-soft); font-size: 11px; }
   .ticket-content-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  tr.deadline-soon { background:#fff8dc; }
+  tr.deadline-today { background:#ffe4b5; }
+  tr.deadline-overdue { background:#fdeaea; }
   .ticket-table-compact td:nth-child(1), .ticket-table-compact td:nth-child(2), .ticket-table-compact td:nth-child(4), .ticket-table-compact td:nth-child(5) {
     white-space: nowrap;
   }
@@ -444,8 +450,9 @@
         <label>상태</label>
         <select id="ticket-filter-status">
           <option value="all">전체</option>
-          <option value="미확인">미확인</option>
-          <option value="확인됨">확인됨</option>
+          <option value="미수신">미수신</option>
+          <option value="열람">열람</option>
+          <option value="접수">접수</option>
           <option value="진행중">진행중</option>
           <option value="보류">보류</option>
           <option value="완료">완료</option>
@@ -572,7 +579,9 @@
         <div class="row2">
           <div class="field"><label>상태</label>
             <select id="ticket-status-select">
-              <option value="확인됨">확인됨</option>
+              <option value="미수신">미수신</option>
+              <option value="열람">열람</option>
+              <option value="접수">접수</option>
               <option value="진행중">진행중</option>
               <option value="보류">보류</option>
               <option value="완료">완료</option>
@@ -581,7 +590,7 @@
           <div class="field"><label>요청희망기한</label><input type="text" id="ticket-due-edit" /></div>
         </div>
         <div class="field"><label>요청자</label><div class="static-value" id="ticket-requester-display-edit">-</div></div>
-        <div class="field"><label>수신자</label><div class="static-value" id="ticket-assignee-display-edit">-</div></div>
+        <div class="field"><label>수신자</label><select id="ticket-assignee-edit"></select></div>
       </div>
 
       <div class="field"><label id="ticket-status-label">진행상태</label>
@@ -590,6 +599,7 @@
       <div class="field"><label id="ticket-note-label">세부사항</label>
         <div class="history-list" id="ticket-note-history-list"></div>
       </div>
+      <div id="ticket-work-actions" class="modal-actions" style="justify-content:flex-start; display:none; margin:0 0 14px;"></div>
       <div class="field"><label>세부사항 작성 <span class="small-note" style="display:inline;">(요청자와 수신자가 함께 작성)</span></label>
         <textarea id="ticket-note-text" placeholder="새 세부사항을 입력하세요"></textarea>
       </div>
@@ -720,14 +730,17 @@
 
 <script type="module">
 import { ensureAccess } from "./auth-gate.js";
+import { ensureUserLogin, logoutAccount, changeOwnPassword } from "./account-auth.js";
 import {
-  db, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, TEAM_MEMBERS, KR_HOLIDAYS, ADMIN_PASSWORD
+  db, auth, collection, doc, addDoc, updateDoc, deleteDoc, setDoc, onSnapshot, query, orderBy, serverTimestamp,
+  getDocs, getDoc, limit, where, writeBatch, TEAM_MEMBERS, KR_HOLIDAYS, ADMIN_PASSWORD
 } from "./firebase-config.js";
 
 await ensureAccess();
+const accountProfile = await ensureUserLogin();
 
 /* ───────── 현재 사용자 (작성자) : 진입 시 반드시 선택 ───────── */
-let currentUserName = "";
+let currentUserName = accountProfile.name;
 function currentUser() { return currentUserName; }
 /* "관리자" 계정으로 선택했을 때만 true - 다른 사람이 작성한 항목도 전부 수정/삭제 가능 */
 function isAdmin() { return currentUserName === "관리자"; }
@@ -765,15 +778,23 @@ function selectAuthor(name) {
   renderMemos();
   if (scheduleViewMode === "calendar") renderScheduleCalendar();
 }
-document.getElementById("author-change-btn").addEventListener("click", () => {
-  buildAuthGateButtons();
-  authGateOverlay.classList.add("open");
-});
+document.getElementById("author-change-btn").textContent = "로그아웃";
+document.getElementById("author-change-btn").addEventListener("click", logoutAccount);
 document.getElementById("update-gate-change-author").addEventListener("click", (e) => {
   e.preventDefault();
-  buildAuthGateButtons();
-  authGateOverlay.classList.add("open");
+  logoutAccount();
 });
+const passwordBtn = document.createElement("button");
+passwordBtn.type = "button";
+passwordBtn.className = "btn-secondary";
+passwordBtn.textContent = "비밀번호 변경";
+passwordBtn.addEventListener("click", changeOwnPassword);
+document.getElementById("author-change-btn").insertAdjacentElement("beforebegin", passwordBtn);
+/* 실제 Firebase 계정으로 로그인했으므로 이름 선택 방식은 사용하지 않는다. */
+sessionStorage.setItem("smcfm_current_user", accountProfile.name);
+document.getElementById("current-user-display").textContent = accountProfile.name;
+authGateOverlay.classList.remove("open");
+/*
 buildAuthGateButtons();
 // 세션에 이미 선택된 작성자가 남아있으면(같은 브라우저 탭에서 계속 이용 중) 다시 묻지 않고 바로 이어서 사용
 const lastUsedAuthor = sessionStorage.getItem("smcfm_current_user");
@@ -788,6 +809,7 @@ if (lastUsedAuthor && TEAM_MEMBERS.includes(lastUsedAuthor)) {
 } else {
   authGateOverlay.classList.add("open");
 }
+*/
 
 /* 관리자 화면(admin.html)에서 등록한 임시 공휴일 등 (기본 KR_HOLIDAYS에 없는 날짜를 추가로 반영) */
 let customHolidays = {};
@@ -922,6 +944,14 @@ async function handleDeleteClick(type, rec) {
   const me = currentUser();
   const author = authorOf(type, rec);
   const label = rec.title || rec.subject || "항목";
+  if (type === "ticket") {
+    if (!confirm(`"${label}" 업무를 삭제할까요? 삭제된 업무는 관리자 보관함으로 이동합니다.`)) return false;
+    await updateDoc(doc(db, "requestTickets", rec.id), {
+      archived: true, archivedAt: serverTimestamp(), archivedBy: me, updatedAt: serverTimestamp()
+    });
+    await auditTicket(rec.id, "ticket_archived", { archived: false }, { archived: true, archivedBy: me });
+    return true;
+  }
   if (rec.deleteRequestedBy && !isAdmin()) {
     if (me === author) {
       alert("이미 삭제 요청이 대기 중입니다. 대시보드에서 승인/거절할 수 있습니다.");
@@ -1168,11 +1198,73 @@ function initDateField(input) {
    1. 업무관리
    ════════════════════════════════════════════════ */
 let tickets = [];
+let ticketDetailUnsubscribe = null;
+const ticketDetailsById = new Map();
+
+async function auditTicket(ticketId, action, beforeData, afterData) {
+  await addDoc(collection(db, "auditLogs"), {
+    targetCollection: "requestTickets", targetId: ticketId, action,
+    actorName: currentUser(), actorUid: auth.currentUser?.uid || null,
+    before: beforeData || null, after: afterData || null, createdAt: serverTimestamp()
+  });
+}
+
+async function notifyTicketUser(name, ticketId, type, message) {
+  if (!name || name === currentUser()) return;
+  await addDoc(collection(db, "userNotifications", name, "items"), {
+    ticketId, type, message, actor: currentUser(), createdAt: serverTimestamp(), readAt: null
+  });
+}
+
+async function addTicketDetail(ticketId, text, kind = "detail", author = currentUser()) {
+  const detailRef = await addDoc(collection(db, "requestTickets", ticketId, "details"), {
+    text, kind, author, authorUid: auth.currentUser?.uid || null,
+    createdAt: serverTimestamp(), editedAt: null, archived: false
+  });
+  await updateDoc(doc(db, "requestTickets", ticketId), {
+    lastDetailText: text, lastDetailAuthor: author, lastDetailAt: serverTimestamp(), updatedAt: serverTimestamp()
+  });
+  return detailRef;
+}
+
+async function ensureTicketDetailsMigrated(ticket) {
+  if (ticket.detailsMigrated) return;
+  const legacy = (ticket.history || []).filter(h => historyEntryType(h) === "note");
+  const batch = writeBatch(db);
+  legacy.slice(0, 450).forEach((h, index) => {
+    const id = h.id || `legacy-${String(index).padStart(4, "0")}`;
+    batch.set(doc(db, "requestTickets", ticket.id, "details", id), {
+      text: h.text || "", kind: "detail", author: h.author || ticket.requestedBy || "-",
+      createdAt: h.timestamp || ticket.requestedAt || serverTimestamp(), editedAt: h.editedAt || null,
+      archived: false, migrated: true
+    }, { merge: true });
+  });
+  batch.update(doc(db, "requestTickets", ticket.id), { detailsMigrated: true });
+  await batch.commit();
+}
+
+function subscribeTicketDetails(ticket) {
+  if (ticketDetailUnsubscribe) ticketDetailUnsubscribe();
+  ensureTicketDetailsMigrated(ticket).catch(console.error);
+  ticketDetailUnsubscribe = onSnapshot(
+    query(collection(db, "requestTickets", ticket.id, "details"), orderBy("createdAt", "asc"), limit(100)),
+    snap => {
+      const rows = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(d => !d.archived);
+      ticketDetailsById.set(ticket.id, rows);
+      if (ticketEditingId === ticket.id) renderTicketNoteHistory(ticket, rows);
+    }
+  );
+}
 const ticketFilterRequester = document.getElementById("ticket-filter-requester");
 TEAM_MEMBERS.forEach(n => ticketFilterRequester.appendChild(new Option(n, n)));
 
 onSnapshot(query(collection(db, "requestTickets"), orderBy("requestedAt", "desc")), (snap) => {
-  tickets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  tickets = snap.docs.map(d => {
+    const row = { id: d.id, ...d.data() };
+    if (["요청됨", "미확인"].includes(row.status)) row.status = "미수신";
+    if (row.status === "확인됨") row.status = "열람";
+    return row;
+  }).filter(t => !t.archived);
   renderTickets();
   renderDashboard();
 });
@@ -1194,6 +1286,16 @@ function isTicketOverdue(t) {
   if (t.status === "진행중" || t.status === "완료") return false;
   return t.dueDate < todayIso();
 }
+function ticketDeadlineLevel(t) {
+  if (!t.dueDate || t.status === "완료") return "";
+  const today = new Date(todayIso() + "T00:00:00");
+  const due = new Date(t.dueDate + "T00:00:00");
+  const days = Math.round((due - today) / 86400000);
+  if (days < 0) return "overdue";
+  if (days === 0) return "today";
+  if (days <= 3) return "soon";
+  return "";
+}
 
 /* 세부사항(요청 내용 + 추가사항) 전체를 리스트에서 바로 확인할 수 있도록 인라인으로 스택 표시 */
 function buildTicketNotesCell(t) {
@@ -1214,10 +1316,12 @@ function ticketDateShort(t) {
 
 function buildTicketRow(t, me) {
   const overdue = isTicketOverdue(t);
+  const deadlineLevel = ticketDeadlineLevel(t);
   const isAuthor = t.requestedBy === me || isAdmin();
   const unseen = hasUnseenUpdate("ticket", t);
   const tr = document.createElement("tr");
   if (overdue) tr.classList.add("row-overdue", "breathing");
+  if (deadlineLevel) tr.classList.add(`deadline-${deadlineLevel}`);
   if (t.status === "완료") tr.classList.add("row-done");
   if (unseen) tr.classList.add("row-update-pulse");
   const unseenDot = unseen ? `<span class="blink-dot" title="새 소식이 있습니다"></span>` : "";
@@ -1320,16 +1424,19 @@ function openTicketDetail(id, forceView) {
   ticketEditMode = editMode;
 
   /* 요청자 본인이 아닌 사람이 처음 열람하면, "미확인" 상태를 자동으로 "확인됨"으로 전환 */
-  if (!isAuthor && isRecipient && (t.status === "미확인" || t.status === "요청됨")) {
+  if (!isAuthor && isRecipient && ["미수신", "미확인", "요청됨"].includes(t.status)) {
     const history = (t.history || []).slice();
-    history.push({ id: newHistId(), text: `수신확인: ${me}`, author: me, timestamp: new Date(), type: "status" });
-    t.status = "확인됨";
+    history.push({ id: newHistId(), text: `열람: ${me}`, author: me, timestamp: new Date(), type: "status" });
+    t.status = "열람";
     t.history = history;
     t.receivedBy = me;
     t.receivedAt = new Date();
     updateDoc(doc(db, "requestTickets", id), {
-      status: "확인됨", receivedBy: me, receivedAt: serverTimestamp(), history, updatedAt: serverTimestamp()
-    }).catch(() => {});
+      status: "열람", receivedBy: me, receivedAt: serverTimestamp(), history, updatedAt: serverTimestamp()
+    }).then(() => Promise.all([
+      notifyTicketUser(t.requestedBy, id, "opened", `${me}님이 업무를 열람했습니다.`),
+      auditTicket(id, "ticket_opened", { status: "미수신" }, { status: "열람", receivedBy: me })
+    ])).catch(console.error);
   }
 
   /* 어떤 부분이 갱신되어 아직 못 본 상태인지 판단 (제목 자체 = 신규등록, 진행상태, 세부사항 중 하나) */
@@ -1355,10 +1462,13 @@ function openTicketDetail(id, forceView) {
     : "작성자(요청자) 본인만 위 항목을 수정할 수 있습니다. 추가사항은 누구나 남길 수 있습니다.";
 
   if (editMode) {
-    document.getElementById("ticket-status-select").value = (t.status === "미확인" || t.status === "요청됨") ? "확인됨" : t.status;
+    document.getElementById("ticket-status-select").value = ["미확인", "요청됨"].includes(t.status) ? "미수신" : t.status;
     document.getElementById("ticket-due-edit").value = t.dueDate || "";
     document.getElementById("ticket-requester-display-edit").textContent = t.requestedBy || "-";
-    document.getElementById("ticket-assignee-display-edit").textContent = t.assignee || "미지정(기존 업무)";
+    fillAssigneeSelect(document.getElementById("ticket-assignee-edit"), t.assignee || "");
+    Array.from(document.getElementById("ticket-assignee-edit").options).forEach(o => {
+      if (o.value === t.requestedBy || o.value === "관리자") o.disabled = true;
+    });
   } else {
     document.getElementById("tv-requester").textContent = t.requestedBy || "-";
     document.getElementById("tv-assignee").textContent = t.assignee || "미지정(기존 업무)";
@@ -1369,9 +1479,11 @@ function openTicketDetail(id, forceView) {
       : "아직 수신하지 않음";
   }
   document.getElementById("ticket-note-text").value = "";
+  subscribeTicketDetails(t);
+  renderTicketWorkActions(t, isRecipient, isAuthor);
 
   const statusHist = allHist.filter(h => historyEntryType(h) === "status");
-  const noteHist = allHist.filter(h => historyEntryType(h) === "note");
+  const noteHist = ticketDetailsById.get(t.id) || allHist.filter(h => historyEntryType(h) === "note");
 
   const statusHistEl = document.getElementById("ticket-status-history-list");
   statusHistEl.innerHTML = "";
@@ -1407,9 +1519,9 @@ function renderTicketNoteHistory(t, noteHist) {
   noteHist.forEach(h => {
     const div = document.createElement("div");
     div.className = "history-item";
-    const readBy = h.id ? noteReadBy(t, h, candidates) : [];
+    const readBy = h.id ? noteReadBy(t, { ...h, timestamp: h.createdAt || h.timestamp }, candidates) : [];
     const readNote = readBy.length ? `<div class="small-note">읽음: ${readBy.map(escapeHtml).join(", ")}</div>` : "";
-    div.innerHTML = `<div class="meta">${h.author || "-"} · ${fmtTs(h.timestamp)}${h.editedAt ? " (수정됨)" : ""}</div><div>${escapeHtml(h.text)}</div>${readNote}`;
+    div.innerHTML = `<div class="meta">${h.author || "-"} · ${fmtTs(h.createdAt || h.timestamp)}${h.editedAt ? " (수정됨)" : ""}</div><div>${escapeHtml(h.text)}</div>${readNote}`;
     if (h.id && ticketEditingId !== null) {
       // 본인이 쓴 세부사항은 수정·삭제 가능. 관리자 계정은 예외 없이 전부 수정/삭제 가능
       const canModify = isAdmin() || h.author === currentUser();
@@ -1460,21 +1572,47 @@ function renderTicketNoteHistory(t, noteHist) {
 /* 본인이 쓴 세부사항 수정 */
 async function editTicketNote(id, text) {
   if (ticketEditingId === null) return;
-  const t = tickets.find(x => x.id === ticketEditingId);
-  if (!t) return;
-  const history = (t.history || []).map(h => h.id === id ? { ...h, text, editedAt: new Date() } : h);
-  await updateDoc(doc(db, "requestTickets", ticketEditingId), { history, updatedAt: serverTimestamp() });
-  openTicketDetail(ticketEditingId);
+  await updateDoc(doc(db, "requestTickets", ticketEditingId, "details", id), { text, editedAt: serverTimestamp() });
+  await auditTicket(ticketEditingId, "detail_edited", null, { detailId: id });
 }
 
 /* 본인이 쓴 세부사항/댓글 삭제 */
 async function deleteTicketNote(id) {
   if (ticketEditingId === null) return;
-  const t = tickets.find(x => x.id === ticketEditingId);
-  if (!t) return;
-  const history = (t.history || []).filter(h => h.id !== id);
-  await updateDoc(doc(db, "requestTickets", ticketEditingId), { history, updatedAt: serverTimestamp() });
-  openTicketDetail(ticketEditingId);
+  await updateDoc(doc(db, "requestTickets", ticketEditingId, "details", id), { archived: true, archivedAt: serverTimestamp(), archivedBy: currentUser() });
+  await auditTicket(ticketEditingId, "detail_archived", null, { detailId: id });
+}
+
+function renderTicketWorkActions(ticket, isRecipient, isAuthor) {
+  const wrap = document.getElementById("ticket-work-actions");
+  wrap.innerHTML = "";
+  const transitions = [];
+  if (isRecipient && ticket.status === "열람") transitions.push(["접수", "접수"]);
+  if (isRecipient && ticket.status === "접수") transitions.push(["진행 시작", "진행중"]);
+  if (isRecipient && ["접수", "진행중"].includes(ticket.status)) transitions.push(["보류", "보류"], ["완료", "완료"]);
+  if ((isRecipient || isAuthor) && ticket.status === "보류") transitions.push(["진행 재개", "진행중"]);
+  if ((isRecipient || isAuthor) && ticket.status === "완료") transitions.push(["업무 재개", "진행중"]);
+  wrap.style.display = transitions.length ? "flex" : "none";
+  transitions.forEach(([label, status]) => {
+    const button = document.createElement("button");
+    button.type = "button"; button.className = "btn-primary"; button.textContent = label;
+    button.onclick = async () => {
+      const reason = ticket.status === "완료" ? prompt("업무 재개 사유를 입력하세요") : "";
+      if (ticket.status === "완료" && !reason) return;
+      button.disabled = true; button.textContent = "처리 중...";
+      try {
+        const before = ticket.status;
+        await updateDoc(doc(db, "requestTickets", ticket.id), { status, updatedAt: serverTimestamp(), reopenedAt: before === "완료" ? serverTimestamp() : null, reopenedBy: before === "완료" ? currentUser() : null });
+        await addTicketDetail(ticket.id, reason ? `업무 재개: ${reason}` : `상태 변경: ${before} → ${status}`, "status");
+        await Promise.all([
+          notifyTicketUser(ticket.requestedBy === currentUser() ? ticket.assignee : ticket.requestedBy, ticket.id, "status", `${currentUser()}님이 상태를 ${status}(으)로 변경했습니다.`),
+          auditTicket(ticket.id, before === "완료" ? "ticket_reopened" : "status_changed", { status: before }, { status, reason: reason || null })
+        ]);
+        ticketOverlay.classList.remove("open");
+      } catch (e) { alert("처리하지 못했습니다. 다시 시도해 주세요."); button.disabled = false; button.textContent = label; }
+    };
+    wrap.appendChild(button);
+  });
 }
 
 document.getElementById("ticket-cancel").addEventListener("click", () => ticketOverlay.classList.remove("open"));
@@ -1488,6 +1626,12 @@ document.getElementById("ticket-delete").addEventListener("click", async () => {
 });
 
 document.getElementById("ticket-save").addEventListener("click", async () => {
+  const saveButton = document.getElementById("ticket-save");
+  if (saveButton.disabled) return;
+  const originalSaveText = saveButton.textContent;
+  saveButton.disabled = true;
+  saveButton.textContent = "저장 중...";
+  try {
   if (ticketEditingId === null) {
     // 새 업무 생성 (신규 등록 시 상태는 항상 "미확인"에서 시작)
     const title = document.getElementById("ticket-title").value.trim();
@@ -1497,25 +1641,28 @@ document.getElementById("ticket-save").addEventListener("click", async () => {
     if (!assignee) { alert("수신자를 선택하세요"); return; }
     const due = document.getElementById("ticket-due").value || null;
     const content = document.getElementById("ticket-content").value.trim();
-    // 신규 등록 자체를 이력에 스탬프로 남겨서, 요청자 본인 외에 아무도 열어보기 전까지 미확인 알림에 표시되게 함
-    const history = [{ id: newHistId(), text: "새 업무 등록", author: requester, timestamp: new Date(), type: "status" }];
-    if (content) history.push({ id: newHistId(), text: content, author: requester, timestamp: new Date(), type: "note" });
-    await addDoc(collection(db, "requestTickets"), {
+    const ticketRef = await addDoc(collection(db, "requestTickets"), {
       title, requestedBy: requester, requestedAt: serverTimestamp(),
-      assignee, dueDate: due, status: "미확인", receivedBy: null, receivedAt: null,
-      history, updatedAt: serverTimestamp()
+      assignee, dueDate: due, status: "미수신", receivedBy: null, receivedAt: null,
+      archived: false, detailsMigrated: true, updatedAt: serverTimestamp()
     });
+    if (content) await addTicketDetail(ticketRef.id, content);
+    await Promise.all([
+      notifyTicketUser(assignee, ticketRef.id, "new_ticket", `${requester}님이 새 업무를 발송했습니다: ${title}`),
+      auditTicket(ticketRef.id, "ticket_created", null, { title, requestedBy: requester, assignee, dueDate: due })
+    ]);
   } else {
     const t = tickets.find(x => x.id === ticketEditingId);
     const noteText = document.getElementById("ticket-note-text").value.trim();
     const author = currentUser();
 
     if (!ticketEditMode) {
-      // 열람 모드(작성자 본인이 아니거나, 그냥 열람으로 연 경우): 추가사항(세부사항)만 등록 가능
       if (!noteText) { alert("추가할 내용을 입력하세요"); return; }
-      const history = (t.history || []).slice();
-      history.push({ id: newHistId(), text: noteText, author, timestamp: new Date(), type: "note" });
-      await updateDoc(doc(db, "requestTickets", ticketEditingId), { history, updatedAt: serverTimestamp() });
+      await addTicketDetail(ticketEditingId, noteText);
+      await Promise.all([
+        notifyTicketUser(t.requestedBy === author ? t.assignee : t.requestedBy, t.id, "detail", `${author}님이 세부사항을 추가했습니다.`),
+        auditTicket(t.id, "detail_added", null, { author })
+      ]);
       ticketOverlay.classList.remove("open");
       return;
     }
@@ -1523,19 +1670,43 @@ document.getElementById("ticket-save").addEventListener("click", async () => {
     // 수정 모드(작성자 본인): 상태/희망기한 변경 + 추가사항
     const newStatus = document.getElementById("ticket-status-select").value;
     const newDue = document.getElementById("ticket-due-edit").value || null;
+    const newAssignee = document.getElementById("ticket-assignee-edit").value || t.assignee;
+
+    let changeReason = null;
+    if (newAssignee !== t.assignee && t.receivedAt) {
+      changeReason = prompt("이미 열람된 업무입니다. 수신자 변경 사유를 입력하세요.");
+      if (!changeReason) return;
+    }
 
     const history = (t.history || []).slice();
     if (t.status !== newStatus) {
       history.push({ id: newHistId(), text: `상태변경: ${t.status} → ${newStatus}`, author, timestamp: new Date(), type: "status" });
     }
-    if (noteText) {
-      history.push({ id: newHistId(), text: noteText, author, timestamp: new Date(), type: "note" });
-    }
     await updateDoc(doc(db, "requestTickets", ticketEditingId), {
-      status: newStatus, dueDate: newDue, history, updatedAt: serverTimestamp()
+      status: newStatus, dueDate: newDue, assignee: newAssignee,
+      receivedBy: newAssignee !== t.assignee ? null : (t.receivedBy || null),
+      receivedAt: newAssignee !== t.assignee ? null : (t.receivedAt || null),
+      history, updatedAt: serverTimestamp()
     });
+    if (noteText) await addTicketDetail(ticketEditingId, noteText);
+    const jobs = [];
+    if (noteText) jobs.push(notifyTicketUser(t.assignee, t.id, "detail", `${author}님이 세부사항을 추가했습니다.`));
+    if (newDue !== t.dueDate) jobs.push(notifyTicketUser(newAssignee, t.id, "due_changed", `기한이 ${newDue || "미지정"}(으)로 변경되었습니다.`));
+    if (newAssignee !== t.assignee) {
+      jobs.push(notifyTicketUser(t.assignee, t.id, "assignee_changed", `업무 수신자가 ${newAssignee}(으)로 변경되었습니다.`));
+      jobs.push(notifyTicketUser(newAssignee, t.id, "assignee_changed", `${author}님이 업무를 전달했습니다.`));
+    }
+    jobs.push(auditTicket(t.id, "ticket_updated", { status: t.status, dueDate: t.dueDate, assignee: t.assignee }, { status: newStatus, dueDate: newDue, assignee: newAssignee, reason: changeReason }));
+    await Promise.all(jobs);
   }
   ticketOverlay.classList.remove("open");
+  } catch (e) {
+    console.error("관련업무 저장 오류", e);
+    alert("저장하지 못했습니다. 입력 내용은 유지됩니다. 연결을 확인한 뒤 다시 시도해 주세요.");
+  } finally {
+    saveButton.disabled = false;
+    saveButton.textContent = originalSaveText;
+  }
 });
 
 /* ════════════════════════════════════════════════
@@ -2248,17 +2419,17 @@ function daysDiffIso(a, b) {
   const db = new Date(b + "T00:00:00");
   return Math.round((db - da) / 86400000);
 }
+let userNotifications = [];
+onSnapshot(query(collection(db, "userNotifications", currentUser(), "items"), orderBy("createdAt", "desc"), limit(50)), snap => {
+  userNotifications = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderDashboard();
+});
+
 function renderDashboard() {
   const me = currentUser();
 
   /* 업데이트 알림 (이력/상세내용이 갱신되어 나에게 알려야 하는 항목) */
-  const pendingUpdates = [];
-  tickets.forEach(t => {
-    if (notifyTargets("ticket", t).includes(me)) {
-      const seen = t.lastSeenBy && t.lastSeenBy[me];
-      if (!seen || seen < updatedMillis(t)) pendingUpdates.push({ type: "ticket", rec: t, label: t.title });
-    }
-  });
+  const pendingUpdates = userNotifications.filter(n => !n.readAt).map(n => ({ type: "ticket", notification: n, rec: tickets.find(t => t.id === n.ticketId), label: tickets.find(t => t.id === n.ticketId)?.title || "관련업무" }));
   schedules.forEach(s => {
     if (notifyTargets("schedule", s).includes(me)) {
       const seen = s.lastSeenBy && s.lastSeenBy[me];
@@ -2272,9 +2443,9 @@ function renderDashboard() {
   } else {
     updateGateOverlay.classList.add("open");
     updList.innerHTML = "";
-    pendingUpdates.forEach(({ type, rec, label }) => {
-      const writer = lastHistoryAuthor(rec);
-      const lastText = rec.history[rec.history.length - 1].text;
+    pendingUpdates.forEach(({ type, rec, label, notification }) => {
+      const writer = notification ? notification.actor : lastHistoryAuthor(rec);
+      const lastText = notification ? notification.message : ((rec.history && rec.history.length) ? rec.history[rec.history.length - 1].text : "업데이트");
       const div = document.createElement("div");
       div.className = "dash-card dash-update-card pulsing";
       div.style.cursor = "default";
@@ -2286,7 +2457,8 @@ function renderDashboard() {
         <button type="button" class="dash-confirm-btn urgent-blink">확인</button>
       `;
       div.querySelector(".dash-confirm-btn").addEventListener("click", async () => {
-        await markSeen(type, rec.id);
+        if (notification) await updateDoc(doc(db, "userNotifications", me, "items", notification.id), { readAt: serverTimestamp() });
+        else await markSeen(type, rec.id);
         renderDashboard();
       });
       updList.appendChild(div);

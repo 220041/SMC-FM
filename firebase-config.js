@@ -16,13 +16,20 @@ import {
   serverTimestamp,
   Timestamp,
   getDocs,
+  getDoc,
   limit,
-  startAfter
+  startAfter,
+  where,
+  writeBatch
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import {
   getAuth,
   signInAnonymously,
-  onAuthStateChanged
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  updatePassword,
+  sendPasswordResetEmail,
+  signOut
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -41,6 +48,16 @@ const auth = getAuth(app);
 
 // 팀원 목록 (고정 초기값, 필요 시 여기 배열만 수정하면 전체 화면에 반영됨)
 export const TEAM_MEMBERS = ["강보선", "강은석", "박재현", "김준형", "김류현", "관리자"];
+
+export const USER_ACCOUNTS = {
+  "강은석": { email: "kw5232@naver.com", role: "member" },
+  "박재현": { email: "parkjh8372@naver.com", role: "member" },
+  "강보선": { email: "bosun1245@daum.net", role: "member" },
+  "김류현": { email: "kimwimi23@naver.com", role: "member" },
+  "김준형": { email: "220041@naver.com", role: "member" },
+  "admin": { email: "yakolibre@gmail.com", role: "admin" }
+};
+export const INITIAL_PASSWORD = "123456";
 
 export const ACCESS_CODE = "3813";
 
@@ -118,5 +135,6 @@ export const KR_HOLIDAYS = {
 export {
   db, auth,
   collection, doc, addDoc, updateDoc, deleteDoc, setDoc, onSnapshot, query, orderBy, serverTimestamp, Timestamp,
-  signInAnonymously, onAuthStateChanged, getDocs, limit, startAfter
+  signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, updatePassword, sendPasswordResetEmail, signOut,
+  getDocs, getDoc, limit, startAfter, where, writeBatch
 };

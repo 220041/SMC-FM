@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function passwordUser() { return signedIn() && request.auth.token.email != null; }
+    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function admin() { return passwordUser() && me().role == 'admin'; }
+    function participant(data) { return passwordUser() && (data.requestedBy == me().name || data.assignee == me().name); }
+
+    match /users/{uid} {
+      allow read: if passwordUser() && (request.auth.uid == uid || admin());
+      allow create: if passwordUser() && request.auth.uid == uid && request.resource.data.role == 'member';
+      allow update: if passwordUser() && request.auth.uid == uid
+        && request.resource.data.role == resource.data.role
+        || admin();
+      allow delete: if admin();
+    }
+
+    match /requestTickets/{ticketId} {
+      // 전자칠판의 익명 읽기를 유지한다. 쓰기는 실제 이메일 계정만 가능하다.
+      allow read: if signedIn();
+      allow create: if passwordUser() && request.resource.data.requestedBy == me().name;
+      allow update: if participant(resource.data) || admin();
+      allow delete: if admin();
+      match /details/{detailId} {
+        allow read: if passwordUser() && (participant(get(/databases/$(database)/documents/requestTickets/$(ticketId)).data) || admin());
+        allow create: if passwordUser() && participant(get(/databases/$(database)/documents/requestTickets/$(ticketId)).data);
+        allow update: if passwordUser() && (resource.data.authorUid == request.auth.uid || admin());
+        allow delete: if admin();
+      }
+    }
+
+    match /userNotifications/{name}/items/{notificationId} {
+      allow read, update: if passwordUser() && (me().name == name || admin());
+      allow create: if passwordUser();
+      allow delete: if admin();
+    }
+
+    match /auditLogs/{logId} {
+      allow create: if passwordUser();
+      allow read: if admin();
+      allow update, delete: if false;
+    }
+
+    match /schedules/{id} { allow read: if signedIn(); allow write: if passwordUser(); }
+    match /phoneMemos/{id} { allow read: if signedIn(); allow write: if signedIn(); }
+    match /customHolidays/{id} { allow read: if signedIn(); allow write: if admin(); }
+  }
+}

@@ -479,7 +479,7 @@
 <script type="module">
 import { ensureAccess } from "./auth-gate.js";
 import {
-  db, collection, doc, updateDoc, onSnapshot, query, orderBy, serverTimestamp, Timestamp, TEAM_MEMBERS, KR_HOLIDAYS
+  db, collection, doc, updateDoc, onSnapshot, query, orderBy, limit, serverTimestamp, Timestamp, TEAM_MEMBERS, KR_HOLIDAYS
 } from "./firebase-config.js";
 
 await ensureAccess();
@@ -540,19 +540,19 @@ let customHolidays = {};
 function holidayName(iso) { return customHolidays[iso] || KR_HOLIDAYS[iso]; }
 
 /* ───────── Firestore 구독 ───────── */
-onSnapshot(collection(db, "schedules"), (snap) => {
+onSnapshot(query(collection(db, "schedules"), orderBy("registeredAt", "desc"), limit(300)), (snap) => {
   schedules = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   renderCalendar();
   renderAuxWeek();
   renderAuxToday();
 });
 
-onSnapshot(query(collection(db, "requestTickets"), orderBy("requestedAt", "desc")), (snap) => {
-  tickets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+onSnapshot(query(collection(db, "requestTickets"), orderBy("updatedAt", "desc"), limit(100)), (snap) => {
+  tickets = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => !t.archived && t.status !== "완료");
   renderAlerts();
 });
 
-onSnapshot(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc")), (snap) => {
+onSnapshot(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc"), limit(100)), (snap) => {
   memos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   renderAlerts();
 });
@@ -1002,8 +1002,8 @@ function buildProgressCard(t, variant) {
 let progressPage = 0;
 const PROGRESS_PAGE_SIZE = 8;
 function renderProgressList() {
-  const activeTickets = tickets.filter(t => t.status !== "완료" && t.status !== "미확인");
-  const stalled = activeTickets.filter(t => t.status === "확인됨")
+  const activeTickets = tickets.filter(t => t.status !== "완료" && !["미수신", "미확인", "요청됨"].includes(t.status));
+  const stalled = activeTickets.filter(t => ["열람", "접수", "확인됨"].includes(t.status))
     .sort((a, b) => updatedMillis(b) - updatedMillis(a));
   const inProgress = activeTickets.filter(t => t.status === "진행중")
     .sort((a, b) => updatedMillis(b) - updatedMillis(a));
@@ -1038,7 +1038,7 @@ function renderAlerts() {
 
   const unconfirmedMemoGroups = groupConsecutive(memos.filter(m => m.status !== "확인됨"))
     .map(g => ({ kind: "memo", group: g, ms: tsMillis(g.items[0].receivedAt) }));
-  const unconfirmedTicketItems = tickets.filter(t => t.status === "미확인")
+  const unconfirmedTicketItems = tickets.filter(t => ["미수신", "미확인", "요청됨"].includes(t.status))
     .map(t => ({ kind: "ticket", rec: t, ms: ticketMillis(t) }));
 
   const unconfirmedAll = [...unconfirmedMemoGroups, ...unconfirmedTicketItems].sort((a, b) => b.ms - a.ms);
@@ -1215,8 +1215,6 @@ setInterval(renderAlerts, 60000);
    직접 새로고침하기 전까지 반영되지 않음. 화면에 열려있는 팝업이 없을 때에 한해
    일정 시간마다 자동으로 새로고침해서 항상 최신 코드/연결 상태를 유지함 */
 const AUTO_RELOAD_CHECK_MS = 5 * 60 * 1000;   // 5분마다 새로고침 가능 여부 확인
-const AUTO_RELOAD_AFTER_MS = 60 * 60 * 1000;  // 이 화면을 연 지 1시간이 지나면 새로고침
-const pageLoadedAt = Date.now();
 function anyOverlayOpen() {
   return dayDetailOverlay.classList.contains("open")
     || eventDetailOverlay.classList.contains("open")
@@ -1224,7 +1222,8 @@ function anyOverlayOpen() {
     || overlay.style.display === "flex";
 }
 setInterval(() => {
-  if (Date.now() - pageLoadedAt >= AUTO_RELOAD_AFTER_MS && !anyOverlayOpen()) {
+  const now = new Date();
+  if (now.getHours() === 4 && now.getMinutes() < 5 && !anyOverlayOpen()) {
     location.reload();
   }
 }, AUTO_RELOAD_CHECK_MS);
