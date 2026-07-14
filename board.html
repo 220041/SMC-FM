@@ -322,6 +322,9 @@
       <a class="nav-link" href="input.html" title="업무 화면으로 이동">
         <span class="nav-link-icon">✏️</span><span class="nav-link-text">업무</span>
       </a>
+      <a class="nav-link" href="orders.html" title="계약팀 발주현황 화면으로 이동">
+        <span class="nav-link-icon">📋</span><span class="nav-link-text">발주현황</span>
+      </a>
     </div>
   </div>
 
@@ -1028,6 +1031,26 @@ async function confirmMemo(name) {
 
 /* 24시간 경과 여부는 시간 흐름에 따라 바뀌므로 주기적으로 다시 렌더 */
 setInterval(renderAlerts, 60000);
+
+/* ── 전자칠판 자동 새로고침 ──────────────────────────────
+   이 화면은 대형 모니터에 항상 띄워두는 용도. Firestore 데이터(일정/업무/메모)는
+   onSnapshot으로 실시간 반영되지만, 화면 디자인·기능이 바뀐 새 코드는 브라우저 탭을
+   직접 새로고침하기 전까지 반영되지 않음. 화면에 열려있는 팝업이 없을 때에 한해
+   일정 시간마다 자동으로 새로고침해서 항상 최신 코드/연결 상태를 유지함 */
+const AUTO_RELOAD_CHECK_MS = 5 * 60 * 1000;   // 5분마다 새로고침 가능 여부 확인
+const AUTO_RELOAD_AFTER_MS = 60 * 60 * 1000;  // 이 화면을 연 지 1시간이 지나면 새로고침
+const pageLoadedAt = Date.now();
+function anyOverlayOpen() {
+  return dayDetailOverlay.classList.contains("open")
+    || eventDetailOverlay.classList.contains("open")
+    || memoDetailOverlay.classList.contains("open")
+    || overlay.style.display === "flex";
+}
+setInterval(() => {
+  if (Date.now() - pageLoadedAt >= AUTO_RELOAD_AFTER_MS && !anyOverlayOpen()) {
+    location.reload();
+  }
+}, AUTO_RELOAD_CHECK_MS);
 
 renderCalendar();
 </script>
