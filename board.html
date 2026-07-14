@@ -419,6 +419,7 @@
     <div id="topbar-right">
       <button type="button" id="fullscreen-btn" class="icon-btn" title="전체화면">⛶</button>
       <button type="button" id="aux-preview-btn" class="icon-btn" title="보조화면 미리보기">🖥️</button>
+      <button type="button" id="chime-test-btn" class="icon-btn" title="17:26 알림음 테스트" aria-label="17시 26분 알림음 테스트">🔊</button>
       <div id="clock">--:--</div>
       <a class="nav-link" href="input.html" title="업무 화면으로 이동">
         <span class="nav-link-icon">✏️</span><span class="nav-link-text">업무</span>
@@ -573,6 +574,10 @@ async function playBoardChime() {
   });
   return true;
 }
+document.getElementById("chime-test-btn").addEventListener("click", async () => {
+  const played = await playBoardChime();
+  if (!played) alert("브라우저에서 소리를 재생하지 못했습니다. 전자칠판의 음량과 브라우저 소리 권한을 확인해 주세요.");
+});
 // 페이지 이용 중 최초 클릭/키 입력 때 오디오를 준비해 17:26 자동재생 차단 가능성을 줄인다.
 document.addEventListener("pointerdown", ensureBoardAudio, { once:true });
 document.addEventListener("keydown", ensureBoardAudio, { once:true });

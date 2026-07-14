@@ -805,7 +805,12 @@
     <h3 id="memo-modal-title">새 메모 등록</h3>
     <div class="row2">
       <div class="field"><label>받은사람 (전달받은 사람)</label><select id="memo-receiver"></select></div>
-      <div class="field"><label>담당자 (처리할 사람)</label><select id="memo-assignee"></select></div>
+      <div class="field"><label>담당자 (처리할 사람)</label>
+        <select id="memo-assignee"></select>
+        <div id="memo-assignee-multi" style="display:none;">
+          <div class="chip-list" id="memo-assignee-checks"></div>
+        </div>
+      </div>
     </div>
     <div class="field"><label>용건</label><textarea id="memo-subject" placeholder="예: 신관 공사 관련 문의"></textarea></div>
     <div class="row2">
@@ -2370,6 +2375,34 @@ document.getElementById("schedule-delete").addEventListener("click", async () =>
 let memos = [];
 let selectedMemoIds = new Set();
 let lastRenderedMemoIds = [];
+let memoAssigneeSet = new Set();
+
+function renderMemoAssigneeChecks() {
+  const wrap = document.getElementById("memo-assignee-checks");
+  wrap.innerHTML = "";
+  const allSelected = TEAM_MEMBERS.length > 0 && TEAM_MEMBERS.every(name => memoAssigneeSet.has(name));
+  const allChip = document.createElement("button");
+  allChip.type = "button";
+  allChip.className = "resp-chip" + (allSelected ? " active" : "");
+  allChip.textContent = "전체";
+  allChip.addEventListener("click", () => {
+    memoAssigneeSet = allSelected ? new Set() : new Set(TEAM_MEMBERS);
+    renderMemoAssigneeChecks();
+  });
+  wrap.appendChild(allChip);
+  TEAM_MEMBERS.forEach(name => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "resp-chip" + (memoAssigneeSet.has(name) ? " active" : "");
+    chip.textContent = name;
+    chip.addEventListener("click", () => {
+      if (memoAssigneeSet.has(name)) memoAssigneeSet.delete(name);
+      else memoAssigneeSet.add(name);
+      renderMemoAssigneeChecks();
+    });
+    wrap.appendChild(chip);
+  });
+}
 onSnapshot(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc")), (snap) => {
   memos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   renderMemos();
@@ -2435,7 +2468,11 @@ document.getElementById("memo-new-btn").addEventListener("click", () => {
   memoEditingId = null;
   document.getElementById("memo-modal-title").textContent = "새 메모 등록";
   fillNameSelect(document.getElementById("memo-receiver"), currentUser());
-  fillNameSelect(document.getElementById("memo-assignee"), TEAM_MEMBERS.includes("강보선") ? "강보선" : currentUser());
+  const defaultAssignee = TEAM_MEMBERS.includes("강보선") ? "강보선" : currentUser();
+  memoAssigneeSet = new Set([defaultAssignee]);
+  document.getElementById("memo-assignee").style.display = "none";
+  document.getElementById("memo-assignee-multi").style.display = "block";
+  renderMemoAssigneeChecks();
   document.getElementById("memo-subject").value = "";
   document.getElementById("memo-urgency").value = "중";
   document.getElementById("memo-time").value = nowLocalDatetimeValue();
@@ -2451,6 +2488,8 @@ function openMemoEdit(id) {
   document.getElementById("memo-modal-title").textContent = "메모 수정";
   fillNameSelect(document.getElementById("memo-receiver"), m.receivedBy);
   fillNameSelect(document.getElementById("memo-assignee"), m.assignee);
+  document.getElementById("memo-assignee").style.display = "block";
+  document.getElementById("memo-assignee-multi").style.display = "none";
   document.getElementById("memo-subject").value = m.subject || "";
   document.getElementById("memo-urgency").value = m.urgency || "중";
   const d = m.receivedAt?.toDate ? m.receivedAt.toDate() : new Date();
@@ -2479,16 +2518,25 @@ document.getElementById("memo-save").addEventListener("click", async () => {
   const receivedAt = timeVal ? new Date(timeVal) : new Date();
 
   if (memoEditingId === null) {
-    await addDoc(collection(db, "phoneMemos"), {
-      receivedBy: document.getElementById("memo-receiver").value,
-      assignee: document.getElementById("memo-assignee").value,
-      subject,
-      urgency: document.getElementById("memo-urgency").value,
-      receivedAt,
-      status: "미확인",
-      confirmedBy: null,
-      confirmedAt: null
+    const assignees = TEAM_MEMBERS.filter(name => memoAssigneeSet.has(name));
+    if (!assignees.length) { alert("담당자를 한 명 이상 선택하세요"); return; }
+    const batch = writeBatch(db);
+    const broadcastId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    assignees.forEach(assignee => {
+      batch.set(doc(collection(db, "phoneMemos")), {
+        receivedBy: document.getElementById("memo-receiver").value,
+        assignee,
+        subject,
+        urgency: document.getElementById("memo-urgency").value,
+        receivedAt,
+        status: "미확인",
+        confirmedBy: null,
+        confirmedAt: null,
+        broadcastId,
+        broadcastRecipients: assignees
+      });
     });
+    await batch.commit();
   } else {
     const newStatus = document.getElementById("memo-status-select").value;
     const m = memos.find(x => x.id === memoEditingId);
@@ -2760,6 +2808,7 @@ function renderDashboard() {
       s.history.forEach(h => {
         activities.push({
           type: "schedule",
+          scheduleType: s.type || "기타",
           id: s.id,
           title: s.title,
           author: h.author || s.registeredBy || "미지정",
@@ -2771,6 +2820,7 @@ function renderDashboard() {
     } else if (s.detail) {
       activities.push({
         type: "schedule",
+        scheduleType: s.type || "기타",
         id: s.id,
         title: s.title,
         author: s.registeredBy || "미지정",
@@ -2826,7 +2876,7 @@ function renderDashboard() {
       div.innerHTML = `
         <div class="activity-feed-icon">${act.icon}</div>
         <div class="activity-feed-content">
-          <div style="font-weight: 800; font-size: 14.5px;">[${LABEL_OF[act.type]}] ${escapeHtml(act.title)}</div>
+          <div style="font-weight: 800; font-size: 14.5px;">[${escapeHtml(act.type === "schedule" ? typeLabel(act.scheduleType) : LABEL_OF[act.type])}] ${escapeHtml(act.title)}</div>
           <div class="activity-feed-meta"><b>${escapeHtml(act.author)}</b> · ${escapeHtml(act.text)}</div>
         </div>
         <div class="activity-feed-time">${timeStr}</div>
