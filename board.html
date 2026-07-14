@@ -873,7 +873,6 @@ function openTicketDetailBoard(t) {
   const metaLines = [];
   metaLines.push(`상태: <b>${escapeHtml(t.status || "-")}</b>`);
   metaLines.push(`요청자: <b>${escapeHtml(t.requestedBy || "-")}</b>`);
-  metaLines.push(`담당자: <b>${escapeHtml(t.assignee || "미지정")}</b>`);
   metaLines.push(`요청일: <b>${fmtTimestamp(t.requestedAt)}</b>`);
   if (t.dueDate) metaLines.push(`희망기한: <b>${escapeHtml(t.dueDate)}</b>`);
   document.getElementById("event-detail-meta").innerHTML = metaLines.join("<br>");
@@ -972,29 +971,25 @@ function buildTicketAlertCard(t, now) {
     <div class="alert-line">
       <span class="title">${escapeHtml(t.title || "-")}(업무)</span>
       <span class="alert-sep">/</span>
-      <span class="assignee-name">${escapeHtml(t.assignee || "미지정")}</span>
+      <span class="assignee-name">${escapeHtml(t.requestedBy || "-")}</span>
     </div>
   `;
   card.addEventListener("click", () => openTicketDetailBoard(t));
   return card;
 }
-/* 업무진행상황: 상태값(요청됨/진행중/보류)과 담당자의 확인(lastSeenBy) 여부로 3그룹 분류 */
+/* 업무진행상황: 신규 상태값(미확인/확인됨/진행중/보류/완료) 기준으로 3그룹 분류.
+   담당자 필드가 없어졌으므로, "확인만 하고 상태가 안 바뀐 것"은 status==="확인됨"으로 직접 판단 */
 function updatedMillis(rec) {
   if (rec.updatedAt) return tsMillis(rec.updatedAt);
   const last = rec.history && rec.history.length ? rec.history[rec.history.length - 1] : null;
   return last ? tsMillis(last.timestamp) : 0;
-}
-function isTicketConfirmed(t) {
-  if (!t.assignee) return false;
-  const seenAt = t.lastSeenBy && t.lastSeenBy[t.assignee];
-  return !!(seenAt && seenAt >= updatedMillis(t));
 }
 function buildProgressCard(t, variant) {
   const card = document.createElement("div");
   card.className = "progress-card" + (variant ? " " + variant : "");
   card.innerHTML = `
     <div class="title-row"><span class="type-tag type-tag-ticket">업무</span><span class="title">${escapeHtml(t.title || "-")}</span></div>
-    <div>${escapeHtml(t.status || "-")} · 담당 ${escapeHtml(t.assignee || "미지정")} · ${fmtTimestamp(t.updatedAt)}</div>
+    <div>${escapeHtml(t.status || "-")} · 요청 ${escapeHtml(t.requestedBy || "-")} · ${fmtTimestamp(t.updatedAt)}</div>
   `;
   card.addEventListener("click", () => openTicketDetailBoard(t));
   return card;
@@ -1003,10 +998,10 @@ function buildProgressCard(t, variant) {
 let progressPage = 0;
 const PROGRESS_PAGE_SIZE = 8;
 function renderProgressList() {
-  const activeTickets = tickets.filter(t => t.status !== "완료");
-  const stalled = activeTickets.filter(t => t.status !== "보류" && isTicketConfirmed(t))
+  const activeTickets = tickets.filter(t => t.status !== "완료" && t.status !== "미확인");
+  const stalled = activeTickets.filter(t => t.status === "확인됨")
     .sort((a, b) => updatedMillis(b) - updatedMillis(a));
-  const inProgress = activeTickets.filter(t => t.status !== "보류" && !isTicketConfirmed(t))
+  const inProgress = activeTickets.filter(t => t.status === "진행중")
     .sort((a, b) => updatedMillis(b) - updatedMillis(a));
   const onHold = activeTickets.filter(t => t.status === "보류")
     .sort((a, b) => updatedMillis(b) - updatedMillis(a));
@@ -1039,7 +1034,7 @@ function renderAlerts() {
 
   const unconfirmedMemoGroups = groupConsecutive(memos.filter(m => m.status !== "확인됨"))
     .map(g => ({ kind: "memo", group: g, ms: tsMillis(g.items[0].receivedAt) }));
-  const unconfirmedTicketItems = tickets.filter(t => t.status !== "완료")
+  const unconfirmedTicketItems = tickets.filter(t => t.status === "미확인")
     .map(t => ({ kind: "ticket", rec: t, ms: ticketMillis(t) }));
 
   const unconfirmedAll = [...unconfirmedMemoGroups, ...unconfirmedTicketItems].sort((a, b) => b.ms - a.ms);

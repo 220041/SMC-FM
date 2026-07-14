@@ -60,6 +60,8 @@
   tbody tr:hover { background: #FAFBF9; }
   .badge { display: inline-block; padding: 3px 9px; border-radius: 7px; font-size: 11.5px; font-weight: 800; }
   .badge.요청됨 { background: var(--type-미팅-bg); color: var(--type-미팅); }
+  .badge.미확인 { background: var(--alert-bg); color: var(--alert); }
+  .badge.확인됨 { background: var(--type-미팅-bg); color: var(--type-미팅); }
   .badge.진행중 { background: #FDF2D9; color: #A9740A; }
   .badge.완료 { background: var(--type-업무-bg); color: var(--type-업무); }
   .badge.보류 { background: var(--dim-bg); color: var(--dim); }
@@ -169,11 +171,12 @@
       <button class="btn-secondary" id="tickets-load-more" style="display:none;">더 불러오기</button>
     </div>
     <div class="filter-bar">
-      <label>검색</label><input type="text" id="tickets-search" placeholder="제목/요청자/담당자" />
+      <label>검색</label><input type="text" id="tickets-search" placeholder="제목/요청자" />
       <label>상태</label>
       <select id="tickets-status-filter">
         <option value="all">전체</option>
-        <option value="요청됨">요청됨</option>
+        <option value="미확인">미확인</option>
+        <option value="확인됨">확인됨</option>
         <option value="진행중">진행중</option>
         <option value="완료">완료</option>
         <option value="보류">보류</option>
@@ -420,11 +423,10 @@ const CONFIGS = {
     orderField: "requestedAt",
     dateOf: r => tsMillis(r.requestedAt),
     statusOf: r => r.status || "",
-    searchText: r => [r.title, r.requestedBy, r.assignee].filter(Boolean).join(" "),
+    searchText: r => [r.title, r.requestedBy].filter(Boolean).join(" "),
     columns: [
       { key: "title", label: "제목", get: r => escapeHtml(r.title || "-"), sort: r => r.title || "" },
       { key: "requestedBy", label: "요청자", get: r => escapeHtml(r.requestedBy || "-"), sort: r => r.requestedBy || "" },
-      { key: "assignee", label: "담당자", get: r => escapeHtml(r.assignee || "미지정"), sort: r => r.assignee || "" },
       { key: "requestedAt", label: "요청일", get: r => fmtTs(r.requestedAt), sort: r => tsMillis(r.requestedAt) },
       { key: "dueDate", label: "희망기한", get: r => r.dueDate || "-", sort: r => r.dueDate || "" },
       { key: "status", label: "상태", get: r => `<span class="badge ${r.status}">${escapeHtml(r.status || "-")}</span>`, sort: r => r.status || "" },
@@ -433,7 +435,7 @@ const CONFIGS = {
       { key: "deleteReq", label: "삭제요청", get: r => r.deleteRequestedBy ? escapeHtml(r.deleteRequestedBy) : "-", sort: null }
     ],
     excelRow: r => ({
-      "제목": r.title || "", "요청자": r.requestedBy || "", "담당자": r.assignee || "미지정",
+      "제목": r.title || "", "요청자": r.requestedBy || "",
       "요청일": fmtTs(r.requestedAt), "희망기한": r.dueDate || "", "상태": r.status || "",
       "최종수정": fmtTs(r.updatedAt), "최근내용": lastHistoryText(r)
     })

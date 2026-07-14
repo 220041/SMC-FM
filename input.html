@@ -66,6 +66,8 @@
   tbody tr:hover { background: #FAFBF9; }
   .badge { display: inline-block; padding: 3.5px 11px; border-radius: 7.5px; font-size: 14px; font-weight: 800; }
   .badge.요청됨 { background: var(--type-미팅-bg); color: var(--type-미팅); }
+  .badge.미확인 { background: var(--alert-bg); color: var(--alert); }
+  .badge.확인됨 { background: var(--type-미팅-bg); color: var(--type-미팅); }
   .badge.진행중 { background: #FDF2D9; color: #A9740A; }
   .badge.완료 { background: var(--type-업무-bg); color: var(--type-업무); }
   .badge.보류 { background: var(--dim-bg); color: var(--dim); }
@@ -106,6 +108,9 @@
   #schedule-table th:nth-child(5), #schedule-table td:nth-child(5) { width: 130px; }
   #schedule-table th:nth-child(6), #schedule-table td:nth-child(6) { width: 150px; }
   #schedule-table th:nth-child(7), #schedule-table td:nth-child(7) { width: 72px; }
+  /* 삭제 버튼/체크박스 칸은 텍스트가 아니라 버튼·입력요소이므로 말줄임표(ellipsis)를 적용하면 안 됨 (버튼 옆에 불필요한 "."이 보이는 문제 수정) */
+  #schedule-table td.td-del, #schedule-table th.th-del,
+  #schedule-table td.td-check, #schedule-table th.th-check { overflow: visible; text-overflow: clip; }
 
   /* ── 미확인 항목 깜빡임 표시 ────────────── */
   .blink-dot {
@@ -158,6 +163,32 @@
   }
   .resp-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
   .resp-chip:disabled { cursor: not-allowed; opacity: 0.55; }
+
+  /* ── 관련업무: 발송/수신 토글 ─────────────── */
+  .dir-toggle { display: flex; gap: 6px; }
+  .dir-toggle-btn {
+    background: var(--bg); color: var(--ink-soft); border: 1.5px solid var(--line); border-radius: 20px;
+    padding: 7px 16px; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .dir-toggle-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ── 관련업무 표: 리스트에서 세부사항(댓글 포함)을 바로 확인할 수 있도록 인라인 표시 ── */
+  .ticket-notes-cell { max-height: 96px; overflow-y: auto; font-size: 13px; line-height: 1.5; text-align: left; white-space: normal; }
+  .ticket-notes-cell .tn-item { padding: 3px 0; border-bottom: 1px dashed var(--line); }
+  .ticket-notes-cell .tn-item:last-child { border-bottom: none; }
+  .ticket-notes-cell .tn-meta { color: var(--ink-soft); font-size: 11.5px; }
+  .ticket-content-cell { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── 제목 옆 [edit] 아이콘: 작성자 본인일 때만 노출, 클릭시에만 수정 가능 ── */
+  .row-edit-btn {
+    border: none; background: none; cursor: pointer; font-size: 14px; padding: 2px 5px;
+    border-radius: 6px; margin-left: 5px; vertical-align: middle;
+  }
+  .row-edit-btn:hover { background: var(--bg); }
+
+  /* ── 비작성자 열람화면: 입력창 대신 축약된 고정 텍스트로 표시 ── */
+  .static-block { font-size: 15.5px; line-height: 1.85; color: var(--ink); }
+  .static-block .sb-label { color: var(--ink-soft); font-size: 13.5px; margin-right: 5px; }
 
   .history-list { max-height: 290.5px; overflow-y: auto; border: 1px solid var(--line); border-radius: 11px; padding: 12px 14.5px; margin-bottom: 13px; }
   .history-item { padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: 16px; }
@@ -384,26 +415,29 @@
   <div class="panel" id="panel-tickets">
     <div class="panel-head">
       <h2>관련업무</h2>
+      <div class="dir-toggle">
+        <button type="button" class="dir-toggle-btn active" id="ticket-dir-sent" data-dir="발송">📤 발송</button>
+        <button type="button" class="dir-toggle-btn" id="ticket-dir-received" data-dir="수신">📥 수신</button>
+      </div>
       <div class="filter-bar">
         <label>상태</label>
         <select id="ticket-filter-status">
           <option value="all">전체</option>
-          <option value="요청됨">요청됨</option>
+          <option value="미확인">미확인</option>
+          <option value="확인됨">확인됨</option>
           <option value="진행중">진행중</option>
-          <option value="완료">완료</option>
           <option value="보류">보류</option>
+          <option value="완료">완료</option>
         </select>
         <label>요청자</label>
         <select id="ticket-filter-requester"><option value="all">전체</option></select>
-        <label>담당자</label>
-        <select id="ticket-filter-assignee"><option value="all">전체</option><option value="미지정">미지정</option></select>
         <label><input type="checkbox" id="ticket-filter-overdue" /> 기한초과만</label>
       </div>
       <button class="btn-primary" id="ticket-new-btn">+ 새 업무 등록</button>
     </div>
     <table>
       <thead><tr>
-        <th>제목</th><th>요청자</th><th>담당자</th><th>요청일</th><th>희망기한</th><th>상태</th><th>확인</th><th class="th-del"></th>
+        <th>제목</th><th>요청자</th><th>내용</th><th>요청일(희망기한)</th><th>현상태</th><th>세부사항</th><th class="th-del"></th>
       </tr></thead>
       <tbody id="ticket-tbody"></tbody>
     </table>
@@ -481,37 +515,44 @@
     <h3 id="ticket-modal-title">새 업무 등록</h3>
     <div id="ticket-new-fields">
       <div class="field"><label>제목</label><input type="text" id="ticket-title" /></div>
-      <div class="row2">
-        <div class="field"><label>요청자</label><div class="static-value" id="ticket-requester-display">-</div></div>
-        <div class="field"><label>담당자</label><select id="ticket-assignee"></select></div>
-      </div>
+      <div class="field"><label>요청자</label><div class="static-value" id="ticket-requester-display">-</div></div>
       <div class="field"><label>요청희망기한</label><input type="text" id="ticket-due" /></div>
       <div class="field"><label>요청 내용</label><textarea id="ticket-content" placeholder="무엇을 요청하는지 적어주세요"></textarea></div>
     </div>
 
     <div id="ticket-detail-fields" style="display:none;">
-      <div class="row2">
-        <div class="field"><label>상태</label>
-          <select id="ticket-status-select">
-            <option value="요청됨">요청됨</option>
-            <option value="진행중">진행중</option>
-            <option value="완료">완료</option>
-            <option value="보류">보류</option>
-          </select>
+      <div class="field small-note" id="ticket-readonly-note" style="display:none;"></div>
+
+      <!-- 열람(비수정) 모드: 입력창 대신 축약된 고정 텍스트로 표시 -->
+      <div id="ticket-view-summary" class="static-block" style="display:none; margin-bottom:14px;">
+        <div><span class="sb-label">요청자</span><b id="tv-requester">-</b></div>
+        <div><span class="sb-label">요청일(희망기한)</span><b id="tv-dates">-</b></div>
+        <div><span class="sb-label">현상태</span><b id="tv-status">-</b></div>
+      </div>
+
+      <!-- 수정 모드: 작성자(요청자) 본인일 때, [edit] 버튼을 눌러야만 표시됨 -->
+      <div id="ticket-edit-summary">
+        <div class="row2">
+          <div class="field"><label>상태</label>
+            <select id="ticket-status-select">
+              <option value="확인됨">확인됨</option>
+              <option value="진행중">진행중</option>
+              <option value="보류">보류</option>
+              <option value="완료">완료</option>
+            </select>
+          </div>
+          <div class="field"><label>요청희망기한</label><input type="text" id="ticket-due-edit" /></div>
         </div>
-        <div class="field"><label>요청희망기한</label><input type="text" id="ticket-due-edit" /></div>
-      </div>
-      <div class="row2">
         <div class="field"><label>요청자</label><div class="static-value" id="ticket-requester-display-edit">-</div></div>
-        <div class="field"><label>담당자</label><select id="ticket-assignee-edit"></select></div>
       </div>
+
       <div class="field"><label id="ticket-status-label">진행상태</label>
         <div class="history-list" id="ticket-status-history-list"></div>
       </div>
       <div class="field"><label id="ticket-note-label">세부사항</label>
         <div class="history-list" id="ticket-note-history-list"></div>
       </div>
-      <div class="field"><label>추가사항</label>
+      <div class="field"><label>추가사항 <span class="small-note" style="display:inline;">(누구나 작성 가능)</span></label>
         <textarea id="ticket-note-text" placeholder="추가사항을 입력하세요"></textarea>
       </div>
     </div>
@@ -529,42 +570,54 @@
   <div class="modal-box">
     <button type="button" class="modal-close-x" id="schedule-close-x" aria-label="닫기">×</button>
     <h3 id="schedule-modal-title">새 일정 등록</h3>
-    <div class="field small-note" id="schedule-readonly-note" style="display:none;">작성자만 아래 항목들을 수정할 수 있습니다. 상세내용은 누구나 추가할 수 있습니다.</div>
-    <div class="field"><label>제목</label><input type="text" id="schedule-title" /></div>
-    <div class="row2">
-      <div class="field"><label>유형</label>
-        <select id="schedule-type"><option value="공사">공사(작업)</option><option value="미팅">미팅</option><option value="업무">업무</option><option value="기타">기타</option></select>
-      </div>
-      <div class="field"><label>담당 <span class="small-note" style="display:inline;">(복수 선택 가능)</span></label>
-        <div class="chip-list" id="schedule-responsible-checks"></div>
-      </div>
-    </div>
-    <div class="field"><label>업체 / 부서</label><input type="text" id="schedule-vendor" /></div>
-    <div class="field"><label>시간 (선택)</label>
-      <div style="display:flex; align-items:center; gap:9px;">
-        <span style="font-size:19px;">🕐</span>
-        <input type="time" id="schedule-time" style="flex:1;" />
-      </div>
+    <div class="field small-note" id="schedule-readonly-note" style="display:none;">작성자만 위 항목들을 수정할 수 있습니다. 추가사항은 누구나 남길 수 있습니다.</div>
+
+    <!-- 열람(비수정) 모드: 입력창 대신 축약된 고정 텍스트로 표시 -->
+    <div id="schedule-view-fields" class="static-block" style="display:none; margin-bottom:14px;">
+      <div><span class="sb-label">제목</span><b id="sv-title">-</b></div>
+      <div><span class="sb-label">유형</span><b id="sv-type">-</b></div>
+      <div><span class="sb-label">업체/부서</span><b id="sv-vendor">-</b></div>
+      <div><span class="sb-label">담당</span><b id="sv-responsible">-</b></div>
+      <div><span class="sb-label">날짜</span><b id="sv-dates">-</b></div>
     </div>
 
-    <div class="field">
-      <label>날짜 선택 <span class="small-note" style="display:inline;">(숫자만 입력해도 자동 반영, 또는 달력에서 선택 · 주말·공휴일 색상 표시)</span></label>
-      <div class="date-picker-box">
-        <div class="sub-row">
-          <span class="sub-label">기간</span>
-          <input type="text" id="schedule-range-start" />
-          <span>~</span>
-          <input type="text" id="schedule-range-end" />
-          <button type="button" class="btn-secondary" id="schedule-add-range">추가</button>
+    <div id="schedule-edit-fields">
+      <div class="field"><label>제목</label><input type="text" id="schedule-title" /></div>
+      <div class="row2">
+        <div class="field"><label>유형</label>
+          <select id="schedule-type"><option value="공사">공사(작업)</option><option value="미팅">미팅</option><option value="업무">업무</option><option value="기타">기타</option></select>
         </div>
-        <div class="sub-row">
-          <span class="sub-label">개별</span>
-          <input type="text" id="schedule-single-date" />
-          <button type="button" class="btn-secondary" id="schedule-add-single">추가</button>
+        <div class="field"><label>담당 <span class="small-note" style="display:inline;">(복수 선택 가능)</span></label>
+          <div class="chip-list" id="schedule-responsible-checks"></div>
         </div>
-        <div class="chip-list" id="schedule-date-chips"></div>
-        <div class="small-note" style="color:#B5524C; font-weight:700;">연속된 기간은 <b>기간</b>에, 개별 날짜는 <b>개별</b>에 입력한 후 <b>추가</b> 버튼을 꼭 눌러주세요.</div>
-        <div class="small-note">기간과 개별 날짜를 함께 조합할 수 있습니다. 연속된 기간은 목록에 "몇일~몇일"로 표시됩니다.</div>
+      </div>
+      <div class="field"><label>업체 / 부서</label><input type="text" id="schedule-vendor" /></div>
+      <div class="field"><label>시간 (선택)</label>
+        <div style="display:flex; align-items:center; gap:9px;">
+          <span style="font-size:19px;">🕐</span>
+          <input type="time" id="schedule-time" style="flex:1;" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>날짜 선택 <span class="small-note" style="display:inline;">(숫자만 입력해도 자동 반영, 또는 달력에서 선택 · 주말·공휴일 색상 표시)</span></label>
+        <div class="date-picker-box">
+          <div class="sub-row">
+            <span class="sub-label">기간</span>
+            <input type="text" id="schedule-range-start" />
+            <span>~</span>
+            <input type="text" id="schedule-range-end" />
+            <button type="button" class="btn-secondary" id="schedule-add-range">추가</button>
+          </div>
+          <div class="sub-row">
+            <span class="sub-label">개별</span>
+            <input type="text" id="schedule-single-date" />
+            <button type="button" class="btn-secondary" id="schedule-add-single">추가</button>
+          </div>
+          <div class="chip-list" id="schedule-date-chips"></div>
+          <div class="small-note" style="color:#B5524C; font-weight:700;">연속된 기간은 <b>기간</b>에, 개별 날짜는 <b>개별</b>에 입력한 후 <b>추가</b> 버튼을 꼭 눌러주세요.</div>
+          <div class="small-note">기간과 개별 날짜를 함께 조합할 수 있습니다. 연속된 기간은 목록에 "몇일~몇일"로 표시됩니다.</div>
+        </div>
       </div>
     </div>
 
@@ -891,7 +944,8 @@ function responsibleArray(rec) {
   return [];
 }
 function roleAOf(type, rec) { return type === "ticket" ? rec.requestedBy : rec.registeredBy; }
-function roleBOf(type, rec) { return type === "ticket" ? (rec.assignee || null) : responsibleArray(rec); }
+/* 업무(ticket)는 더 이상 담당자 필드가 없음 - 요청자 본인 외의 다른 상대는 두지 않음 */
+function roleBOf(type, rec) { return type === "ticket" ? null : responsibleArray(rec); }
 function lastHistoryAuthor(rec) {
   return (rec.history && rec.history.length) ? rec.history[rec.history.length - 1].author : null;
 }
@@ -932,16 +986,6 @@ function noteReadBy(rec, entry, candidates) {
   const ts = tsMillis(entry.timestamp);
   return candidates.filter(Boolean).filter(n => n !== entry.author)
     .filter(n => rec.lastSeenBy && rec.lastSeenBy[n] && rec.lastSeenBy[n] >= ts);
-}
-/* 업무 목록의 "확인" 칸: 담당자가 최신 변경사항을 열어봤는지 여부 + 최근 내용 + 전체 이력 툴팁 */
-function ticketConfirmInfo(t) {
-  const hist = t.history || [];
-  if (!hist.length) return { confirmed: null, lastText: "", tooltip: "" };
-  const last = hist[hist.length - 1];
-  const seenAt = t.assignee ? (t.lastSeenBy && t.lastSeenBy[t.assignee]) : null;
-  const confirmed = t.assignee ? !!(seenAt && seenAt >= updatedMillis(t)) : null;
-  const tooltip = hist.map(h => `${fmtTs(h.timestamp)} · ${h.text}`).join("\n");
-  return { confirmed, lastText: last.text, tooltip };
 }
 /* 현재 사용자 기준으로 아직 열어보지 않은 갱신(생성/댓글/변경)이 있는지 여부 */
 function hasUnseenUpdate(type, rec) {
@@ -1082,10 +1126,9 @@ function initDateField(input) {
    1. 업무관리
    ════════════════════════════════════════════════ */
 let tickets = [];
+let ticketDirection = "발송"; // "발송"(내가 요청자) | "수신"(그 외 전체)
 const ticketFilterRequester = document.getElementById("ticket-filter-requester");
 TEAM_MEMBERS.forEach(n => ticketFilterRequester.appendChild(new Option(n, n)));
-const ticketFilterAssignee = document.getElementById("ticket-filter-assignee");
-TEAM_MEMBERS.forEach(n => ticketFilterAssignee.appendChild(new Option(n, n)));
 
 onSnapshot(query(collection(db, "requestTickets"), orderBy("requestedAt", "desc")), (snap) => {
   tickets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1095,8 +1138,19 @@ onSnapshot(query(collection(db, "requestTickets"), orderBy("requestedAt", "desc"
 
 document.getElementById("ticket-filter-status").addEventListener("change", renderTickets);
 ticketFilterRequester.addEventListener("change", renderTickets);
-ticketFilterAssignee.addEventListener("change", renderTickets);
 document.getElementById("ticket-filter-overdue").addEventListener("change", renderTickets);
+document.getElementById("ticket-dir-sent").addEventListener("click", () => {
+  ticketDirection = "발송";
+  document.getElementById("ticket-dir-sent").classList.add("active");
+  document.getElementById("ticket-dir-received").classList.remove("active");
+  renderTickets();
+});
+document.getElementById("ticket-dir-received").addEventListener("click", () => {
+  ticketDirection = "수신";
+  document.getElementById("ticket-dir-received").classList.add("active");
+  document.getElementById("ticket-dir-sent").classList.remove("active");
+  renderTickets();
+});
 
 function isTicketOverdue(t) {
   if (!t.dueDate) return false;
@@ -1104,16 +1158,26 @@ function isTicketOverdue(t) {
   return t.dueDate < todayIso();
 }
 
+/* 세부사항(요청 내용 + 댓글) 전체를 리스트에서 바로 확인할 수 있도록 인라인으로 스택 표시 */
+function buildTicketNotesCell(t) {
+  const notes = (t.history || []).filter(h => historyEntryType(h) === "note");
+  if (!notes.length) return `<div class="ticket-notes-cell"><span class="small-note">세부사항 없음</span></div>`;
+  const items = notes.map(h =>
+    `<div class="tn-item"><div class="tn-meta">${escapeHtml(h.author || "-")} · ${fmtTs(h.timestamp)}</div><div>${escapeHtml(h.text)}</div></div>`
+  ).join("");
+  return `<div class="ticket-notes-cell">${items}</div>`;
+}
+
 function renderTickets() {
   const statusF = document.getElementById("ticket-filter-status").value;
   const reqF = ticketFilterRequester.value;
-  const assigneeF = ticketFilterAssignee.value;
   const overdueOnly = document.getElementById("ticket-filter-overdue").checked;
+  const me = currentUser();
 
   let rows = tickets.filter(t => {
+    if (ticketDirection === "발송" ? t.requestedBy !== me : t.requestedBy === me) return false;
     if (statusF !== "all" && t.status !== statusF) return false;
     if (reqF !== "all" && t.requestedBy !== reqF) return false;
-    if (assigneeF !== "all" && (t.assignee || "미지정") !== assigneeF) return false;
     if (overdueOnly && !isTicketOverdue(t)) return false;
     return true;
   });
@@ -1121,30 +1185,31 @@ function renderTickets() {
   const tbody = document.getElementById("ticket-tbody");
   tbody.innerHTML = "";
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">표시할 업무가 없습니다</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">표시할 업무가 없습니다</td></tr>`;
     return;
   }
   rows.forEach(t => {
     const overdue = isTicketOverdue(t);
+    const isAuthor = t.requestedBy === me || isAdmin();
     const tr = document.createElement("tr");
     if (overdue) tr.classList.add("row-overdue", "breathing");
     if (t.status === "완료") tr.classList.add("row-done");
-    const info = ticketConfirmInfo(t);
-    const confirmCell = info.confirmed === null
-      ? `<span class="small-note">${t.assignee ? "-" : "담당자 미지정"}</span>`
-      : `<span class="badge status-${info.confirmed ? "확인됨" : "미확인"}">${info.confirmed ? "확인됨" : "미확인"}</span>`;
     const unseenDot = hasUnseenUpdate("ticket", t) ? `<span class="blink-dot" title="새 소식이 있습니다"></span>` : "";
+    const firstNote = (t.history || []).find(h => historyEntryType(h) === "note");
+    const contentText = firstNote ? firstNote.text : "-";
+    const editIcon = isAuthor ? `<button type="button" class="row-edit-btn" title="수정">✏️</button>` : "";
     tr.innerHTML = `
-      <td>${unseenDot}${escapeHtml(t.title)}${deleteRequestBadge(t)}</td>
+      <td>${unseenDot}${escapeHtml(t.title)}${deleteRequestBadge(t)}${editIcon}</td>
       <td>${t.requestedBy || "-"}</td>
-      <td>${t.assignee || "미지정"}</td>
-      <td>${t.requestedAt ? fmtTs(t.requestedAt).slice(0,10) : "-"}</td>
-      <td>${t.dueDate || "-"} ${overdue ? "⚠️" : ""}</td>
+      <td class="ticket-content-cell" title="${escapeHtml(contentText)}">${escapeHtml(contentText)}</td>
+      <td>${t.requestedAt ? fmtTs(t.requestedAt).slice(0,10) : "-"}${t.dueDate ? ` (~${escapeHtml(t.dueDate)})` : ""} ${overdue ? "⚠️" : ""}</td>
       <td><span class="badge ${t.status}">${t.status}</span></td>
-      <td>${confirmCell}${info.lastText ? `<div class="small-note" title="${escapeHtml(info.tooltip)}">${escapeHtml(info.lastText)}</div>` : ""}</td>
+      <td>${buildTicketNotesCell(t)}</td>
       <td class="td-del"><button type="button" class="row-delete-btn" title="삭제">🗑</button></td>
     `;
-    tr.addEventListener("click", () => openTicketDetail(t.id));
+    tr.addEventListener("click", () => openTicketDetail(t.id, true));
+    const editBtn = tr.querySelector(".row-edit-btn");
+    if (editBtn) editBtn.addEventListener("click", (e) => { e.stopPropagation(); openTicketDetail(t.id, false); });
     tr.querySelector(".row-delete-btn").addEventListener("click", (e) => {
       e.stopPropagation();
       handleDeleteClick("ticket", t);
@@ -1155,6 +1220,7 @@ function renderTickets() {
 
 const ticketOverlay = document.getElementById("ticket-modal-overlay");
 let ticketEditingId = null;
+let ticketEditMode = false; // 지금 열려있는 업무 모달이 실제 수정모드인지(true) 열람모드인지(false)
 
 document.getElementById("ticket-new-btn").addEventListener("click", () => {
   ticketEditingId = null;
@@ -1165,15 +1231,35 @@ document.getElementById("ticket-new-btn").addEventListener("click", () => {
   document.getElementById("ticket-due").value = "";
   document.getElementById("ticket-content").value = "";
   document.getElementById("ticket-requester-display").textContent = currentUser();
-  fillAssigneeSelect(document.getElementById("ticket-assignee"), null);
   document.getElementById("ticket-delete").style.display = "none";
   ticketOverlay.classList.add("open");
 });
 
-function openTicketDetail(id) {
+/* 세부사항 표시용 상태 라벨 텍스트("요청일(희망기한)") */
+function ticketDatesLabel(t) {
+  const req = t.requestedAt ? fmtTs(t.requestedAt).slice(0, 10) : "-";
+  return t.dueDate ? `${req} (희망기한 ~${t.dueDate})` : req;
+}
+
+/* forceView === true 이면 작성자(요청자) 여부와 관계없이 항상 열람(읽기전용) 모드로 연다.
+   forceView가 없으면(=제목 옆 [edit] 아이콘/알림 클릭 등) 기존처럼 작성자 본인일 때만 수정 가능 */
+function openTicketDetail(id, forceView) {
   const t = tickets.find(x => x.id === id);
   if (!t) return;
   ticketEditingId = id;
+  const me = currentUser();
+  const isAuthor = t.requestedBy === me || isAdmin();
+  const editMode = forceView ? false : isAuthor;
+  ticketEditMode = editMode;
+
+  /* 요청자 본인이 아닌 사람이 처음 열람하면, "미확인" 상태를 자동으로 "확인됨"으로 전환 */
+  if (!isAuthor && t.status === "미확인") {
+    const history = (t.history || []).slice();
+    history.push({ id: newHistId(), text: "상태변경: 미확인 → 확인됨", author: me, timestamp: new Date(), type: "status" });
+    t.status = "확인됨";
+    t.history = history;
+    updateDoc(doc(db, "requestTickets", id), { status: "확인됨", history, updatedAt: serverTimestamp() }).catch(() => {});
+  }
 
   /* 어떤 부분이 갱신되어 아직 못 본 상태인지 판단 (제목 자체 = 신규등록, 진행상태, 세부사항 중 하나) */
   const allHist = t.history || [];
@@ -1184,15 +1270,28 @@ function openTicketDetail(id) {
   const blinkStatus = unseen && lastEntry && !isNewRegistration && historyEntryType(lastEntry) === "status";
   const blinkNote = unseen && lastEntry && historyEntryType(lastEntry) === "note";
 
-  document.getElementById("ticket-modal-title").innerHTML = (blinkTitle ? `<span class="blink-dot"></span>` : "") + escapeHtml(t.title);
+  document.getElementById("ticket-modal-title").innerHTML = (blinkTitle ? `<span class="blink-dot"></span>` : "") + escapeHtml(t.title) + (editMode ? "" : " (열람)");
   document.getElementById("ticket-status-label").innerHTML = (blinkStatus ? `<span class="blink-dot"></span>` : "") + "진행상태";
   document.getElementById("ticket-note-label").innerHTML = (blinkNote ? `<span class="blink-dot"></span>` : "") + "세부사항";
   document.getElementById("ticket-new-fields").style.display = "none";
   document.getElementById("ticket-detail-fields").style.display = "block";
-  document.getElementById("ticket-status-select").value = t.status;
-  document.getElementById("ticket-due-edit").value = t.dueDate || "";
-  document.getElementById("ticket-requester-display-edit").textContent = t.requestedBy || "-";
-  fillAssigneeSelect(document.getElementById("ticket-assignee-edit"), t.assignee || null);
+
+  document.getElementById("ticket-edit-summary").style.display = editMode ? "block" : "none";
+  document.getElementById("ticket-view-summary").style.display = editMode ? "none" : "block";
+  document.getElementById("ticket-readonly-note").style.display = editMode ? "none" : "block";
+  document.getElementById("ticket-readonly-note").textContent = isAuthor
+    ? "제목 옆 편집 아이콘(✏️)을 클릭하면 수정할 수 있습니다."
+    : "작성자(요청자) 본인만 위 항목을 수정할 수 있습니다. 추가사항은 누구나 남길 수 있습니다.";
+
+  if (editMode) {
+    document.getElementById("ticket-status-select").value = t.status === "미확인" ? "확인됨" : t.status;
+    document.getElementById("ticket-due-edit").value = t.dueDate || "";
+    document.getElementById("ticket-requester-display-edit").textContent = t.requestedBy || "-";
+  } else {
+    document.getElementById("tv-requester").textContent = t.requestedBy || "-";
+    document.getElementById("tv-dates").textContent = ticketDatesLabel(t);
+    document.getElementById("tv-status").textContent = t.status || "-";
+  }
   document.getElementById("ticket-note-text").value = "";
 
   const statusHist = allHist.filter(h => historyEntryType(h) === "status");
@@ -1225,7 +1324,7 @@ function renderTicketNoteHistory(t, noteHist) {
   const noteHistEl = document.getElementById("ticket-note-history-list");
   noteHistEl.innerHTML = "";
   if (!noteHist.length) { noteHistEl.innerHTML = `<div class="small-note">세부사항이 없습니다</div>`; return; }
-  const candidates = [t.requestedBy, t.assignee];
+  const candidates = [t.requestedBy];
   const topLevel = noteHist.filter(h => !h.replyTo);
   // id가 없는 옛 항목들은 replyTo도 없으므로(undefined===undefined) id 없는 조회는 항상 빈 배열로 처리해
   // 서로를 자기 자신의 "답글"로 잘못 인식해 무한 재귀에 빠지는 것을 방지
@@ -1358,41 +1457,47 @@ document.getElementById("ticket-delete").addEventListener("click", async () => {
 
 document.getElementById("ticket-save").addEventListener("click", async () => {
   if (ticketEditingId === null) {
-    // 새 업무 생성
+    // 새 업무 생성 (신규 등록 시 상태는 항상 "미확인"에서 시작)
     const title = document.getElementById("ticket-title").value.trim();
     if (!title) { alert("제목을 입력하세요"); return; }
     const requester = currentUser();
-    const assignee = document.getElementById("ticket-assignee").value || null;
     const due = document.getElementById("ticket-due").value || null;
     const content = document.getElementById("ticket-content").value.trim();
-    // 신규 등록 자체를 이력에 스탬프로 남겨서, 담당자가 열어보기 전까지 대시보드 미확인 알림에 표시되게 함
+    // 신규 등록 자체를 이력에 스탬프로 남겨서, 요청자 본인 외에 아무도 열어보기 전까지 미확인 알림에 표시되게 함
     const history = [{ id: newHistId(), text: "새 업무 등록", author: requester, timestamp: new Date(), type: "status" }];
     if (content) history.push({ id: newHistId(), text: content, author: requester, timestamp: new Date(), type: "note" });
     await addDoc(collection(db, "requestTickets"), {
-      title, requestedBy: requester, assignee, requestedAt: serverTimestamp(),
-      dueDate: due, status: "요청됨", history, updatedAt: serverTimestamp()
+      title, requestedBy: requester, requestedAt: serverTimestamp(),
+      dueDate: due, status: "미확인", history, updatedAt: serverTimestamp()
     });
   } else {
-    // 기존 업무 업데이트
     const t = tickets.find(x => x.id === ticketEditingId);
-    const newStatus = document.getElementById("ticket-status-select").value;
-    const newDue = document.getElementById("ticket-due-edit").value || null;
-    const newAssignee = document.getElementById("ticket-assignee-edit").value || null;
     const noteText = document.getElementById("ticket-note-text").value.trim();
     const author = currentUser();
+
+    if (!ticketEditMode) {
+      // 열람 모드(작성자 본인이 아니거나, 그냥 열람으로 연 경우): 추가사항(세부사항)만 등록 가능
+      if (!noteText) { alert("추가할 내용을 입력하세요"); return; }
+      const history = (t.history || []).slice();
+      history.push({ id: newHistId(), text: noteText, author, timestamp: new Date(), type: "note" });
+      await updateDoc(doc(db, "requestTickets", ticketEditingId), { history, updatedAt: serverTimestamp() });
+      ticketOverlay.classList.remove("open");
+      return;
+    }
+
+    // 수정 모드(작성자 본인): 상태/희망기한 변경 + 추가사항
+    const newStatus = document.getElementById("ticket-status-select").value;
+    const newDue = document.getElementById("ticket-due-edit").value || null;
 
     const history = (t.history || []).slice();
     if (t.status !== newStatus) {
       history.push({ id: newHistId(), text: `상태변경: ${t.status} → ${newStatus}`, author, timestamp: new Date(), type: "status" });
     }
-    if ((t.assignee || null) !== newAssignee) {
-      history.push({ id: newHistId(), text: `담당자 변경: ${t.assignee || "미지정"} → ${newAssignee || "미지정"}`, author, timestamp: new Date(), type: "status" });
-    }
     if (noteText) {
       history.push({ id: newHistId(), text: noteText, author, timestamp: new Date(), type: "note" });
     }
     await updateDoc(doc(db, "requestTickets", ticketEditingId), {
-      status: newStatus, dueDate: newDue, assignee: newAssignee, history, updatedAt: serverTimestamp()
+      status: newStatus, dueDate: newDue, history, updatedAt: serverTimestamp()
     });
   }
   ticketOverlay.classList.remove("open");
@@ -1440,9 +1545,11 @@ function renderSchedules() {
     // 오늘 날짜를 포함해서 진행 중인 일정(며칠짜리 공사 등)은 "오늘" 구분선과 이어지는 느낌이 나도록 강조
     if (Array.isArray(s.dates) && s.dates.includes(today)) tr.classList.add("row-active-today");
     const respArr = responsibleArray(s);
+    const isAuthor = s.registeredBy === currentUser() || isAdmin();
+    const editIcon = isAuthor ? `<button type="button" class="row-edit-btn" title="수정">✏️</button>` : "";
     tr.innerHTML = `
       <td class="td-check"><input type="checkbox" class="row-check" ${selectedScheduleIds.has(s.id) ? "checked" : ""} /></td>
-      <td title="${escapeHtml(s.title)}">${escapeHtml(s.title)}${deleteRequestBadge(s)}</td>
+      <td title="${escapeHtml(s.title)}">${escapeHtml(s.title)}${deleteRequestBadge(s)}${editIcon}</td>
       <td title="${escapeHtml(typeLabel(s.type))}"><span class="badge type-${s.type}">${escapeHtml(s.type)}</span></td>
       <td title="${escapeHtml(formatDateRanges(s.dates))}${s.time ? " " + escapeHtml(s.time) : ""}">${escapeHtml(formatDateRangesShort(s.dates))}${s.time ? ` ${escapeHtml(s.time)}` : ""}</td>
       <td title="${escapeHtml(s.vendor || "")}">${escapeHtml(s.vendor || "-")}</td>
@@ -1450,7 +1557,9 @@ function renderSchedules() {
       <td title="${escapeHtml(s.registeredBy || "")}">${s.registeredBy || "-"}</td>
       <td class="td-del"><button type="button" class="row-delete-btn" title="삭제">🗑</button></td>
     `;
-    tr.addEventListener("click", () => openScheduleEdit(s.id));
+    tr.addEventListener("click", () => openScheduleEdit(s.id, true));
+    const scheduleEditBtn = tr.querySelector(".row-edit-btn");
+    if (scheduleEditBtn) scheduleEditBtn.addEventListener("click", (e) => { e.stopPropagation(); openScheduleEdit(s.id, false); });
     tr.querySelector(".row-check").addEventListener("click", (e) => {
       e.stopPropagation();
       if (e.target.checked) selectedScheduleIds.add(s.id); else selectedScheduleIds.delete(s.id);
@@ -1662,6 +1771,7 @@ document.getElementById("schedule-view-toggle").addEventListener("click", () => 
 const scheduleOverlay = document.getElementById("schedule-modal-overlay");
 let scheduleDateSet = new Set();
 let scheduleEditingId = null;
+let scheduleEditMode = false; // 지금 열려있는 일정 모달이 실제 수정모드인지(true) 열람모드인지(false)
 
 /* 선택된 날짜들을 연속 구간별로 묶어서 반환 (기간으로 추가한 날짜들을 칩 하나로 압축 표시하기 위함) */
 function scheduleDateGroups() {
@@ -1701,13 +1811,18 @@ function renderDateChips() {
 }
 
 function setScheduleFieldsEditable(editable) {
-  ["schedule-title", "schedule-type", "schedule-vendor", "schedule-time",
-   "schedule-range-start", "schedule-range-end", "schedule-single-date", "schedule-add-range", "schedule-add-single"]
-    .forEach(id => { document.getElementById(id).disabled = !editable; });
-  document.getElementById("schedule-date-chips").classList.toggle("readonly-chips", !editable);
-  document.getElementById("schedule-readonly-note").style.display = editable ? "none" : "block";
+  document.getElementById("schedule-edit-fields").style.display = editable ? "block" : "none";
+  document.getElementById("schedule-view-fields").style.display = editable ? "none" : "block";
   scheduleResponsibleEditable = editable;
   renderResponsibleChecks();
+}
+/* 열람 모드일 때 축약된 고정 텍스트로 채워넣기 */
+function renderScheduleViewSummary(s) {
+  document.getElementById("sv-title").textContent = s.title || "-";
+  document.getElementById("sv-type").textContent = typeLabel(s.type);
+  document.getElementById("sv-vendor").textContent = s.vendor || "-";
+  document.getElementById("sv-responsible").textContent = responsibleArray(s).join(", ") || "미지정";
+  document.getElementById("sv-dates").textContent = formatDateRanges(s.dates) + (s.time ? ` ${s.time}` : "");
 }
 
 document.getElementById("schedule-add-range").addEventListener("click", () => {
@@ -1731,7 +1846,9 @@ document.getElementById("schedule-add-single").addEventListener("click", () => {
 
 function openScheduleNew() {
   scheduleEditingId = null;
+  scheduleEditMode = true;
   document.getElementById("schedule-modal-title").textContent = "새 일정 등록";
+  document.getElementById("schedule-readonly-note").style.display = "none";
   document.getElementById("schedule-title").value = "";
   document.getElementById("schedule-type").value = "공사";
   document.getElementById("schedule-vendor").value = "";
@@ -1753,12 +1870,20 @@ function openScheduleNew() {
 }
 document.getElementById("schedule-new-btn").addEventListener("click", openScheduleNew);
 
-function openScheduleEdit(id) {
+/* forceView === true 이면 작성자 여부와 관계없이 항상 열람(읽기전용) 모드로 연다.
+   forceView가 없으면(=제목 옆 [edit] 아이콘/캘린더뷰/대시보드 등 기존 진입경로) 작성자 본인일 때만 수정 가능 */
+function openScheduleEdit(id, forceView) {
   const s = schedules.find(x => x.id === id);
   if (!s) return;
   scheduleEditingId = id;
   const isAuthor = s.registeredBy === currentUser() || isAdmin();
-  document.getElementById("schedule-modal-title").textContent = "일정 수정" + (isAuthor ? "" : " (열람)");
+  const editMode = forceView ? false : isAuthor;
+  scheduleEditMode = editMode;
+  document.getElementById("schedule-modal-title").textContent = "일정 " + (editMode ? "수정" : "열람");
+  document.getElementById("schedule-readonly-note").textContent = isAuthor
+    ? "제목 옆 편집 아이콘(✏️)을 클릭하면 수정할 수 있습니다."
+    : "작성자만 위 항목들을 수정할 수 있습니다. 추가사항은 누구나 남길 수 있습니다.";
+  document.getElementById("schedule-readonly-note").style.display = editMode ? "none" : "block";
   document.getElementById("schedule-title").value = s.title || "";
   document.getElementById("schedule-type").value = s.type || "공사";
   document.getElementById("schedule-vendor").value = s.vendor || "";
@@ -1770,9 +1895,10 @@ function openScheduleEdit(id) {
   renderDateChips();
   scheduleResponsibleSet = new Set(responsibleArray(s));
   renderResponsibleChecks();
+  renderScheduleViewSummary(s);
   document.getElementById("schedule-registrar-display").textContent = s.registeredBy || "-";
   document.getElementById("schedule-delete").style.display = "inline-block";
-  setScheduleFieldsEditable(isAuthor);
+  setScheduleFieldsEditable(editMode);
 
   const hist = (s.history && s.history.length) ? s.history
     : (s.detail ? [{ text: s.detail, author: s.registeredBy, timestamp: s.registeredAt }] : []);
@@ -1924,11 +2050,10 @@ document.getElementById("schedule-cancel").addEventListener("click", () => sched
 
 document.getElementById("schedule-save").addEventListener("click", async () => {
   const orig = scheduleEditingId !== null ? schedules.find(x => x.id === scheduleEditingId) : null;
-  const isAuthor = !orig || orig.registeredBy === currentUser() || isAdmin();
   const noteText = document.getElementById("schedule-detail-input").value.trim();
 
-  if (orig && !isAuthor) {
-    // 작성자가 아니면 추가사항 입력만 허용
+  if (orig && !scheduleEditMode) {
+    // 열람 모드(작성자 본인이 아니거나, 그냥 열람으로 연 경우): 추가사항만 등록 가능
     if (!noteText) { alert("추가할 내용을 입력하세요"); return; }
     const history = (orig.history && orig.history.length ? orig.history
       : (orig.detail ? [{ text: orig.detail, author: orig.registeredBy, timestamp: orig.registeredAt }] : [])).slice();
@@ -2221,7 +2346,7 @@ function renderDashboard() {
     });
   }
 
-  const myTickets = tickets.filter(t => t.requestedBy === me || t.assignee === me);
+  const myTickets = tickets.filter(t => t.requestedBy === me);
   const activeTickets = myTickets.filter(t => t.status !== "완료");
   const doneTickets = myTickets.filter(t => t.status === "완료");
   const tEl = document.getElementById("dash-ticket-list");
@@ -2234,7 +2359,7 @@ function renderDashboard() {
       const div = document.createElement("div");
       div.className = "dash-card";
       div.innerHTML = `<div class="dc-title">${escapeHtml(t.title)} <span class="badge ${t.status}">${t.status}</span></div>
-        <div class="dc-meta">요청 ${t.requestedBy || "-"} · 담당 ${t.assignee || "미지정"} · 기한 ${t.dueDate || "-"}</div>`;
+        <div class="dc-meta">기한 ${t.dueDate || "-"}</div>`;
       div.addEventListener("click", () => { switchTab("tickets"); openTicketDetail(t.id); });
       tEl.appendChild(div);
     });
@@ -2249,7 +2374,7 @@ function renderDashboard() {
       const div = document.createElement("div");
       div.className = "dash-card dash-card-done";
       div.innerHTML = `<div class="dc-title">${escapeHtml(t.title)} <span class="badge ${t.status}">${t.status}</span></div>
-        <div class="dc-meta">요청 ${t.requestedBy || "-"} · 담당 ${t.assignee || "미지정"} · 기한 ${t.dueDate || "-"}</div>`;
+        <div class="dc-meta">기한 ${t.dueDate || "-"}</div>`;
       div.addEventListener("click", () => { switchTab("tickets"); openTicketDetail(t.id); });
       tDoneEl.appendChild(div);
     });
