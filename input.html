@@ -946,10 +946,16 @@ async function handleDeleteClick(type, rec) {
   const author = authorOf(type, rec);
   const label = rec.title || rec.subject || "항목";
   if (type === "ticket") {
+    if (me !== author && !isAdmin()) {
+      if (rec.deleteRequestedBy) { alert(`이미 ${rec.deleteRequestedBy}님이 삭제를 요청했습니다.`); return false; }
+      if (!confirm(`작성자(${author || "미지정"})에게 삭제 승인을 요청할까요?`)) return false;
+      await updateDoc(doc(db, "requestTickets", rec.id), { deleteRequestedBy: me, deleteRequestedAt: serverTimestamp() });
+      await notifyTicketUser(author, rec.id, "delete_requested", `${me}님이 관련업무 삭제를 요청했습니다.`);
+      await auditTicket(rec.id, "delete_requested", null, { requestedBy: me });
+      return true;
+    }
     if (!confirm(`"${label}" 업무를 삭제할까요? 삭제된 업무는 관리자 보관함으로 이동합니다.`)) return false;
-    await updateDoc(doc(db, "requestTickets", rec.id), {
-      archived: true, archivedAt: serverTimestamp(), archivedBy: me, updatedAt: serverTimestamp()
-    });
+    await updateDoc(doc(db, "requestTickets", rec.id), { archived: true, archivedAt: serverTimestamp(), archivedBy: me, deleteRequestedBy: null, deleteRequestedAt: null, updatedAt: serverTimestamp() });
     await auditTicket(rec.id, "ticket_archived", { archived: false }, { archived: true, archivedBy: me });
     return true;
   }
@@ -975,6 +981,11 @@ async function handleDeleteClick(type, rec) {
   }
 }
 async function approveDelete(type, id) {
+  if (type === "ticket") {
+    await updateDoc(doc(db, "requestTickets", id), { archived: true, archivedAt: serverTimestamp(), archivedBy: currentUser(), deleteRequestedBy: null, deleteRequestedAt: null, updatedAt: serverTimestamp() });
+    await auditTicket(id, "delete_request_approved", null, { approvedBy: currentUser() });
+    return;
+  }
   await deleteDoc(doc(db, COLLECTION_OF[type], id));
 }
 async function denyDelete(type, id) {

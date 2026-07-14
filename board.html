@@ -124,6 +124,8 @@
     border-left: 4px solid transparent;
     overflow: hidden; white-space: normal; overflow-wrap: anywhere; word-break: keep-all; cursor: pointer;
   }
+  .event-chip.single-day .event-main { font-weight: 800; line-height: 1.25; }
+  .event-chip.single-day .event-sub { margin-top: 2px; font-size: .82em; line-height: 1.2; opacity: .82; }
   .event-chip.type-공사 { background: var(--type-공사-bg); color: var(--type-공사); border-left-color: var(--type-공사); }
   .event-chip.type-미팅 { background: var(--type-미팅-bg); color: var(--type-미팅); border-left-color: var(--type-미팅); }
   .event-chip.type-업무 { background: var(--type-업무-bg); color: var(--type-업무); border-left-color: var(--type-업무); }
@@ -752,13 +754,28 @@ function renderCalendar() {
           ? (allDates[0] === allDates[allDates.length - 1] ? mdShort(allDates[0]) : `${mdShort(allDates[0])}~${mdShort(allDates[allDates.length - 1])}`)
           : "";
         const vendorText = seg.s.vendor ? ` (${seg.s.vendor})` : "";
-        const timeText = seg.s.time ? ` ${seg.s.time}` : "";
+        const timeText = seg.s.time ? `${seg.s.time} ` : "";
         // 주 경계를 넘어 이어지는 일정은 각진 모서리 + 화살표로 이어짐을 표시 (다른 일정과 혼동 방지)
         const contPrev = seg.startCol === 0 && Array.isArray(seg.s.dates) && seg.s.dates.includes(addDaysIso(weekIsos[0], -1));
         const contNext = seg.endCol === 6 && Array.isArray(seg.s.dates) && seg.s.dates.includes(addDaysIso(weekIsos[6], 1));
         bar.classList.toggle("cont-prev", contPrev);
         bar.classList.toggle("cont-next", contNext);
-        bar.textContent = (contPrev ? "◀ " : "") + seg.s.title + vendorText + (fullRange ? ` ${fullRange}` : "") + timeText + (contNext ? " ▶" : "");
+        if (allDates.length === 1) {
+          bar.classList.add("single-day");
+          const main = document.createElement("div");
+          main.className = "event-main";
+          main.textContent = timeText + seg.s.title;
+          bar.appendChild(main);
+          if (seg.s.vendor) {
+            const vendors = String(seg.s.vendor).split(/[,;\/\n·]+/).map(v => v.trim()).filter(Boolean);
+            const sub = document.createElement("div");
+            sub.className = "event-sub";
+            sub.textContent = vendors.length > 1 ? `${vendors[0]} 외 ${vendors.length - 1}곳` : vendors[0];
+            bar.appendChild(sub);
+          }
+        } else {
+          bar.textContent = (contPrev ? "◀ " : "") + timeText + seg.s.title + vendorText + (fullRange ? ` ${fullRange}` : "") + (contNext ? " ▶" : "");
+        }
         // 일정별 고유 색조 부여 (같은 유형 안에서도 항목마다 구분되도록)
         const variant = scheduleColorVariant(seg.s.type, seg.s.id);
         bar.style.backgroundColor = variant.bg;
