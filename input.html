@@ -788,7 +788,7 @@ passwordBtn.className = "icon-btn";
 passwordBtn.textContent = "🔑";
 passwordBtn.title = "비밀번호 변경";
 passwordBtn.setAttribute("aria-label", "비밀번호 변경");
-passwordBtn.style.cssText = "width:28px;height:28px;padding:0;margin-left:5px;border-radius:8px;font-size:14px;vertical-align:middle;";
+passwordBtn.style.cssText = "width:20px;height:20px;padding:0;margin-left:3px;border:0;background:transparent;box-shadow:none;border-radius:0;font-size:11px;vertical-align:middle;";
 passwordBtn.addEventListener("click", changeOwnPassword);
 document.getElementById("author-change-btn").insertAdjacentElement("beforebegin", passwordBtn);
 /* 실제 Firebase 계정으로 로그인했으므로 이름 선택 방식은 사용하지 않는다. */
@@ -1580,8 +1580,13 @@ async function editTicketNote(id, text) {
 /* 본인이 쓴 세부사항/댓글 삭제 */
 async function deleteTicketNote(id) {
   if (ticketEditingId === null) return;
-  await updateDoc(doc(db, "requestTickets", ticketEditingId, "details", id), { archived: true, archivedAt: serverTimestamp(), archivedBy: currentUser() });
-  await auditTicket(ticketEditingId, "detail_archived", null, { detailId: id });
+  try {
+    await updateDoc(doc(db, "requestTickets", ticketEditingId, "details", id), { archived: true, archivedAt: serverTimestamp(), archivedBy: currentUser() });
+    await auditTicket(ticketEditingId, "detail_archived", null, { detailId: id });
+  } catch (error) {
+    console.error("세부사항 삭제 오류", error);
+    alert("세부사항을 삭제하지 못했습니다. 최신 Firestore 보안 규칙이 게시되었는지 확인해 주세요.");
+  }
 }
 
 function renderTicketWorkActions(ticket, isRecipient, isAuthor) {
