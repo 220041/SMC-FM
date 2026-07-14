@@ -34,8 +34,12 @@ async function persistProfile(profile) {
 async function forceInitialPasswordChange(user) {
   const overlay = document.createElement("div");
   overlay.className = "account-overlay";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", "비밀번호 변경");
   overlay.innerHTML = `<div class="account-card"><h2>비밀번호 변경</h2><p>초기 비밀번호를 새 비밀번호로 변경해야 합니다.</p><label>새 비밀번호</label><input id="force-new-pw" type="password" minlength="6"><label>새 비밀번호 확인</label><input id="force-new-pw2" type="password" minlength="6"><button id="force-pw-save">변경</button><div class="account-error" id="force-pw-error"></div></div>`;
   document.body.appendChild(overlay);
+  overlay.querySelector("#force-new-pw").focus();
   return new Promise(resolve => {
     overlay.querySelector("#force-pw-save").onclick = async () => {
       const p1 = overlay.querySelector("#force-new-pw").value;
@@ -59,11 +63,15 @@ export async function ensureUserLogin({ adminOnly = false } = {}) {
   if (auth.currentUser) await signOut(auth);
   const overlay = document.createElement("div");
   overlay.className = "account-overlay";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", adminOnly ? "관리자 로그인" : "사용자 로그인");
   const accountIds = Object.entries(USER_ACCOUNTS).filter(([, a]) => !adminOnly || a.role === "admin").map(([id]) => id);
   let selectedId = accountIds[0];
-  const choices = accountIds.map((id, index) => `<button type="button" class="account-choice ${index === 0 ? "selected" : ""}" data-id="${id}"><span class="icon">${id === "admin" ? "🛡️" : "👤"}</span>${id === "admin" ? "관리자" : id}</button>`).join("");
+  const choices = accountIds.map((id, index) => `<button type="button" class="account-choice ${index === 0 ? "selected" : ""}" data-id="${id}" aria-pressed="${index === 0}"><span class="icon">${id === "admin" ? "🛡️" : "👤"}</span>${id === "admin" ? "관리자" : id}</button>`).join("");
   overlay.innerHTML = `<div class="account-card"><h2>${adminOnly ? "관리자 로그인" : "사용자 로그인"}</h2><p>본인 계정을 선택하고 비밀번호를 입력하세요.</p><div class="account-choices">${choices}</div><label>비밀번호</label><input id="account-pw" type="password"><button id="account-login">로그인</button><button class="secondary" id="account-reset">비밀번호 재설정 메일</button>${adminOnly ? `<button class="account-back" id="account-back">← 시작 화면으로 돌아가기</button>` : ""}<div class="account-error" id="account-error"></div></div>`;
   document.body.appendChild(overlay);
+  overlay.querySelector("#account-pw").focus();
   return new Promise(resolve => {
     const submit = async () => {
       const id = selectedId;
@@ -80,7 +88,11 @@ export async function ensureUserLogin({ adminOnly = false } = {}) {
     };
     overlay.querySelectorAll(".account-choice").forEach(button => button.onclick = () => {
       selectedId = button.dataset.id;
-      overlay.querySelectorAll(".account-choice").forEach(b => b.classList.toggle("selected", b === button));
+      overlay.querySelectorAll(".account-choice").forEach(b => {
+        const selected = b === button;
+        b.classList.toggle("selected", selected);
+        b.setAttribute("aria-pressed", String(selected));
+      });
       overlay.querySelector("#account-pw").focus();
     });
     overlay.querySelector("#account-login").onclick = submit;

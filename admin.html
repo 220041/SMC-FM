@@ -17,7 +17,9 @@
   #topbar .brand:active { color: var(--accent); }
   #topbar-sub { font-size: 13px; color: var(--ink-soft); font-weight: 700; }
 
-  #tabbar { display: flex; gap: 6px; padding: 12px 20px 0; max-width: 1300px; margin: 0 auto; }
+  #tabbar { display: flex; gap: 14px; padding: 12px 20px 0; max-width: 1300px; margin: 0 auto; align-items:flex-end; }
+  .tab-group { display:flex; gap:6px; align-items:flex-end; position:relative; padding-top:18px; }
+  .tab-group-label { position:absolute; top:0; left:2px; font-size:11px; font-weight:800; color:var(--dim); }
   .tab-btn {
     padding: 10px 18px; border-radius: 10px 10px 0 0; border: none; cursor: pointer;
     font-size: 15px; font-weight: 700; background: #E7E9E6; color: var(--ink-soft);
@@ -76,30 +78,6 @@
   .badge.status-확인됨 { background: var(--dim-bg); color: var(--dim); }
   .empty-row td { text-align: center; padding: 30px; color: var(--dim); white-space: normal; }
 
-  /* ── 관리자 비밀번호 게이트 ─────────────── */
-  #admin-gate-overlay {
-    position: fixed; inset: 0; background: rgba(31,41,51,0.92);
-    display: none; align-items: center; justify-content: center; z-index: 5000; padding: 20px;
-  }
-  #admin-gate-overlay.open { display: flex; }
-  #admin-gate-card {
-    background: var(--surface); border-radius: 20px; padding: 40px 44px; text-align: center;
-    max-width: 400px; width: 100%;
-  }
-  #admin-gate-card .gate-title { font-size: 21px; font-weight: 900; margin-bottom: 6px; }
-  #admin-gate-card .gate-sub { font-size: 14px; color: var(--ink-soft); margin-bottom: 22px; }
-  #admin-gate-input {
-    width: 100%; box-sizing: border-box; font-size: 20px; letter-spacing: 4px; text-align: center;
-    padding: 12px 10px; border: 2px solid var(--line); border-radius: 12px; margin-bottom: 14px; outline: none;
-  }
-  #admin-gate-input:focus { border-color: var(--accent); }
-  #admin-gate-submit {
-    width: 100%; padding: 13px; font-size: 16px; font-weight: 700;
-    background: var(--accent); color: #fff; border: none; border-radius: 12px; cursor: pointer;
-  }
-  #admin-gate-submit:active { background: #1f3a5f; }
-  #admin-gate-error { display: none; color: var(--alert); font-size: 13px; margin-top: 10px; font-weight: 700; }
-
   #logout-btn {
     background: none; border: 1.5px solid var(--line); color: var(--ink-soft); border-radius: 8px;
     padding: 6px 12px; font-size: 12.5px; font-weight: 700; cursor: pointer;
@@ -118,19 +96,29 @@
     font-size: 12.5px; font-weight: 700; padding: 4px 10px; border-radius: 8px;
   }
   .row-delete-btn:hover { background: var(--alert-bg); }
+  .row-edit-btn { border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--accent); padding:6px 11px; font-weight:800; cursor:pointer; }
+  .td-action, .th-action { position:sticky; right:0; background:var(--surface); text-align:center; box-shadow:-4px 0 8px rgba(31,41,51,.05); }
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible,
+  [tabindex]:focus-visible { outline:3px solid rgba(43,76,126,.35); outline-offset:2px; }
+  #admin-edit-overlay .modal-card { background:var(--surface); width:min(680px,100%); max-height:90vh; overflow:auto; border-radius:18px; padding:26px; position:relative; }
+  #admin-edit-close { position:absolute; top:14px; right:14px; width:34px; height:34px; border:0; border-radius:50%; background:var(--bg); font-size:22px; cursor:pointer; }
+  @media (max-width: 900px) {
+    #topbar { padding:9px 12px; }
+    #topbar-sub { display:none; }
+    #tabbar { overflow-x:auto; padding:10px 10px 0; gap:12px; scrollbar-width:none; }
+    #tabbar::-webkit-scrollbar { display:none; }
+    .tab-group { flex:0 0 auto; }
+    .tab-btn { white-space:nowrap; padding:9px 13px; font-size:13px; }
+    #content { padding:14px 10px; border-radius:0; }
+    .panel-head { align-items:flex-start; }
+    .panel-head-actions { width:100%; flex-wrap:wrap; }
+    .panel-head-actions button { flex:1 1 160px; }
+    .filter-bar, .load-bar { flex-wrap:wrap; }
+    .filter-bar input, .filter-bar select { flex:1 1 140px; min-width:0; }
+  }
 </style>
 </head>
 <body>
-
-<div id="admin-gate-overlay">
-  <div id="admin-gate-card">
-    <div class="gate-title">관리자 비밀번호</div>
-    <div class="gate-sub">전체 데이터를 열람하려면 관리자 비밀번호를 입력하세요</div>
-    <input id="admin-gate-input" type="password" autocomplete="off" />
-    <button id="admin-gate-submit">확인</button>
-    <div id="admin-gate-error">비밀번호가 올바르지 않습니다</div>
-  </div>
-</div>
 
 <div id="topbar">
   <a class="brand" href="index.html" title="처음 화면으로 이동">서귀포의료원 시설관리팀</a>
@@ -140,14 +128,18 @@
   </div>
 </div>
 
-<div id="tabbar">
-  <button class="tab-btn active" data-tab="tickets">관련업무</button>
-  <button class="tab-btn" data-tab="schedules">일정관리</button>
-  <button class="tab-btn" data-tab="memos">전화 및 메모</button>
-  <button class="tab-btn" data-tab="activity">변경사항 이력</button>
-  <button class="tab-btn" data-tab="holidays">공휴일 관리</button>
-  <button class="tab-btn" data-tab="archive">자료보관</button>
-  <button class="tab-btn" data-tab="users">사용자 관리</button>
+<div id="tabbar" role="tablist" aria-label="관리자 화면 메뉴">
+  <div class="tab-group"><span class="tab-group-label">업무 데이터</span>
+    <button class="tab-btn active" data-tab="tickets" role="tab" aria-selected="true" aria-controls="panel-tickets">관련업무</button>
+    <button class="tab-btn" data-tab="schedules" role="tab" aria-selected="false" aria-controls="panel-schedules">일정관리</button>
+    <button class="tab-btn" data-tab="memos" role="tab" aria-selected="false" aria-controls="panel-memos">전화 및 메모</button>
+  </div>
+  <div class="tab-group"><span class="tab-group-label">운영 관리</span>
+    <button class="tab-btn" data-tab="activity" role="tab" aria-selected="false" aria-controls="panel-activity">변경사항 이력</button>
+    <button class="tab-btn" data-tab="holidays" role="tab" aria-selected="false" aria-controls="panel-holidays">공휴일 관리</button>
+    <button class="tab-btn" data-tab="archive" role="tab" aria-selected="false" aria-controls="panel-archive">자료보관</button>
+    <button class="tab-btn" data-tab="users" role="tab" aria-selected="false" aria-controls="panel-users">사용자 관리</button>
+  </div>
 </div>
 
 <div id="content">
@@ -158,7 +150,7 @@
       <h2>관련업무 전체 <span class="count-note" id="tickets-count"></span></h2>
       <div class="panel-head-actions" style="display:flex; gap:8px;">
         <span class="selected-note" id="tickets-selected-note"></span>
-        <button class="btn-secondary btn-danger-outline" id="tickets-bulk-delete" style="color:#C23B3B; border-color:#C23B3B;">선택 삭제</button>
+        <button class="btn-secondary" id="tickets-bulk-delete">선택 보관함 이동</button>
         <button class="btn-secondary" id="tickets-export-selected">선택 엑셀 다운로드</button>
         <button class="btn-primary" id="tickets-export">⬇ 엑셀로 다운로드(전체)</button>
       </div>
@@ -200,7 +192,7 @@
       <h2>일정관리 전체 <span class="count-note" id="schedules-count"></span></h2>
       <div class="panel-head-actions" style="display:flex; gap:8px;">
         <span class="selected-note" id="schedules-selected-note"></span>
-        <button class="btn-secondary btn-danger-outline" id="schedules-bulk-delete" style="color:#C23B3B; border-color:#C23B3B;">선택 삭제</button>
+        <button class="btn-secondary btn-danger-outline" id="schedules-bulk-delete" style="color:#C23B3B; border-color:#C23B3B;">선택 영구삭제</button>
         <button class="btn-secondary" id="schedules-export-selected">선택 엑셀 다운로드</button>
         <button class="btn-primary" id="schedules-export">⬇ 엑셀로 다운로드(전체)</button>
       </div>
@@ -240,7 +232,7 @@
       <h2>전화 및 메모 전체 <span class="count-note" id="memos-count"></span></h2>
       <div class="panel-head-actions" style="display:flex; gap:8px;">
         <span class="selected-note" id="memos-selected-note"></span>
-        <button class="btn-secondary btn-danger-outline" id="memos-bulk-delete" style="color:#C23B3B; border-color:#C23B3B;">선택 삭제</button>
+        <button class="btn-secondary btn-danger-outline" id="memos-bulk-delete" style="color:#C23B3B; border-color:#C23B3B;">선택 영구삭제</button>
         <button class="btn-secondary" id="memos-export-selected">선택 엑셀 다운로드</button>
         <button class="btn-primary" id="memos-export">⬇ 엑셀로 다운로드(전체)</button>
       </div>
@@ -331,8 +323,9 @@
     <div class="table-scroll"><table><thead><tr><th>제목</th><th>요청자</th><th>수신자 지정</th></tr></thead><tbody id="unassigned-tbody"></tbody></table></div>
   </div>
 
-  <div id="admin-edit-overlay" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:18px;">
-    <div style="background:var(--surface);width:min(680px,100%);max-height:90vh;overflow:auto;border-radius:18px;padding:26px;">
+  <div id="admin-edit-overlay" role="dialog" aria-modal="true" aria-labelledby="admin-edit-title" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:18px;">
+    <div class="modal-card" tabindex="-1">
+      <button type="button" id="admin-edit-close" aria-label="편집창 닫기">×</button>
       <h3 id="admin-edit-title" style="margin-top:0;">자료 편집</h3>
       <div id="admin-edit-fields"></div>
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;">
@@ -348,38 +341,10 @@
 import { ensureUserLogin, logoutAccount, sendResetForLoginId } from "./account-auth.js";
 import {
   db, auth, collection, doc, addDoc, deleteDoc, updateDoc, setDoc, onSnapshot, query, orderBy, limit, startAfter, getDocs, where, writeBatch,
-  TEAM_MEMBERS, USER_ACCOUNTS, ADMIN_PASSWORD, serverTimestamp
+  TEAM_MEMBERS, USER_ACCOUNTS, serverTimestamp
 } from "./firebase-config.js";
 
 const adminProfile = await ensureUserLogin({ adminOnly: true });
-
-/* ───────── 관리자 비밀번호 게이트 (팀 접근코드와 별개로 한 번 더 확인) ───────── */
-const ADMIN_SESSION_KEY = "smcfm_admin_ok_v2";
-function checkAdminPassword() {
-  return new Promise((resolve) => {
-    if (sessionStorage.getItem(ADMIN_SESSION_KEY) === "1") { resolve(); return; }
-    const overlay = document.getElementById("admin-gate-overlay");
-    const input = document.getElementById("admin-gate-input");
-    const btn = document.getElementById("admin-gate-submit");
-    const err = document.getElementById("admin-gate-error");
-    overlay.classList.add("open");
-    function trySubmit() {
-      if (input.value === ADMIN_PASSWORD) {
-        sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
-        overlay.classList.remove("open");
-        resolve();
-      } else {
-        err.style.display = "block";
-        input.value = "";
-        input.focus();
-      }
-    }
-    btn.addEventListener("click", trySubmit);
-    input.addEventListener("keydown", (e) => { if (e.key === "Enter") trySubmit(); });
-    setTimeout(() => input.focus(), 100);
-  });
-}
-document.getElementById("admin-gate-overlay").classList.remove("open");
 
 /* ───────── 로그아웃 ───────── */
 document.getElementById("logout-btn").addEventListener("click", logoutAccount);
@@ -431,12 +396,22 @@ function lastHistoryText(rec) {
 
 /* ───────── 탭 전환 ───────── */
 function switchTab(name) {
-  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
-  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + name));
+  document.querySelectorAll(".tab-btn").forEach(b => {
+    const active = b.dataset.tab === name;
+    b.classList.toggle("active", active);
+    b.setAttribute("aria-selected", String(active));
+  });
+  document.querySelectorAll(".panel").forEach(p => {
+    const active = p.id === "panel-" + name;
+    p.classList.toggle("active", active);
+    p.hidden = !active;
+  });
 }
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
+document.querySelectorAll(".panel").forEach(panel => panel.setAttribute("role", "tabpanel"));
+switchTab("tickets");
 
 const adminEditOverlay = document.getElementById("admin-edit-overlay");
 const adminEditFields = document.getElementById("admin-edit-fields");
@@ -449,6 +424,7 @@ function inputControl(id, value, type = "text") { return `<input id="${id}" type
 function selectControl(id, options) { return `<select id="${id}" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;">${options}</select>`; }
 
 function openAdminEditor(type, record) {
+  adminEditorReturnFocus = document.activeElement;
   adminEditing = { type, record };
   document.getElementById("admin-edit-title").textContent = `${type === "tickets" ? "관련업무" : type === "schedules" ? "일정" : "전화메모"} 편집`;
   if (type === "tickets") {
@@ -478,8 +454,17 @@ function openAdminEditor(type, record) {
       adminField("상태", selectControl("ae-status", ["미확인","확인됨"].map(s => `<option value="${s}" ${s === record.status ? "selected" : ""}>${s}</option>`).join("")));
   }
   adminEditOverlay.style.display = "flex";
+  adminEditOverlay.querySelector(".modal-card").focus();
 }
-document.getElementById("admin-edit-cancel").onclick = () => { adminEditOverlay.style.display = "none"; adminEditing = null; };
+let adminEditorReturnFocus = null;
+function closeAdminEditor() {
+  adminEditOverlay.style.display = "none";
+  adminEditing = null;
+  if (adminEditorReturnFocus && document.contains(adminEditorReturnFocus)) adminEditorReturnFocus.focus();
+  adminEditorReturnFocus = null;
+}
+document.getElementById("admin-edit-cancel").onclick = closeAdminEditor;
+document.getElementById("admin-edit-close").onclick = closeAdminEditor;
 
 document.getElementById("admin-edit-save").onclick = async () => {
   if (!adminEditing) return;
@@ -514,7 +499,7 @@ document.getElementById("admin-edit-save").onclick = async () => {
     await addDoc(collection(db, "auditLogs"), { targetCollection: CONFIGS[type].collectionName, targetId: record.id, action: "admin_updated", actorName: "관리자", actorUid: auth.currentUser?.uid || null, before: beforeAudit, after: afterAudit, createdAt: serverTimestamp() });
     Object.assign(record, payload);
     renderTab(type);
-    adminEditOverlay.style.display = "none"; adminEditing = null;
+    closeAdminEditor();
   } catch (error) { console.error(error); alert("수정 내용을 저장하지 못했습니다."); }
   finally { button.disabled = false; button.textContent = "저장"; }
 };
@@ -664,23 +649,28 @@ function renderTab(type) {
     }
     theadRow.appendChild(th);
   });
+  const actionTh = document.createElement("th");
+  actionTh.className = "th-action";
+  actionTh.textContent = "편집";
+  theadRow.appendChild(actionTh);
 
   const tbody = table.querySelector("tbody");
   tbody.innerHTML = "";
   if (!rows.length) {
     const msg = st.everLoaded ? "표시할 데이터가 없습니다" : "표시개수를 선택하고 조회 버튼을 눌러 데이터를 불러오세요";
-    tbody.innerHTML = `<tr class="empty-row"><td class="empty-guide" colspan="${cfg.columns.length + 1}">${msg}</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td class="empty-guide" colspan="${cfg.columns.length + 2}">${msg}</td></tr>`;
   } else {
     rows.forEach(r => {
       const tr = document.createElement("tr");
       const checked = st.selected.has(r.id) ? "checked" : "";
       const checkTd = `<td class="td-check"><input type="checkbox" class="row-cb" data-id="${r.id}" ${checked}/></td>`;
-      tr.innerHTML = checkTd + cfg.columns.map(col => `<td>${col.get(r)}</td>`).join("");
+      tr.innerHTML = checkTd + cfg.columns.map(col => `<td>${col.get(r)}</td>`).join("") + `<td class="td-action"><button type="button" class="row-edit-btn" aria-label="${escapeHtml(r.title || r.subject || "자료")} 편집">편집</button></td>`;
       tr.style.cursor = "pointer";
       tr.addEventListener("click", (event) => {
         if (event.target.closest("input,button,a,select")) return;
         openAdminEditor(type, r);
       });
+      tr.querySelector(".row-edit-btn").addEventListener("click", () => openAdminEditor(type, r));
       tbody.appendChild(tr);
     });
   }
@@ -751,10 +741,21 @@ async function loadPage(type, reset) {
 async function bulkDeleteSelected(type) {
   const st = state[type];
   if (!st.selected.size) { alert("선택된 항목이 없습니다"); return; }
-  if (!confirm(`선택한 ${st.selected.size}건을 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return;
   const ids = [...st.selected];
-  for (const id of ids) {
-    try { await deleteDoc(doc(db, CONFIGS[type].collectionName, id)); } catch (e) { console.error("삭제 오류", e); }
+  if (type === "tickets") {
+    if (!confirm(`선택한 관련업무 ${ids.length}건을 자료보관으로 이동할까요? 관리자 자료보관에서 복원할 수 있습니다.`)) return;
+    for (const id of ids) {
+      try {
+        await updateDoc(doc(db, "requestTickets", id), { archived:true, archivedAt:serverTimestamp(), archivedBy:"관리자", updatedAt:serverTimestamp() });
+        await addDoc(collection(db, "auditLogs"), { targetCollection:"requestTickets", targetId:id, action:"ticket_archived", actorName:"관리자", actorUid:auth.currentUser?.uid || null, createdAt:serverTimestamp() });
+      } catch (e) { console.error("자료보관 이동 오류", e); }
+    }
+  } else {
+    const label = type === "schedules" ? "일정" : "전화메모";
+    if (!confirm(`선택한 ${label} ${ids.length}건을 영구 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return;
+    for (const id of ids) {
+      try { await deleteDoc(doc(db, CONFIGS[type].collectionName, id)); } catch (e) { console.error("영구삭제 오류", e); }
+    }
   }
   st.rows = st.rows.filter(r => !st.selected.has(r.id));
   st.selected.clear();
@@ -979,6 +980,28 @@ document.getElementById("unassigned-load").addEventListener("click", async () =>
     tbody.appendChild(tr);
   });
   if (!rows.length) tbody.innerHTML = `<tr><td colspan="3">수신자 미지정 업무가 없습니다.</td></tr>`;
+});
+
+/* 키보드 조작: 탭 이동, 편집창 닫기와 포커스 순환 */
+document.getElementById("tabbar").addEventListener("keydown", e => {
+  if (!["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+  const tabs = [...document.querySelectorAll(".tab-btn")];
+  const index = tabs.indexOf(document.activeElement);
+  if (index < 0) return;
+  e.preventDefault();
+  const next = e.key === "ArrowRight" ? (index + 1) % tabs.length : (index - 1 + tabs.length) % tabs.length;
+  tabs[next].focus(); tabs[next].click();
+});
+adminEditOverlay.addEventListener("mousedown", e => { if (e.target === adminEditOverlay) closeAdminEditor(); });
+document.addEventListener("keydown", e => {
+  if (adminEditOverlay.style.display !== "flex") return;
+  if (e.key === "Escape") { closeAdminEditor(); return; }
+  if (e.key !== "Tab") return;
+  const focusable = [...adminEditOverlay.querySelectorAll("button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])")].filter(el => el.offsetParent !== null);
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 });
 </script>
 </body>

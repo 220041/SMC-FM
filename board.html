@@ -226,7 +226,7 @@
   #progress-nav { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 14px 12px; flex-shrink: 0; }
   #progress-page-info { font-size: 12.5px; color: var(--ink-soft); font-weight: 700; min-width: 46px; text-align: center; }
 
-  #empty-alert { padding: 30px 14px; text-align: center; color: var(--ink-soft); font-size: 14px; }
+  .empty-alert { padding: 30px 14px; text-align: center; color: var(--ink-soft); font-size: 14px; }
 
   /* ── 전자칠판 보조화면 (번인 방지용, 30분마다 5분씩 자동 표출) ───── */
   #aux-screen {
@@ -343,7 +343,7 @@
   #event-detail-history .eh-item { padding: 10px 0; border-bottom: 1px dashed var(--line); font-size: 14.5px; }
   #event-detail-history .eh-item:last-child { border-bottom: none; }
   #event-detail-history .eh-meta { color: var(--ink-soft); font-size: 12.5px; margin-bottom: 3px; }
-  #event-detail-empty-hist { color: var(--dim); font-size: 14px; padding: 6px 0; }
+  .event-detail-empty-hist { color: var(--dim); font-size: 14px; padding: 6px 0; }
 
   /* ── 전화메모 상세보기 (미확인 알림 / 완료된 항목 공용) ────── */
   #memo-detail-overlay {
@@ -449,35 +449,35 @@
   </div>
 </div>
 
-<div id="name-modal-overlay">
-  <div id="name-modal">
-    <h3>확인자 선택</h3>
+<div id="name-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="name-modal-title">
+  <div id="name-modal" tabindex="-1">
+    <h3 id="name-modal-title">확인자 선택</h3>
     <p id="name-modal-sub">이 항목을 확인한 사람을 선택하세요</p>
     <div id="name-buttons"></div>
     <button id="name-cancel">취소</button>
   </div>
 </div>
 
-<div id="day-detail-overlay">
-  <div id="day-detail-card">
-    <button id="day-detail-close" aria-label="닫기">×</button>
+<div id="day-detail-overlay" role="dialog" aria-modal="true" aria-labelledby="day-detail-date">
+  <div id="day-detail-card" tabindex="-1">
+    <button type="button" id="day-detail-close" aria-label="닫기">×</button>
     <div id="day-detail-date"></div>
     <div id="day-detail-events"></div>
   </div>
 </div>
 
-<div id="event-detail-overlay">
-  <div id="event-detail-card">
-    <button id="event-detail-close" aria-label="닫기">×</button>
+<div id="event-detail-overlay" role="dialog" aria-modal="true" aria-labelledby="event-detail-title">
+  <div id="event-detail-card" tabindex="-1">
+    <button type="button" id="event-detail-close" aria-label="닫기">×</button>
     <div id="event-detail-title"></div>
     <div id="event-detail-meta"></div>
     <div id="event-detail-history"></div>
   </div>
 </div>
 
-<div id="memo-detail-overlay">
-  <div id="memo-detail-card">
-    <button id="memo-detail-close" aria-label="닫기">×</button>
+<div id="memo-detail-overlay" role="dialog" aria-modal="true" aria-labelledby="memo-detail-title">
+  <div id="memo-detail-card" tabindex="-1">
+    <button type="button" id="memo-detail-close" aria-label="닫기">×</button>
     <div id="memo-detail-title"></div>
     <div id="memo-detail-meta"></div>
     <div id="memo-detail-items"></div>
@@ -706,6 +706,9 @@ function renderCalendar() {
 
       const cell = document.createElement("div");
       cell.className = "day-cell" + (c.other ? " other-month" : "");
+      cell.tabIndex = 0;
+      cell.setAttribute("role", "button");
+      cell.setAttribute("aria-label", `${c.y}년 ${c.m + 1}월 ${c.day}일 일정 보기`);
 
       const numWrap = document.createElement("div");
       numWrap.className = "day-num" + (isRedDay ? " is-redday" : "");
@@ -714,6 +717,7 @@ function renderCalendar() {
       numWrap.innerHTML = numHtml;
       cell.appendChild(numWrap);
       cell.addEventListener("click", () => openDayDetail(iso, c.y, c.m, c.day));
+      cell.addEventListener("keydown", e => { if (["Enter", " "].includes(e.key)) { e.preventDefault(); openDayDetail(iso, c.y, c.m, c.day); } });
       daynumsEl.appendChild(cell);
     });
     weekEl.appendChild(daynumsEl);
@@ -842,6 +846,8 @@ function openDayDetail(iso, y, m, d) {
     dayEvents.forEach(ev => {
       const div = document.createElement("div");
       div.className = "day-detail-event type-" + (ev.type || "업무");
+      div.tabIndex = 0;
+      div.setAttribute("role", "button");
       const variant = scheduleColorVariant(ev.type, ev.id);
       div.style.backgroundColor = variant.bg;
       div.style.color = variant.fg;
@@ -853,6 +859,7 @@ function openDayDetail(iso, y, m, d) {
         e.stopPropagation();
         openEventDetail(ev);
       });
+      div.addEventListener("keydown", e => { if (["Enter", " "].includes(e.key)) { e.preventDefault(); openEventDetail(ev); } });
       evEl.appendChild(div);
     });
   }
@@ -881,7 +888,7 @@ function openEventDetail(ev) {
   const hist = (ev.history && ev.history.length) ? ev.history
     : (ev.detail ? [{ text: ev.detail, author: ev.registeredBy, timestamp: ev.registeredAt }] : []);
   if (!hist.length) {
-    histEl.innerHTML = `<div id="event-detail-empty-hist">등록된 상세내용이 없습니다</div>`;
+    histEl.innerHTML = `<div class="event-detail-empty-hist">등록된 상세내용이 없습니다</div>`;
   } else {
     hist.slice().reverse().forEach(h => {
       const div = document.createElement("div");
@@ -912,7 +919,7 @@ function openTicketDetailBoard(t) {
   histEl.innerHTML = "";
   const hist = t.history || [];
   if (!hist.length) {
-    histEl.innerHTML = `<div id="event-detail-empty-hist">등록된 상세내용이 없습니다</div>`;
+    histEl.innerHTML = `<div class="event-detail-empty-hist">등록된 상세내용이 없습니다</div>`;
   } else {
     hist.slice().reverse().forEach(h => {
       const div = document.createElement("div");
@@ -1049,7 +1056,7 @@ function renderProgressList() {
   const doneEl = document.getElementById("done-list");
   doneEl.innerHTML = "";
   if (!ordered.length) {
-    doneEl.innerHTML = `<div id="empty-alert">표시할 업무가 없습니다</div>`;
+    doneEl.innerHTML = `<div class="empty-alert">표시할 업무가 없습니다</div>`;
   } else {
     pageItems.forEach(({ t, variant }) => doneEl.appendChild(buildProgressCard(t, variant)));
   }
@@ -1075,8 +1082,8 @@ function renderAlerts() {
   listEl.innerHTML = "";
   auxListEl.innerHTML = "";
   if (unconfirmedAll.length === 0) {
-    listEl.innerHTML = `<div id="empty-alert">미확인 항목이 없습니다</div>`;
-    auxListEl.innerHTML = `<div id="empty-alert">미확인 항목이 없습니다</div>`;
+    listEl.innerHTML = `<div class="empty-alert">미확인 항목이 없습니다</div>`;
+    auxListEl.innerHTML = `<div class="empty-alert">미확인 항목이 없습니다</div>`;
   } else {
     unconfirmedAll.forEach(entry => {
       listEl.appendChild(entry.kind === "memo" ? buildMemoAlertCard(entry.group, now) : buildTicketAlertCard(entry.rec, now));
@@ -1128,7 +1135,7 @@ function renderAuxWeek() {
   const el = document.getElementById("aux-week-list");
   el.innerHTML = "";
   if (!rows.length) {
-    el.innerHTML = `<div id="empty-alert">이번주 일정이 없습니다</div>`;
+    el.innerHTML = `<div class="empty-alert">이번주 일정이 없습니다</div>`;
   } else {
     rows.forEach(({ label, s }) => el.appendChild(buildAgendaRow(label, s)));
   }
@@ -1146,7 +1153,7 @@ function renderAuxToday() {
   const el = document.getElementById("aux-today-list");
   el.innerHTML = "";
   if (!items.length) {
-    el.innerHTML = `<div id="empty-alert">오늘 일정이 없습니다</div>`;
+    el.innerHTML = `<div class="empty-alert">오늘 일정이 없습니다</div>`;
   } else {
     items.forEach(s => el.appendChild(buildAgendaRow(s.time || "종일", s)));
   }
@@ -1329,6 +1336,41 @@ document.getElementById("aux-preview-btn").addEventListener("click", () => {
   showAuxScreen();
 });
 scheduleAuxCycle();
+
+/* 팝업은 ESC로 닫고, 열린 동안 키보드 포커스가 팝업 안에 머물도록 한다. */
+const boardOverlays = [dayDetailOverlay, eventDetailOverlay, memoDetailOverlay, document.getElementById("name-modal-overlay")];
+const boardReturnFocus = new WeakMap();
+boardOverlays.forEach(overlay => {
+  new MutationObserver(() => {
+    const open = overlay.classList.contains("open") || getComputedStyle(overlay).display === "flex";
+    if (open && !boardReturnFocus.has(overlay)) {
+      boardReturnFocus.set(overlay, document.activeElement);
+      overlay.querySelector("button, [tabindex='-1']")?.focus();
+    } else if (!open && boardReturnFocus.has(overlay)) {
+      const previous = boardReturnFocus.get(overlay);
+      if (previous && document.contains(previous)) previous.focus();
+      boardReturnFocus.delete(overlay);
+    }
+  }).observe(overlay, { attributes:true, attributeFilter:["class", "style"] });
+});
+document.addEventListener("keydown", e => {
+  const openOverlay = boardOverlays.find(overlay => overlay.classList.contains("open") || getComputedStyle(overlay).display === "flex");
+  if (!openOverlay) return;
+  if (e.key === "Escape") {
+    openOverlay.classList.remove("open");
+    if (openOverlay.id === "name-modal-overlay") openOverlay.style.display = "none";
+    const previous = boardReturnFocus.get(openOverlay);
+    if (previous && document.contains(previous)) previous.focus();
+    boardReturnFocus.delete(openOverlay);
+    return;
+  }
+  if (e.key !== "Tab") return;
+  const focusable = [...openOverlay.querySelectorAll("button:not([disabled]), [tabindex]:not([tabindex='-1'])")].filter(el => el.offsetParent !== null);
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
 
 renderCalendar();
 </script>

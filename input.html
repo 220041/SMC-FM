@@ -238,35 +238,11 @@
 
   .small-note { font-size: 14.5px; color: var(--dim); margin-top: 4.5px; }
 
-  /* ── 작성자 선택 게이트 ─────────────────── */
-  #author-gate-overlay {
-    position: fixed; inset: 0; background: rgba(31,41,51,0.92);
-    display: none; align-items: center; justify-content: center; z-index: 5000; padding: 22px;
-  }
-  #author-gate-overlay.open { display: flex; }
-  #author-gate-card {
-    background: var(--surface); border-radius: 22px; padding: 44px 48.5px; text-align: center;
-    max-width: 506px; width: 100%;
-  }
-  #author-gate-card .gate-title { font-size: 23px; font-weight: 900; margin-bottom: 6.5px; }
-  #author-gate-card .gate-sub { font-size: 15.5px; color: var(--ink-soft); margin-bottom: 26.5px; }
-  #author-gate-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
-  .name-btn {
-    padding: 20px 11px; font-size: 17.5px; font-weight: 800; border-radius: 13px;
-    border: 2px solid var(--line); background: var(--bg); cursor: pointer; color: var(--ink); position: relative;
-  }
-  .name-btn:active { background: var(--accent); color: #fff; }
-  .name-btn.last-used { border-color: var(--accent); }
-  .name-btn.last-used::after {
-    content: "최근"; position: absolute; top: -10px; right: -6.5px; background: var(--accent); color: #fff;
-    font-size: 11px; font-weight: 800; padding: 2px 6.5px; border-radius: 9px;
-  }
-
   /* ── 대시보드 ─────────────────────────── */
   .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(286px, 1fr)); gap: 20px; }
   .dash-col { background: var(--surface); border-radius: 13px; padding: 15.5px 17.5px; border: 1px solid var(--line); }
-  .dash-col h3 { font-size: 17.5px; margin: 0 0 11px; color: var(--ink-soft); display: flex; align-items: center; gap: 6.5px; }
-  .dash-column-header { transition: color 0.15s; }
+  .dash-col h3, .dash-column-header { font-size: 17.5px; margin: 0 0 11px; color: var(--ink-soft); display: flex; align-items: center; gap: 6.5px; }
+  .dash-column-header { width:100%; padding:0; border:0; background:transparent; font-family:inherit; font-weight:800; cursor:pointer; text-align:left; transition:color 0.15s; }
   .dash-column-header:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 4px; }
   .dash-column-header::after { content: " →"; font-size: 13px; opacity: 0; transition: opacity 0.15s; }
   .dash-column-header:hover::after { opacity: 0.7; }
@@ -484,23 +460,51 @@
   .sched-legend-dot.type-미팅 { background: var(--type-미팅); }
   .sched-legend-dot.type-업무 { background: var(--type-업무); }
   .sched-legend-dot.type-기타 { background: var(--type-기타); }
+  .ticket-current-status { display:flex; align-items:center; min-height:43px; }
+  .ticket-current-status .badge { font-size:15px; padding:6px 14px; }
+  .table-scroll { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible,
+  [tabindex]:focus-visible { outline:3px solid rgba(43,76,126,.35); outline-offset:2px; }
+
+  @media (max-width: 768px) {
+    body { padding-bottom:76px; }
+    #topbar { padding:8px 12px; align-items:flex-start; }
+    #topbar .brand { width:100%; font-size:16px; }
+    #user-select-wrap { width:100%; gap:7px; flex-wrap:wrap; }
+    #user-select-wrap .nav-link { margin-left:0; padding:7px 10px; }
+    #user-select-wrap .nav-link-text { display:none; }
+    #tabbar { position:sticky; top:76px; z-index:40; overflow-x:auto; padding:8px 10px 0; gap:4px; background:var(--bg); scrollbar-width:none; }
+    #tabbar::-webkit-scrollbar { display:none; }
+    .tab-btn { flex:0 0 auto; padding:10px 14px; font-size:14px; white-space:nowrap; }
+    #content { padding:14px 10px; border-radius:0; }
+    .panel-head { align-items:stretch; }
+    .panel-head h2 { width:100%; font-size:21px; }
+    .panel-head-actions, .filter-bar { width:100%; }
+    .panel-head-actions { flex-wrap:wrap; }
+    .panel-head-actions button, .filter-bar select, .filter-bar input { flex:1 1 130px; min-width:0; }
+    .btn-primary, .btn-secondary { padding:10px 14px; font-size:15px; }
+    .dash-grid { grid-template-columns:1fr; gap:12px; }
+    .dash-col { padding:13px; }
+    .dash-activity-section { padding:13px; }
+    .ticket-section .table-scroll table, #schedule-table, #panel-memos table { min-width:820px; }
+    .row2 { grid-template-columns:1fr; }
+    .date-picker-box .sub-row { flex-wrap:wrap; }
+    .date-picker-box .sub-label { width:100%; }
+    .modal-actions { position:sticky; bottom:-40px; margin:18px -20px -40px; padding:12px 20px 18px; background:var(--surface); border-top:1px solid var(--line); z-index:2; }
+    .modal-actions button { flex:1 1 auto; }
+    .history-list { max-height:220px; }
+    .sched-cal-header { gap:8px; }
+    .sched-cal-title { min-width:0; font-size:19px; }
+  }
 </style>
 </head>
 <body>
 
-<div id="author-gate-overlay">
-  <div id="author-gate-card">
-    <div class="gate-title">작성자를 선택하세요</div>
-    <div class="gate-sub">선택한 이름으로 이후 모든 입력이 기록됩니다 (혼선 방지)</div>
-    <div id="author-gate-buttons"></div>
-  </div>
-</div>
-
 <div id="topbar">
   <a class="brand" href="index.html" title="처음 화면으로 이동">서귀포의료원 시설관리팀</a>
   <div id="user-select-wrap">
-    작성자 <b id="current-user-display">-</b>
-    <button type="button" class="btn-secondary" id="author-change-btn" style="padding:6px 12px; font-size:12.5px;">변경</button>
+    로그인 <b id="current-user-display">-</b>
+    <button type="button" class="btn-secondary" id="author-change-btn" style="padding:6px 12px; font-size:12.5px;">로그아웃</button>
     <a class="nav-link" href="board.html" title="월간일정 화면으로 이동">
       <span class="nav-link-icon">🗓️</span><span class="nav-link-text">월간일정</span>
     </a>
@@ -510,11 +514,11 @@
   </div>
 </div>
 
-<div id="tabbar">
-  <button class="tab-btn active" data-tab="dashboard">대시보드</button>
-  <button class="tab-btn" data-tab="tickets">관련업무</button>
-  <button class="tab-btn" data-tab="schedules">일정관리</button>
-  <button class="tab-btn" data-tab="memos">전화 및 메모</button>
+<div id="tabbar" role="tablist" aria-label="업무 화면 메뉴">
+  <button class="tab-btn active" data-tab="dashboard" role="tab" aria-selected="true" aria-controls="panel-dashboard">대시보드</button>
+  <button class="tab-btn" data-tab="tickets" role="tab" aria-selected="false" aria-controls="panel-tickets">관련업무</button>
+  <button class="tab-btn" data-tab="schedules" role="tab" aria-selected="false" aria-controls="panel-schedules">일정관리</button>
+  <button class="tab-btn" data-tab="memos" role="tab" aria-selected="false" aria-controls="panel-memos">전화 및 메모</button>
 </div>
 
 <div id="content">
@@ -529,15 +533,15 @@
     </div>
     <div class="dash-grid">
       <div class="dash-col">
-        <h3 class="dash-column-header" data-tab="tickets" style="cursor:pointer; user-select:none;" title="클릭하면 관련업무 탭으로 이동">업무 <span class="dash-count" id="dash-ticket-count">0</span></h3>
+        <button type="button" class="dash-column-header" data-tab="tickets" title="관련업무 탭으로 이동">업무 <span class="dash-count" id="dash-ticket-count">0</span></button>
         <div class="dash-list" id="dash-ticket-list"></div>
       </div>
       <div class="dash-col">
-        <h3 class="dash-column-header" data-tab="schedules" style="cursor:pointer; user-select:none;" title="클릭하면 일정관리 탭으로 이동">일정 · 공사 <span class="dash-count" id="dash-schedule-count">0</span></h3>
+        <button type="button" class="dash-column-header" data-tab="schedules" title="일정관리 탭으로 이동">일정 · 공사 <span class="dash-count" id="dash-schedule-count">0</span></button>
         <div class="dash-list dash-timeline" id="dash-schedule-list"></div>
       </div>
       <div class="dash-col">
-        <h3 class="dash-column-header" data-tab="memos" style="cursor:pointer; user-select:none;" title="클릭하면 전화 및 메모 탭으로 이동">전화 · 메모 <span class="dash-count" id="dash-memo-count">0</span></h3>
+        <button type="button" class="dash-column-header" data-tab="memos" title="전화 및 메모 탭으로 이동">전화 · 메모 <span class="dash-count" id="dash-memo-count">0</span></button>
         <div class="dash-list" id="dash-memo-list"></div>
       </div>
     </div>
@@ -575,21 +579,21 @@
 
     <div class="ticket-section" id="ticket-section-received">
       <h3>📥 수신 <span class="small-note" id="ticket-section-received-count"></span></h3>
-      <table class="ticket-table-compact">
+      <div class="table-scroll"><table class="ticket-table-compact">
         <thead><tr>
           <th>제목</th><th>상대방 / 수신확인</th><th>첫 세부사항</th><th>요청일(희망기한)</th><th>현상태</th><th>세부사항 이력</th><th class="th-del"></th>
         </tr></thead>
         <tbody id="ticket-tbody-received"></tbody>
-      </table>
+      </table></div>
     </div>
     <div class="ticket-section" id="ticket-section-sent">
       <h3>📤 발송 <span class="small-note" id="ticket-section-sent-count"></span></h3>
-      <table class="ticket-table-compact">
+      <div class="table-scroll"><table class="ticket-table-compact">
         <thead><tr>
           <th>제목</th><th>상대방 / 수신확인</th><th>첫 세부사항</th><th>요청일(희망기한)</th><th>현상태</th><th>세부사항 이력</th><th class="th-del"></th>
         </tr></thead>
         <tbody id="ticket-tbody-sent"></tbody>
-      </table>
+      </table></div>
     </div>
   </div>
 
@@ -603,13 +607,13 @@
         <button class="btn-primary" id="schedule-new-btn">+ 새 일정 등록</button>
       </div>
     </div>
-    <table id="schedule-table">
+    <div class="table-scroll"><table id="schedule-table">
       <thead><tr>
         <th class="th-check"><input type="checkbox" id="schedule-select-all" /></th>
         <th>제목</th><th>유형</th><th>날짜</th><th>업체/부서</th><th>담당</th><th>등록자</th><th class="th-del"></th>
       </tr></thead>
       <tbody id="schedule-tbody"></tbody>
-    </table>
+    </table></div>
     <div id="schedule-calendar-view" style="display:none;">
       <div class="sched-cal-header">
         <button type="button" class="cal-nav-btn" id="sched-cal-prev">‹</button>
@@ -646,21 +650,21 @@
         <button class="btn-primary" id="memo-new-btn">+ 새 메모 등록</button>
       </div>
     </div>
-    <table>
+    <div class="table-scroll"><table>
       <thead><tr>
         <th class="th-check"><input type="checkbox" id="memo-select-all" /></th>
         <th>담당자-내용</th><th>긴급도</th><th>받은사람</th><th>받은시간</th><th>상태</th><th class="th-del"></th>
       </tr></thead>
       <tbody id="memo-tbody"></tbody>
-    </table>
+    </table></div>
   </div>
 
 
 </div>
 
 <!-- ══════════ 모달: 업무 상세/등록 ══════════ -->
-<div class="modal-overlay" id="ticket-modal-overlay">
-  <div class="modal-box">
+<div class="modal-overlay" id="ticket-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="ticket-modal-title">
+  <div class="modal-box" tabindex="-1">
     <button type="button" class="modal-close-x" id="ticket-close-x" aria-label="닫기">×</button>
     <h3 id="ticket-modal-title">새 업무 등록</h3>
     <div id="ticket-new-fields">
@@ -686,16 +690,7 @@
       <!-- 수정 모드: 작성자(요청자) 본인일 때, [edit] 버튼을 눌러야만 표시됨 -->
       <div id="ticket-edit-summary">
         <div class="row2">
-          <div class="field"><label>상태</label>
-            <select id="ticket-status-select">
-              <option value="미수신">미수신</option>
-              <option value="열람">열람</option>
-              <option value="접수">접수</option>
-              <option value="진행중">진행중</option>
-              <option value="보류">보류</option>
-              <option value="완료">완료</option>
-            </select>
-          </div>
+          <div class="field"><label>현재 상태</label><div id="ticket-status-badge-edit" class="ticket-current-status"></div></div>
           <div class="field"><label>요청희망기한</label><input type="text" id="ticket-due-edit" /></div>
         </div>
         <div class="field"><label>요청자</label><div class="static-value" id="ticket-requester-display-edit">-</div></div>
@@ -723,8 +718,8 @@
 </div>
 
 <!-- ══════════ 모달: 일정/공사 등록 ══════════ -->
-<div class="modal-overlay" id="schedule-modal-overlay">
-  <div class="modal-box">
+<div class="modal-overlay" id="schedule-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="schedule-modal-title">
+  <div class="modal-box" tabindex="-1">
     <button type="button" class="modal-close-x" id="schedule-close-x" aria-label="닫기">×</button>
     <h3 id="schedule-modal-title">새 일정 등록</h3>
     <div class="field small-note" id="schedule-readonly-note" style="display:none;">작성자만 위 항목들을 수정할 수 있습니다. 추가사항은 누구나 남길 수 있습니다.</div>
@@ -797,8 +792,8 @@
 </div>
 
 <!-- ══════════ 모달: 전화 및 기타메모 ══════════ -->
-<div class="modal-overlay" id="memo-modal-overlay">
-  <div class="modal-box">
+<div class="modal-overlay" id="memo-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="memo-modal-title">
+  <div class="modal-box" tabindex="-1">
     <button type="button" class="modal-close-x" id="memo-close-x" aria-label="닫기">×</button>
     <h3 id="memo-modal-title">새 메모 등록</h3>
     <div class="row2">
@@ -826,13 +821,13 @@
 </div>
 
 <!-- ══════════ 모달: 업데이트 확인 게이트 (모두 확인해야 닫힘, 임의로 닫을 수 없음) ══════════ -->
-<div class="modal-overlay" id="update-gate-overlay" style="z-index:500; background:rgba(20,24,28,0.68);">
-  <div class="modal-box" style="max-width:640px;">
+<div class="modal-overlay" id="update-gate-overlay" role="dialog" aria-modal="true" aria-labelledby="update-gate-title" style="z-index:500; background:rgba(20,24,28,0.68);">
+  <div class="modal-box" tabindex="-1" style="max-width:640px;">
     <h3>🔔 확인이 필요한 업데이트</h3>
     <div class="small-note" style="margin-bottom:16px;">아래 항목을 모두 확인해야 화면을 계속 이용할 수 있습니다.</div>
     <div id="update-gate-list"></div>
     <div class="small-note" style="text-align:center; margin-top:16px;">
-      작성자를 잘못 선택하셨나요? <a href="#" id="update-gate-change-author" style="color:var(--accent); font-weight:700; text-decoration:underline;">변경하기</a>
+      다른 계정으로 이용하시나요? <a href="#" id="update-gate-change-author" style="color:var(--accent); font-weight:700; text-decoration:underline;">로그아웃 후 다시 로그인</a>
     </div>
   </div>
 </div>
@@ -841,51 +836,16 @@
 import { ensureUserLogin, logoutAccount, changeOwnPassword } from "./account-auth.js";
 import {
   db, auth, collection, doc, addDoc, updateDoc, deleteDoc, setDoc, onSnapshot, query, orderBy, serverTimestamp,
-  getDocs, getDoc, limit, where, writeBatch, TEAM_MEMBERS, KR_HOLIDAYS, ADMIN_PASSWORD
+  getDocs, getDoc, limit, where, writeBatch, TEAM_MEMBERS, KR_HOLIDAYS
 } from "./firebase-config.js";
 
 const accountProfile = await ensureUserLogin();
 
-/* ───────── 현재 사용자 (작성자) : 진입 시 반드시 선택 ───────── */
-let currentUserName = accountProfile.name;
+/* 작성자·알림 대상·권한 판정은 Firebase에 로그인한 계정으로 고정한다. */
+const currentUserName = accountProfile.name;
 function currentUser() { return currentUserName; }
-/* "관리자" 계정으로 선택했을 때만 true - 다른 사람이 작성한 항목도 전부 수정/삭제 가능 */
-function isAdmin() { return currentUserName === "관리자"; }
+function isAdmin() { return accountProfile.role === "admin"; }
 
-const authGateOverlay = document.getElementById("author-gate-overlay");
-const authGateButtons = document.getElementById("author-gate-buttons");
-function buildAuthGateButtons() {
-  authGateButtons.innerHTML = "";
-  const last = sessionStorage.getItem("smcfm_current_user");
-  TEAM_MEMBERS.forEach(n => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "name-btn" + (n === last ? " last-used" : "");
-    b.textContent = n === "관리자" ? "🔒 관리자" : n;
-    b.addEventListener("click", () => selectAuthor(n));
-    authGateButtons.appendChild(b);
-  });
-}
-const ADMIN_AUTHOR_SESSION_KEY = "smcfm_admin_author_ok";
-function selectAuthor(name) {
-  // "관리자" 계정은 admin.html과 동일한 비밀번호로 한 번 더 확인 (세션 동안 재확인 안 함)
-  if (name === "관리자" && sessionStorage.getItem(ADMIN_AUTHOR_SESSION_KEY) !== "1") {
-    const pw = prompt("관리자 계정 비밀번호를 입력하세요");
-    if (pw === null) return;
-    if (pw !== ADMIN_PASSWORD) { alert("비밀번호가 올바르지 않습니다"); return; }
-    sessionStorage.setItem(ADMIN_AUTHOR_SESSION_KEY, "1");
-  }
-  currentUserName = name;
-  sessionStorage.setItem("smcfm_current_user", name);
-  document.getElementById("current-user-display").textContent = name;
-  authGateOverlay.classList.remove("open");
-  renderDashboard();
-  renderTickets();
-  renderSchedules();
-  renderMemos();
-  if (scheduleViewMode === "calendar") renderScheduleCalendar();
-}
-document.getElementById("author-change-btn").textContent = "로그아웃";
 document.getElementById("author-change-btn").addEventListener("click", logoutAccount);
 document.getElementById("update-gate-change-author").addEventListener("click", (e) => {
   e.preventDefault();
@@ -900,26 +860,7 @@ passwordBtn.setAttribute("aria-label", "비밀번호 변경");
 passwordBtn.style.cssText = "width:20px;height:20px;padding:0;margin-left:3px;border:0;background:transparent;box-shadow:none;border-radius:0;font-size:11px;vertical-align:middle;";
 passwordBtn.addEventListener("click", changeOwnPassword);
 document.getElementById("author-change-btn").insertAdjacentElement("beforebegin", passwordBtn);
-/* 실제 Firebase 계정으로 로그인했으므로 이름 선택 방식은 사용하지 않는다. */
-sessionStorage.setItem("smcfm_current_user", accountProfile.name);
 document.getElementById("current-user-display").textContent = accountProfile.name;
-authGateOverlay.classList.remove("open");
-/*
-buildAuthGateButtons();
-// 세션에 이미 선택된 작성자가 남아있으면(같은 브라우저 탭에서 계속 이용 중) 다시 묻지 않고 바로 이어서 사용
-const lastUsedAuthor = sessionStorage.getItem("smcfm_current_user");
-if (lastUsedAuthor && TEAM_MEMBERS.includes(lastUsedAuthor)) {
-  // 주의: 여기서 selectAuthor()를 바로 호출하면 renderDashboard()가 즉시 실행되는데,
-  // 이 시점은 스크립트 아래쪽의 tickets/schedules/memos 등이 아직 선언(및 Firestore 구독 등록)되기 전이라
-  // "Cannot access ... before initialization" 오류로 이후 코드 전체가 중단되어 데이터가 하나도 안 뜨는 문제가 있었음.
-  // 화면 표시만 먼저 갱신하고, 실제 데이터 렌더링은 나머지 스크립트가 모두 실행된 다음 틱으로 미룸.
-  currentUserName = lastUsedAuthor;
-  document.getElementById("current-user-display").textContent = lastUsedAuthor;
-  setTimeout(() => { if (typeof renderDashboard === "function") renderDashboard(); }, 0);
-} else {
-  authGateOverlay.classList.add("open");
-}
-*/
 
 /* 관리자 화면(admin.html)에서 등록한 임시 공휴일 등 (기본 KR_HOLIDAYS에 없는 날짜를 추가로 반영) */
 let customHolidays = {};
@@ -968,11 +909,30 @@ function renderResponsibleChecks() {
 
 /* ───────── 탭 전환 ───────── */
 function switchTab(name) {
-  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
-  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + name));
+  document.querySelectorAll(".tab-btn").forEach(b => {
+    const active = b.dataset.tab === name;
+    b.classList.toggle("active", active);
+    b.setAttribute("aria-selected", String(active));
+  });
+  document.querySelectorAll(".panel").forEach(p => {
+    const active = p.id === "panel-" + name;
+    p.classList.toggle("active", active);
+    p.hidden = !active;
+  });
 }
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+});
+document.querySelectorAll(".panel").forEach(panel => panel.setAttribute("role", "tabpanel"));
+switchTab("dashboard");
+document.getElementById("tabbar").addEventListener("keydown", e => {
+  if (!["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+  const tabs = [...document.querySelectorAll(".tab-btn")];
+  const index = tabs.indexOf(document.activeElement);
+  if (index < 0) return;
+  e.preventDefault();
+  const next = e.key === "ArrowRight" ? (index + 1) % tabs.length : (index - 1 + tabs.length) % tabs.length;
+  tabs[next].focus(); tabs[next].click();
 });
 /* 대시보드 열 헤더 클릭 → 해당 탭으로 전환 */
 document.querySelectorAll(".dash-column-header[data-tab]").forEach(h => {
@@ -1544,6 +1504,15 @@ function ticketDatesLabel(t) {
   const req = t.requestedAt ? fmtTs(t.requestedAt).slice(0, 10) : "-";
   return t.dueDate ? `${req} (희망기한 ~${t.dueDate})` : req;
 }
+function normalizedTicketStatus(status) {
+  if (["요청됨", "미확인"].includes(status)) return "미수신";
+  if (status === "확인됨") return "열람";
+  return status || "미수신";
+}
+function ticketStatusBadge(status) {
+  const value = normalizedTicketStatus(status);
+  return `<span class="badge ${escapeHtml(value)}">${escapeHtml(value)}</span>`;
+}
 
 /* forceView === true 이면 작성자(요청자) 여부와 관계없이 항상 열람(읽기전용) 모드로 연다.
    forceView가 없으면(=제목 옆 [edit] 아이콘/알림 클릭 등) 기존처럼 작성자 본인일 때만 수정 가능 */
@@ -1596,7 +1565,7 @@ function openTicketDetail(id, forceView) {
     : "작성자(요청자) 본인만 위 항목을 수정할 수 있습니다. 추가사항은 누구나 남길 수 있습니다.";
 
   if (editMode) {
-    document.getElementById("ticket-status-select").value = ["미확인", "요청됨"].includes(t.status) ? "미수신" : t.status;
+    document.getElementById("ticket-status-badge-edit").innerHTML = ticketStatusBadge(t.status);
     document.getElementById("ticket-due-edit").value = t.dueDate || "";
     document.getElementById("ticket-requester-display-edit").textContent = t.requestedBy || "-";
     fillAssigneeSelect(document.getElementById("ticket-assignee-edit"), t.assignee || "");
@@ -1607,7 +1576,7 @@ function openTicketDetail(id, forceView) {
     document.getElementById("tv-requester").textContent = t.requestedBy || "-";
     document.getElementById("tv-assignee").textContent = t.assignee || "미지정(기존 업무)";
     document.getElementById("tv-dates").textContent = ticketDatesLabel(t);
-    document.getElementById("tv-status").textContent = t.status || "-";
+    document.getElementById("tv-status").innerHTML = ticketStatusBadge(t.status);
     document.getElementById("tv-received").textContent = t.receivedAt
       ? `${t.receivedBy || t.assignee || "-"} · ${fmtTs(t.receivedAt)}`
       : "아직 수신하지 않음";
@@ -1806,8 +1775,7 @@ document.getElementById("ticket-save").addEventListener("click", async () => {
       return;
     }
 
-    // 수정 모드(작성자 본인): 상태/희망기한 변경 + 추가사항
-    const newStatus = document.getElementById("ticket-status-select").value;
+    // 수정 모드(작성자 본인): 기한·수신자·추가사항만 수정. 상태는 단계 버튼으로만 변경한다.
     const newDue = document.getElementById("ticket-due-edit").value || null;
     const newAssignee = document.getElementById("ticket-assignee-edit").value || t.assignee;
 
@@ -1817,15 +1785,11 @@ document.getElementById("ticket-save").addEventListener("click", async () => {
       if (!changeReason) return;
     }
 
-    const history = (t.history || []).slice();
-    if (t.status !== newStatus) {
-      history.push({ id: newHistId(), text: `상태변경: ${t.status} → ${newStatus}`, author, timestamp: new Date(), type: "status" });
-    }
     await updateDoc(doc(db, "requestTickets", ticketEditingId), {
-      status: newStatus, dueDate: newDue, assignee: newAssignee,
+      status: newAssignee !== t.assignee ? "미수신" : normalizedTicketStatus(t.status), dueDate: newDue, assignee: newAssignee,
       receivedBy: newAssignee !== t.assignee ? null : (t.receivedBy || null),
       receivedAt: newAssignee !== t.assignee ? null : (t.receivedAt || null),
-      history, updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp()
     });
     if (noteText) await addTicketDetail(ticketEditingId, noteText);
     const jobs = [];
@@ -1835,7 +1799,7 @@ document.getElementById("ticket-save").addEventListener("click", async () => {
       jobs.push(notifyTicketUser(t.assignee, t.id, "assignee_changed", `업무 수신자가 ${newAssignee}(으)로 변경되었습니다.`));
       jobs.push(notifyTicketUser(newAssignee, t.id, "assignee_changed", `${author}님이 업무를 전달했습니다.`));
     }
-    jobs.push(auditTicket(t.id, "ticket_updated", { status: t.status, dueDate: t.dueDate, assignee: t.assignee }, { status: newStatus, dueDate: newDue, assignee: newAssignee, reason: changeReason }));
+    jobs.push(auditTicket(t.id, "ticket_updated", { status: t.status, dueDate: t.dueDate, assignee: t.assignee }, { status: newAssignee !== t.assignee ? "미수신" : normalizedTicketStatus(t.status), dueDate: newDue, assignee: newAssignee, reason: changeReason }));
     await Promise.all(jobs);
   }
   ticketOverlay.classList.remove("open");
@@ -2862,9 +2826,34 @@ function renderDashboard() {
 document.getElementById("ticket-close-x").addEventListener("click", () => ticketOverlay.classList.remove("open"));
 document.getElementById("schedule-close-x").addEventListener("click", () => scheduleOverlay.classList.remove("open"));
 document.getElementById("memo-close-x").addEventListener("click", () => memoOverlay.classList.remove("open"));
+const modalReturnFocus = new WeakMap();
+[ticketOverlay, scheduleOverlay, memoOverlay, document.getElementById("update-gate-overlay")].forEach(overlay => {
+  if (!overlay) return;
+  new MutationObserver(() => {
+    if (overlay.classList.contains("open")) {
+      if (!modalReturnFocus.has(overlay)) modalReturnFocus.set(overlay, document.activeElement);
+      const target = overlay.querySelector("input:not([disabled]), select:not([disabled]), textarea:not([disabled])") || overlay.querySelector(".modal-box");
+      if (target) target.focus();
+    } else {
+      const previous = modalReturnFocus.get(overlay);
+      if (previous && document.contains(previous)) previous.focus();
+      modalReturnFocus.delete(overlay);
+    }
+  }).observe(overlay, { attributes:true, attributeFilter:["class"] });
+  overlay.addEventListener("mousedown", e => { if (e.target === overlay) overlay.classList.remove("open"); });
+});
 document.addEventListener("keydown", (e) => {
-  if (e.key !== "Escape") return;
-  [ticketOverlay, scheduleOverlay, memoOverlay].forEach(ov => ov.classList.remove("open"));
+  const openOverlay = [ticketOverlay, scheduleOverlay, memoOverlay].find(ov => ov.classList.contains("open"));
+  if (e.key === "Escape") {
+    [ticketOverlay, scheduleOverlay, memoOverlay].forEach(ov => ov.classList.remove("open"));
+    return;
+  }
+  if (e.key !== "Tab" || !openOverlay) return;
+  const focusable = [...openOverlay.querySelectorAll("button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])")].filter(el => el.offsetParent !== null);
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 });
 </script>
 </body>
