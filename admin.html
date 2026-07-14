@@ -96,6 +96,25 @@
   }
   #admin-gate-submit:active { background: #1f3a5f; }
   #admin-gate-error { display: none; color: var(--alert); font-size: 13px; margin-top: 10px; font-weight: 700; }
+
+  #logout-btn {
+    background: none; border: 1.5px solid var(--line); color: var(--ink-soft); border-radius: 8px;
+    padding: 6px 12px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  }
+  #logout-btn:active { background: var(--line); }
+  #topbar-right { display: flex; align-items: center; gap: 12px; }
+
+  th.th-check, td.td-check { width: 30px; text-align: center; cursor: default; }
+  .row-cb, .select-all-cb { width: 16px; height: 16px; cursor: pointer; }
+  .load-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .load-bar select { border: 1.5px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 14px; }
+  .empty-guide { color: var(--dim); }
+  .selected-note { font-size: 12.5px; color: var(--ink-soft); font-weight: 700; }
+  .row-delete-btn {
+    border: 1.5px solid var(--alert); background: none; color: var(--alert); cursor: pointer;
+    font-size: 12.5px; font-weight: 700; padding: 4px 10px; border-radius: 8px;
+  }
+  .row-delete-btn:hover { background: var(--alert-bg); }
 </style>
 </head>
 <body>
@@ -112,13 +131,18 @@
 
 <div id="topbar">
   <a class="brand" href="index.html" title="처음 화면으로 이동">서귀포의료원 시설관리팀</a>
-  <div id="topbar-sub">🔒 관리자 전용 · 전체 데이터 열람</div>
+  <div id="topbar-right">
+    <div id="topbar-sub">🔒 관리자 전용 · 전체 데이터 열람</div>
+    <button type="button" id="logout-btn">로그아웃</button>
+  </div>
 </div>
 
 <div id="tabbar">
   <button class="tab-btn active" data-tab="tickets">관련업무</button>
   <button class="tab-btn" data-tab="schedules">일정관리</button>
   <button class="tab-btn" data-tab="memos">전화 및 메모</button>
+  <button class="tab-btn" data-tab="activity">변경사항 이력</button>
+  <button class="tab-btn" data-tab="holidays">공휴일 관리</button>
 </div>
 
 <div id="content">
@@ -127,7 +151,21 @@
   <div class="panel active" id="panel-tickets">
     <div class="panel-head">
       <h2>관련업무 전체 <span class="count-note" id="tickets-count"></span></h2>
-      <button class="btn-primary" id="tickets-export">⬇ 엑셀로 다운로드</button>
+      <div class="panel-head-actions" style="display:flex; gap:8px;">
+        <span class="selected-note" id="tickets-selected-note"></span>
+        <button class="btn-secondary btn-danger-outline" id="tickets-bulk-delete" style="color:#C23B3B; border-color:#C23B3B;">선택 삭제</button>
+        <button class="btn-secondary" id="tickets-export-selected">선택 엑셀 다운로드</button>
+        <button class="btn-primary" id="tickets-export">⬇ 엑셀로 다운로드(전체)</button>
+      </div>
+    </div>
+    <div class="load-bar">
+      <label>표시개수</label>
+      <select id="tickets-page-size">
+        <option value="20">20개</option><option value="40">40개</option><option value="60">60개</option>
+        <option value="80">80개</option><option value="100">100개</option>
+      </select>
+      <button class="btn-primary" id="tickets-load">조회</button>
+      <button class="btn-secondary" id="tickets-load-more" style="display:none;">더 불러오기</button>
     </div>
     <div class="filter-bar">
       <label>검색</label><input type="text" id="tickets-search" placeholder="제목/요청자/담당자" />
@@ -141,11 +179,11 @@
       </select>
       <label>요청일</label>
       <input type="date" id="tickets-date-from" /> ~ <input type="date" id="tickets-date-to" />
-      <button class="btn-secondary" id="tickets-filter-reset">초기화</button>
+      <button class="btn-secondary" id="tickets-filter-reset">필터 초기화</button>
     </div>
     <div class="table-scroll"><table id="tickets-table">
       <thead><tr></tr></thead>
-      <tbody></tbody>
+      <tbody><tr class="empty-row"><td class="empty-guide">표시개수를 선택하고 조회 버튼을 눌러 데이터를 불러오세요</td></tr></tbody>
     </table></div>
   </div>
 
@@ -153,7 +191,21 @@
   <div class="panel" id="panel-schedules">
     <div class="panel-head">
       <h2>일정관리 전체 <span class="count-note" id="schedules-count"></span></h2>
-      <button class="btn-primary" id="schedules-export">⬇ 엑셀로 다운로드</button>
+      <div class="panel-head-actions" style="display:flex; gap:8px;">
+        <span class="selected-note" id="schedules-selected-note"></span>
+        <button class="btn-secondary btn-danger-outline" id="schedules-bulk-delete" style="color:#C23B3B; border-color:#C23B3B;">선택 삭제</button>
+        <button class="btn-secondary" id="schedules-export-selected">선택 엑셀 다운로드</button>
+        <button class="btn-primary" id="schedules-export">⬇ 엑셀로 다운로드(전체)</button>
+      </div>
+    </div>
+    <div class="load-bar">
+      <label>표시개수</label>
+      <select id="schedules-page-size">
+        <option value="20">20개</option><option value="40">40개</option><option value="60">60개</option>
+        <option value="80">80개</option><option value="100">100개</option>
+      </select>
+      <button class="btn-primary" id="schedules-load">조회</button>
+      <button class="btn-secondary" id="schedules-load-more" style="display:none;">더 불러오기</button>
     </div>
     <div class="filter-bar">
       <label>검색</label><input type="text" id="schedules-search" placeholder="제목/업체/담당" />
@@ -166,11 +218,11 @@
       </select>
       <label>날짜</label>
       <input type="date" id="schedules-date-from" /> ~ <input type="date" id="schedules-date-to" />
-      <button class="btn-secondary" id="schedules-filter-reset">초기화</button>
+      <button class="btn-secondary" id="schedules-filter-reset">필터 초기화</button>
     </div>
     <div class="table-scroll"><table id="schedules-table">
       <thead><tr></tr></thead>
-      <tbody></tbody>
+      <tbody><tr class="empty-row"><td class="empty-guide">표시개수를 선택하고 조회 버튼을 눌러 데이터를 불러오세요</td></tr></tbody>
     </table></div>
   </div>
 
@@ -178,7 +230,21 @@
   <div class="panel" id="panel-memos">
     <div class="panel-head">
       <h2>전화 및 메모 전체 <span class="count-note" id="memos-count"></span></h2>
-      <button class="btn-primary" id="memos-export">⬇ 엑셀로 다운로드</button>
+      <div class="panel-head-actions" style="display:flex; gap:8px;">
+        <span class="selected-note" id="memos-selected-note"></span>
+        <button class="btn-secondary btn-danger-outline" id="memos-bulk-delete" style="color:#C23B3B; border-color:#C23B3B;">선택 삭제</button>
+        <button class="btn-secondary" id="memos-export-selected">선택 엑셀 다운로드</button>
+        <button class="btn-primary" id="memos-export">⬇ 엑셀로 다운로드(전체)</button>
+      </div>
+    </div>
+    <div class="load-bar">
+      <label>표시개수</label>
+      <select id="memos-page-size">
+        <option value="20">20개</option><option value="40">40개</option><option value="60">60개</option>
+        <option value="80">80개</option><option value="100">100개</option>
+      </select>
+      <button class="btn-primary" id="memos-load">조회</button>
+      <button class="btn-secondary" id="memos-load-more" style="display:none;">더 불러오기</button>
     </div>
     <div class="filter-bar">
       <label>검색</label><input type="text" id="memos-search" placeholder="용건/담당자/받은사람" />
@@ -190,11 +256,56 @@
       </select>
       <label>받은시간</label>
       <input type="date" id="memos-date-from" /> ~ <input type="date" id="memos-date-to" />
-      <button class="btn-secondary" id="memos-filter-reset">초기화</button>
+      <button class="btn-secondary" id="memos-filter-reset">필터 초기화</button>
     </div>
     <div class="table-scroll"><table id="memos-table">
       <thead><tr></tr></thead>
-      <tbody></tbody>
+      <tbody><tr class="empty-row"><td class="empty-guide">표시개수를 선택하고 조회 버튼을 눌러 데이터를 불러오세요</td></tr></tbody>
+    </table></div>
+  </div>
+
+  <!-- ══════════ 변경사항 이력 ══════════ -->
+  <div class="panel" id="panel-activity">
+    <div class="panel-head">
+      <h2>변경사항 이력 <span class="count-note" id="activity-count"></span></h2>
+      <div class="panel-head-actions" style="display:flex; gap:8px;">
+        <button class="btn-primary" id="activity-export">⬇ 엑셀로 다운로드</button>
+      </div>
+    </div>
+    <div class="small-note" style="font-size:12.5px; color:var(--ink-soft); margin-bottom:10px;">
+      각 탭에서 최근 등록/수정된 항목 기준으로 이력을 모아 보여줍니다 (DB 사용량 절감을 위해 표시개수 범위 내 이력만 표시됩니다).
+    </div>
+    <div class="load-bar">
+      <label>탭별 조회범위</label>
+      <select id="activity-page-size">
+        <option value="20">각 20개</option><option value="40">각 40개</option><option value="60">각 60개</option>
+        <option value="80">각 80개</option><option value="100">각 100개</option>
+      </select>
+      <button class="btn-primary" id="activity-load">조회</button>
+    </div>
+    <div class="table-scroll"><table id="activity-table">
+      <thead><tr><th>시각</th><th>구분</th><th>제목/용건</th><th>작성자</th><th>내용</th></tr></thead>
+      <tbody><tr class="empty-row"><td colspan="5" class="empty-guide">조회 버튼을 눌러 최근 변경 이력을 불러오세요</td></tr></tbody>
+    </table></div>
+  </div>
+
+  <!-- ══════════ 공휴일 관리 ══════════ -->
+  <div class="panel" id="panel-holidays">
+    <div class="panel-head">
+      <h2>공휴일 관리 <span class="count-note" id="holidays-count"></span></h2>
+    </div>
+    <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:14px;">
+      기본 공휴일(2025~2027)은 firebase-config.js에 이미 내장되어 있습니다. 임시공휴일처럼 갑자기 지정되어 기본 목록에 없는 날짜만 여기서 추가하면,
+      월간일정(board.html) 캘린더에 바로 빨간색 + 이름으로 반영됩니다.
+    </div>
+    <div class="filter-bar">
+      <label>날짜</label><input type="date" id="holiday-date-input" />
+      <label>이름</label><input type="text" id="holiday-name-input" placeholder="예: 임시공휴일" />
+      <button class="btn-primary" id="holiday-add-btn">추가 / 수정</button>
+    </div>
+    <div class="table-scroll"><table id="holidays-table">
+      <thead><tr><th>날짜</th><th>이름</th><th></th></tr></thead>
+      <tbody><tr class="empty-row"><td colspan="3" class="empty-guide">등록된 임시 공휴일이 없습니다</td></tr></tbody>
     </table></div>
   </div>
 
@@ -203,13 +314,13 @@
 <script type="module">
 import { ensureAccess } from "./auth-gate.js";
 import {
-  db, collection, onSnapshot, query, orderBy, TEAM_MEMBERS, ADMIN_PASSWORD
+  db, collection, doc, deleteDoc, setDoc, onSnapshot, query, orderBy, limit, startAfter, getDocs, TEAM_MEMBERS, ADMIN_PASSWORD
 } from "./firebase-config.js";
 
 await ensureAccess();
 
 /* ───────── 관리자 비밀번호 게이트 (팀 접근코드와 별개로 한 번 더 확인) ───────── */
-const ADMIN_SESSION_KEY = "smcfm_admin_ok";
+const ADMIN_SESSION_KEY = "smcfm_admin_ok_v2";
 function checkAdminPassword() {
   return new Promise((resolve) => {
     if (sessionStorage.getItem(ADMIN_SESSION_KEY) === "1") { resolve(); return; }
@@ -235,6 +346,13 @@ function checkAdminPassword() {
   });
 }
 await checkAdminPassword();
+
+/* ───────── 로그아웃 ───────── */
+document.getElementById("logout-btn").addEventListener("click", () => {
+  if (!confirm("로그아웃할까요? 다음에 접속하면 관리자 비밀번호를 다시 입력해야 합니다.")) return;
+  sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  location.reload();
+});
 
 /* ───────── 공통 helper ───────── */
 function pad(n) { return String(n).padStart(2, "0"); }
@@ -367,7 +485,10 @@ const CONFIGS = {
 
 const state = {};
 Object.keys(CONFIGS).forEach(k => {
-  state[k] = { rows: [], search: "", statusFilter: "all", dateFrom: "", dateTo: "", sortKey: null, sortDir: 1 };
+  state[k] = {
+    rows: [], search: "", statusFilter: "all", dateFrom: "", dateTo: "", sortKey: null, sortDir: 1,
+    selected: new Set(), pageSize: 20, lastDoc: null, loadedAll: false, everLoaded: false
+  };
 });
 
 function applyFilterSort(type) {
@@ -412,6 +533,12 @@ function renderTab(type) {
   const table = document.getElementById(type + "-table");
   const theadRow = table.querySelector("thead tr");
   theadRow.innerHTML = "";
+
+  const thCheck = document.createElement("th");
+  thCheck.className = "th-check";
+  thCheck.innerHTML = `<input type="checkbox" class="select-all-cb" title="전체 선택" />`;
+  theadRow.appendChild(thCheck);
+
   cfg.columns.forEach(col => {
     const th = document.createElement("th");
     let arrow = "";
@@ -430,15 +557,92 @@ function renderTab(type) {
   const tbody = table.querySelector("tbody");
   tbody.innerHTML = "";
   if (!rows.length) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="${cfg.columns.length}">표시할 데이터가 없습니다</td></tr>`;
+    const msg = st.everLoaded ? "표시할 데이터가 없습니다" : "표시개수를 선택하고 조회 버튼을 눌러 데이터를 불러오세요";
+    tbody.innerHTML = `<tr class="empty-row"><td class="empty-guide" colspan="${cfg.columns.length + 1}">${msg}</td></tr>`;
   } else {
     rows.forEach(r => {
       const tr = document.createElement("tr");
-      tr.innerHTML = cfg.columns.map(col => `<td>${col.get(r)}</td>`).join("");
+      const checked = st.selected.has(r.id) ? "checked" : "";
+      const checkTd = `<td class="td-check"><input type="checkbox" class="row-cb" data-id="${r.id}" ${checked}/></td>`;
+      tr.innerHTML = checkTd + cfg.columns.map(col => `<td>${col.get(r)}</td>`).join("");
       tbody.appendChild(tr);
     });
   }
-  document.getElementById(type + "-count").textContent = `총 ${rows.length}건 (전체 ${st.rows.length}건 중)`;
+
+  const selectAllCb = theadRow.querySelector(".select-all-cb");
+  selectAllCb.checked = rows.length > 0 && rows.every(r => st.selected.has(r.id));
+  selectAllCb.addEventListener("change", () => {
+    if (selectAllCb.checked) rows.forEach(r => st.selected.add(r.id));
+    else rows.forEach(r => st.selected.delete(r.id));
+    renderTab(type);
+  });
+  tbody.querySelectorAll(".row-cb").forEach(cb => {
+    cb.addEventListener("change", () => {
+      if (cb.checked) st.selected.add(cb.dataset.id);
+      else st.selected.delete(cb.dataset.id);
+      renderTab(type);
+    });
+  });
+
+  document.getElementById(type + "-count").textContent = `총 ${rows.length}건 (불러온 ${st.rows.length}건 중)`;
+  const selNote = document.getElementById(type + "-selected-note");
+  if (selNote) selNote.textContent = st.selected.size ? `선택 ${st.selected.size}건` : "";
+}
+
+function downloadExcel(rows, cfg, suffix) {
+  if (!rows.length) { alert("다운로드할 데이터가 없습니다"); return; }
+  const data = rows.map(cfg.excelRow);
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "데이터");
+  const today = isoDate(new Date());
+  XLSX.writeFile(wb, `${cfg.collectionName}${suffix ? "_" + suffix : ""}_${today}.xlsx`);
+}
+
+/* DB 읽기 비용 절감을 위해 실시간 onSnapshot 대신, 표시개수를 선택하고 "조회"를 눌러야 그만큼만 불러옴.
+   "더 불러오기"를 누르면 이어서 다음 페이지를 추가로 가져옴 (Firestore 커서 기반 페이지네이션). */
+async function loadPage(type, reset) {
+  const cfg = CONFIGS[type];
+  const st = state[type];
+  if (reset) { st.rows = []; st.lastDoc = null; st.loadedAll = false; st.selected.clear(); }
+  if (st.loadedAll) return;
+
+  const loadBtn = document.getElementById(type + "-load");
+  const moreBtn = document.getElementById(type + "-load-more");
+  loadBtn.disabled = true; moreBtn.disabled = true;
+  try {
+    let q = st.lastDoc
+      ? query(collection(db, cfg.collectionName), orderBy(cfg.orderField, "desc"), startAfter(st.lastDoc), limit(st.pageSize))
+      : query(collection(db, cfg.collectionName), orderBy(cfg.orderField, "desc"), limit(st.pageSize));
+    const snap = await getDocs(q);
+    if (snap.docs.length < st.pageSize) st.loadedAll = true;
+    if (snap.docs.length) {
+      st.lastDoc = snap.docs[snap.docs.length - 1];
+      const newRows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      st.rows = st.rows.concat(newRows);
+    }
+    st.everLoaded = true;
+    renderTab(type);
+    moreBtn.style.display = st.loadedAll ? "none" : "inline-block";
+  } catch (e) {
+    console.error(`${cfg.collectionName} 조회 오류`, e);
+    alert("데이터를 불러오는 중 오류가 발생했습니다");
+  } finally {
+    loadBtn.disabled = false; moreBtn.disabled = false;
+  }
+}
+
+async function bulkDeleteSelected(type) {
+  const st = state[type];
+  if (!st.selected.size) { alert("선택된 항목이 없습니다"); return; }
+  if (!confirm(`선택한 ${st.selected.size}건을 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return;
+  const ids = [...st.selected];
+  for (const id of ids) {
+    try { await deleteDoc(doc(db, CONFIGS[type].collectionName, id)); } catch (e) { console.error("삭제 오류", e); }
+  }
+  st.rows = st.rows.filter(r => !st.selected.has(r.id));
+  st.selected.clear();
+  renderTab(type);
 }
 
 function wireFilters(type) {
@@ -468,28 +672,134 @@ function wireFilters(type) {
     renderTab(type);
   });
   document.getElementById(type + "-export").addEventListener("click", () => {
-    const rows = applyFilterSort(type);
-    if (!rows.length) { alert("다운로드할 데이터가 없습니다"); return; }
-    const cfg = CONFIGS[type];
-    const data = rows.map(cfg.excelRow);
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "데이터");
-    const today = isoDate(new Date());
-    XLSX.writeFile(wb, `${cfg.collectionName}_${today}.xlsx`);
+    downloadExcel(applyFilterSort(type), CONFIGS[type], "");
   });
+  document.getElementById(type + "-export-selected").addEventListener("click", () => {
+    const st = state[type];
+    if (!st.selected.size) { alert("선택된 항목이 없습니다"); return; }
+    downloadExcel(st.rows.filter(r => st.selected.has(r.id)), CONFIGS[type], "선택");
+  });
+  document.getElementById(type + "-bulk-delete").addEventListener("click", () => bulkDeleteSelected(type));
+
+  const pageSizeSel = document.getElementById(type + "-page-size");
+  pageSizeSel.addEventListener("change", (e) => { state[type].pageSize = +e.target.value; });
+  document.getElementById(type + "-load").addEventListener("click", () => loadPage(type, true));
+  document.getElementById(type + "-load-more").addEventListener("click", () => loadPage(type, false));
 }
 Object.keys(CONFIGS).forEach(wireFilters);
 
-/* ───────── Firestore 구독 (전체 데이터, 실시간 갱신) ───────── */
-Object.keys(CONFIGS).forEach(type => {
-  const cfg = CONFIGS[type];
-  onSnapshot(query(collection(db, cfg.collectionName), orderBy(cfg.orderField, "desc")), (snap) => {
-    state[type].rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderTab(type);
-  }, (err) => {
-    console.error(`${cfg.collectionName} 구독 오류`, err);
-  });
+/* ════════════════════════════════════════════════
+   변경사항 이력 (활동 피드): 각 컬렉션 최근 N건을 불러와 history를 펼쳐서 시간순으로 합산 표시
+   ════════════════════════════════════════════════ */
+const activityState = { pageSize: 20, rows: [] };
+function memoEvents(r) {
+  const events = [];
+  if (r.receivedAt) events.push({ coll: "전화메모", title: r.subject || "-", text: "메모 등록", author: r.receivedBy || "-", timestamp: r.receivedAt });
+  if (r.status === "확인됨" && r.confirmedAt) {
+    events.push({ coll: "전화메모", title: r.subject || "-", text: `확인 처리`, author: r.confirmedBy || "-", timestamp: r.confirmedAt });
+  }
+  return events;
+}
+async function loadActivity() {
+  const btn = document.getElementById("activity-load");
+  btn.disabled = true;
+  try {
+    const n = activityState.pageSize;
+    const [ticketSnap, scheduleSnap, memoSnap] = await Promise.all([
+      getDocs(query(collection(db, "requestTickets"), orderBy("requestedAt", "desc"), limit(n))),
+      getDocs(query(collection(db, "schedules"), orderBy("registeredAt", "desc"), limit(n))),
+      getDocs(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc"), limit(n)))
+    ]);
+    const items = [];
+    ticketSnap.docs.forEach(d => {
+      const r = d.data();
+      (r.history || []).forEach(h => items.push({ coll: "관련업무", title: r.title || "-", text: h.text, author: h.author || "-", timestamp: h.timestamp }));
+    });
+    scheduleSnap.docs.forEach(d => {
+      const r = d.data();
+      (r.history || []).forEach(h => items.push({ coll: "일정관리", title: r.title || "-", text: h.text, author: h.author || "-", timestamp: h.timestamp }));
+    });
+    memoSnap.docs.forEach(d => memoEvents(d.data()).forEach(ev => items.push(ev)));
+
+    items.sort((a, b) => tsMillis(b.timestamp) - tsMillis(a.timestamp));
+    activityState.rows = items;
+    renderActivity();
+  } catch (e) {
+    console.error("변경사항 이력 조회 오류", e);
+    alert("변경사항 이력을 불러오는 중 오류가 발생했습니다");
+  } finally {
+    btn.disabled = false;
+  }
+}
+function renderActivity() {
+  const table = document.getElementById("activity-table");
+  const tbody = table.querySelector("tbody");
+  tbody.innerHTML = "";
+  const rows = activityState.rows;
+  if (!rows.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td class="empty-guide" colspan="5">표시할 이력이 없습니다</td></tr>`;
+  } else {
+    rows.forEach(ev => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${fmtTs(ev.timestamp)}</td><td>${escapeHtml(ev.coll)}</td><td>${escapeHtml(ev.title)}</td><td>${escapeHtml(ev.author)}</td><td>${escapeHtml(ev.text)}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  document.getElementById("activity-count").textContent = `총 ${rows.length}건`;
+}
+document.getElementById("activity-page-size").addEventListener("change", (e) => { activityState.pageSize = +e.target.value; });
+document.getElementById("activity-load").addEventListener("click", loadActivity);
+document.getElementById("activity-export").addEventListener("click", () => {
+  if (!activityState.rows.length) { alert("다운로드할 데이터가 없습니다"); return; }
+  const data = activityState.rows.map(ev => ({ "시각": fmtTs(ev.timestamp), "구분": ev.coll, "제목/용건": ev.title, "작성자": ev.author, "내용": ev.text }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "변경이력");
+  XLSX.writeFile(wb, `변경사항이력_${isoDate(new Date())}.xlsx`);
+});
+
+/* ════════════════════════════════════════════════
+   공휴일 관리: 기본 KR_HOLIDAYS(firebase-config.js 내장)에 없는 임시공휴일 등을
+   여기서 등록하면 customHolidays 컬렉션에 저장되고, 월간일정 화면에 바로 반영됨.
+   등록 건수가 적으므로 실시간 구독(onSnapshot) 사용.
+   ════════════════════════════════════════════════ */
+let holidaysRows = [];
+function renderHolidays() {
+  const tbody = document.querySelector("#holidays-table tbody");
+  tbody.innerHTML = "";
+  if (!holidaysRows.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="3" class="empty-guide">등록된 임시 공휴일이 없습니다</td></tr>`;
+  } else {
+    holidaysRows.forEach(h => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${escapeHtml(h.id)}</td><td>${escapeHtml(h.name || "-")}</td><td><button class="row-delete-btn" type="button">✕ 삭제</button></td>`;
+      tr.querySelector("button").addEventListener("click", async () => {
+        if (!confirm(`${h.id} (${h.name || "-"}) 항목을 삭제할까요?`)) return;
+        try { await deleteDoc(doc(db, "customHolidays", h.id)); } catch (e) { console.error("공휴일 삭제 오류", e); }
+      });
+      tbody.appendChild(tr);
+    });
+  }
+  document.getElementById("holidays-count").textContent = `총 ${holidaysRows.length}건`;
+}
+onSnapshot(collection(db, "customHolidays"), (snap) => {
+  holidaysRows = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.id < b.id ? -1 : 1);
+  renderHolidays();
+}, (err) => console.error("customHolidays 구독 오류", err));
+
+document.getElementById("holiday-add-btn").addEventListener("click", async () => {
+  const dateVal = document.getElementById("holiday-date-input").value;
+  const nameVal = document.getElementById("holiday-name-input").value.trim();
+  if (!dateVal) { alert("날짜를 선택하세요"); return; }
+  if (!nameVal) { alert("공휴일 이름을 입력하세요"); return; }
+  try {
+    await setDoc(doc(db, "customHolidays", dateVal), { name: nameVal });
+    document.getElementById("holiday-date-input").value = "";
+    document.getElementById("holiday-name-input").value = "";
+  } catch (e) {
+    console.error("공휴일 등록 오류", e);
+    alert("등록 중 오류가 발생했습니다");
+  }
 });
 </script>
 </body>

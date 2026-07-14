@@ -9,12 +9,15 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  setDoc,
   onSnapshot,
   query,
   orderBy,
   serverTimestamp,
   Timestamp,
-  getDocs
+  getDocs,
+  limit,
+  startAfter
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import {
   getAuth,
@@ -77,6 +80,7 @@ export const KR_HOLIDAYS = {
   "2026-05-24": "부처님오신날",
   "2026-05-25": "대체공휴일(부처님오신날)",
   "2026-06-06": "현충일",
+  "2026-07-17": "제헌절",
   "2026-08-15": "광복절",
   "2026-08-17": "대체공휴일(광복절)",
   "2026-09-24": "추석연휴",
@@ -96,6 +100,8 @@ export const KR_HOLIDAYS = {
   "2027-05-05": "어린이날",
   "2027-05-13": "부처님오신날",
   "2027-06-06": "현충일",
+  "2027-07-17": "제헌절",
+  "2027-07-19": "대체공휴일(제헌절)",
   "2027-08-15": "광복절",
   "2027-08-16": "대체공휴일(광복절)",
   "2027-09-14": "추석연휴",
@@ -111,6 +117,6 @@ export const KR_HOLIDAYS = {
 
 export {
   db, auth,
-  collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, Timestamp,
-  signInAnonymously, onAuthStateChanged, getDocs
+  collection, doc, addDoc, updateDoc, deleteDoc, setDoc, onSnapshot, query, orderBy, serverTimestamp, Timestamp,
+  signInAnonymously, onAuthStateChanged, getDocs, limit, startAfter
 };

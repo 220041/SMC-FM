@@ -95,6 +95,15 @@
   th.th-check, td.td-check { width: 35px; text-align: center; }
   .row-check { width: 17.5px; height: 17.5px; cursor: pointer; }
 
+  /* ── 일정관리 표: 항목이 많아도 한 줄로 맞추기 (넘치는 글자는 말줄임표 + 마우스오버로 전체 확인) ── */
+  #schedule-table { table-layout: fixed; }
+  #schedule-table td, #schedule-table th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #schedule-table th:nth-child(3), #schedule-table td:nth-child(3) { width: 82px; }
+  #schedule-table th:nth-child(4), #schedule-table td:nth-child(4) { width: 150px; }
+  #schedule-table th:nth-child(5), #schedule-table td:nth-child(5) { width: 130px; }
+  #schedule-table th:nth-child(6), #schedule-table td:nth-child(6) { width: 150px; }
+  #schedule-table th:nth-child(7), #schedule-table td:nth-child(7) { width: 72px; }
+
   /* ── 미확인 항목 깜빡임 표시 ────────────── */
   .blink-dot {
     display: inline-block; width: 9px; height: 9px; border-radius: 50%;
@@ -700,6 +709,29 @@ function formatDateRanges(dates) {
   }
   ranges.push(start === prev ? start : `${start} ~ ${prev}`);
   return ranges.join(", ");
+}
+/* "2026-07-15" → "07/15" (표 안에서 한 줄로 맞추기 위한 축약 표시. 전체 날짜는 title 툴팁으로 확인) */
+function mdShort(iso) { return iso.slice(5,7) + "/" + iso.slice(8,10); }
+function formatDateRangesShort(dates) {
+  if (!dates || !dates.length) return "-";
+  const sorted = [...new Set(dates)].sort();
+  const ranges = [];
+  let start = sorted[0], prev = sorted[0];
+  for (let i = 1; i < sorted.length; i++) {
+    const d = sorted[i];
+    const prevDate = new Date(prev + "T00:00:00");
+    prevDate.setDate(prevDate.getDate() + 1);
+    if (d === isoDate(prevDate)) { prev = d; }
+    else { ranges.push(start === prev ? mdShort(start) : `${mdShort(start)}~${mdShort(prev)}`); start = d; prev = d; }
+  }
+  ranges.push(start === prev ? mdShort(start) : `${mdShort(start)}~${mdShort(prev)}`);
+  return ranges.join(", ");
+}
+/* 담당자가 여러 명일 때 표에서 한 줄로 맞추기 위해 축약 ("홍길동, 김철수 외 2명"). 전체 명단은 title 툴팁으로 확인 */
+function responsibleShort(list) {
+  if (!list.length) return "미지정";
+  if (list.length <= 2) return list.join(", ");
+  return `${list[0]}, ${list[1]} 외 ${list.length - 2}명`;
 }
 
 /* ════════════════════════════════════════════════
@@ -1329,14 +1361,15 @@ function renderSchedules() {
       tbody.appendChild(divider);
     }
     const tr = document.createElement("tr");
+    const respArr = responsibleArray(s);
     tr.innerHTML = `
       <td class="td-check"><input type="checkbox" class="row-check" ${selectedScheduleIds.has(s.id) ? "checked" : ""} /></td>
-      <td>${escapeHtml(s.title)}${deleteRequestBadge(s)}</td>
-      <td><span class="badge type-${s.type}">${typeLabel(s.type)}</span></td>
-      <td>${formatDateRanges(s.dates)}${s.time ? ` ${s.time}` : ""}</td>
-      <td>${escapeHtml(s.vendor || "-")}</td>
-      <td>${responsibleArray(s).join(", ") || "미지정"}</td>
-      <td>${s.registeredBy || "-"}</td>
+      <td title="${escapeHtml(s.title)}">${escapeHtml(s.title)}${deleteRequestBadge(s)}</td>
+      <td title="${escapeHtml(typeLabel(s.type))}"><span class="badge type-${s.type}">${escapeHtml(s.type)}</span></td>
+      <td title="${escapeHtml(formatDateRanges(s.dates))}${s.time ? " " + escapeHtml(s.time) : ""}">${escapeHtml(formatDateRangesShort(s.dates))}${s.time ? ` ${escapeHtml(s.time)}` : ""}</td>
+      <td title="${escapeHtml(s.vendor || "")}">${escapeHtml(s.vendor || "-")}</td>
+      <td title="${escapeHtml(respArr.join(", ") || "미지정")}">${escapeHtml(responsibleShort(respArr))}</td>
+      <td title="${escapeHtml(s.registeredBy || "")}">${s.registeredBy || "-"}</td>
       <td class="td-del"><button type="button" class="row-delete-btn" title="삭제">🗑</button></td>
     `;
     tr.addEventListener("click", () => openScheduleEdit(s.id));
