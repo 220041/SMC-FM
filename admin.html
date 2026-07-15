@@ -192,7 +192,7 @@
       <h2>일정관리 전체 <span class="count-note" id="schedules-count"></span></h2>
       <div class="panel-head-actions" style="display:flex; gap:8px;">
         <span class="selected-note" id="schedules-selected-note"></span>
-        <button class="btn-secondary btn-danger-outline" id="schedules-bulk-delete" style="color:#C23B3B; border-color:#C23B3B;">선택 영구삭제</button>
+        <button class="btn-secondary" id="schedules-bulk-delete">선택 자료보관</button>
         <button class="btn-secondary" id="schedules-export-selected">선택 엑셀 다운로드</button>
         <button class="btn-primary" id="schedules-export">⬇ 엑셀로 다운로드(전체)</button>
       </div>
@@ -232,7 +232,7 @@
       <h2>메모 전체 <span class="count-note" id="memos-count"></span></h2>
       <div class="panel-head-actions" style="display:flex; gap:8px;">
         <span class="selected-note" id="memos-selected-note"></span>
-        <button class="btn-secondary btn-danger-outline" id="memos-bulk-delete" style="color:#C23B3B; border-color:#C23B3B;">선택 영구삭제</button>
+        <button class="btn-secondary" id="memos-bulk-delete">선택 자료보관</button>
         <button class="btn-secondary" id="memos-export-selected">선택 엑셀 다운로드</button>
         <button class="btn-primary" id="memos-export">⬇ 엑셀로 다운로드(전체)</button>
       </div>
@@ -311,8 +311,18 @@
 
   <div class="panel" id="panel-archive">
     <div class="panel-head"><h2>자료보관 <span class="count-note" id="archive-count"></span></h2><button class="btn-primary" id="archive-load">조회</button></div>
-    <div class="small-note" style="margin-bottom:12px;">사용자가 삭제한 관련업무입니다. 복원하거나 영구 삭제할 수 있습니다.</div>
-    <div class="table-scroll"><table><thead><tr><th>제목</th><th>요청자</th><th>수신자</th><th>보관자</th><th>보관일</th><th></th></tr></thead><tbody id="archive-tbody"></tbody></table></div>
+    <div class="small-note" style="margin-bottom:12px;">사용자가 삭제한 관련업무·일정·메모입니다. 관리자만 복원하거나 영구 삭제할 수 있습니다.</div>
+    <div class="table-scroll"><table><thead><tr><th>구분</th><th>제목/용건</th><th>작성자</th><th>보관자</th><th>보관일</th><th></th></tr></thead><tbody id="archive-tbody"></tbody></table></div>
+    <div class="panel-head" style="margin-top:28px;"><h2>데이터 관리</h2></div>
+    <div class="small-note" style="margin-bottom:12px;">백업 파일에는 업무 데이터가 포함됩니다. 안전한 내부 저장소에 보관하세요.</div>
+    <div class="filter-bar">
+      <button class="btn-primary" id="backup-download">전체 JSON 백업</button>
+      <input type="file" id="restore-file" accept="application/json,.json" style="max-width:280px;" />
+      <button class="btn-secondary" id="restore-run">백업 복구</button>
+      <button class="btn-secondary" id="notifications-cleanup">90일 지난 읽은 알림 정리</button>
+      <button class="btn-secondary" id="schema-migrate">기존 데이터 구조 보완</button>
+    </div>
+    <div class="small-note" id="data-management-status"></div>
   </div>
 
   <div class="panel" id="panel-users">
@@ -339,12 +349,20 @@
 
 <script type="module">
 import { ensureUserLogin, logoutAccount, sendResetForLoginId } from "./account-auth.js";
+import { installConnectionStatus, showToast, reportDataError, withBusyButton } from "./app-runtime.js";
+import { SCHEMA_VERSION, monthKeysForDates } from "./data-model.js";
 import {
   db, auth, collection, doc, addDoc, deleteDoc, updateDoc, setDoc, onSnapshot, query, orderBy, limit, startAfter, getDocs, where, writeBatch,
-  TEAM_MEMBERS, USER_ACCOUNTS, serverTimestamp
+  TEAM_MEMBERS, USER_ACCOUNTS, serverTimestamp, Timestamp
 } from "./firebase-config.js";
 
 const adminProfile = await ensureUserLogin({ adminOnly: true });
+installConnectionStatus();
+const adminUidByName = new Map();
+try {
+  const profiles = await getDocs(collection(db, "users"));
+  profiles.docs.forEach(item => { if (item.data().name) adminUidByName.set(item.data().name, item.id); });
+} catch (error) { console.warn("사용자 UID 목록을 불러오지 못했습니다.", error); }
 
 /* ───────── 로그아웃 ───────── */
 document.getElementById("logout-btn").addEventListener("click", logoutAccount);
@@ -484,16 +502,20 @@ document.getElementById("admin-edit-save").onclick = async () => {
     if (type === "tickets") {
       const requestedBy = document.getElementById("ae-requested-by").value;
       const recipients = [...new Set(document.getElementById("ae-participants").value.split(",").map(name => name.trim()).filter(name => TEAM_MEMBERS.includes(name) && name !== requestedBy))];
-      payload = { title:document.getElementById("ae-title").value.trim(), requestedBy, assignee:recipients[0] || null, participants:[requestedBy, ...recipients], status:document.getElementById("ae-status").value, dueDate:document.getElementById("ae-due").value || null, updatedAt:serverTimestamp() };
+      payload = { title:document.getElementById("ae-title").value.trim(), requestedBy, requestedByUid:adminUidByName.get(requestedBy) || null, assignee:recipients[0] || null, assigneeUid:adminUidByName.get(recipients[0]) || null, participants:[requestedBy, ...recipients], participantUids:[requestedBy, ...recipients].map(name => adminUidByName.get(name)).filter(Boolean), status:document.getElementById("ae-status").value, dueDate:document.getElementById("ae-due").value || null, updatedAt:serverTimestamp() };
       if (!payload.title || !recipients.length) { alert("제목과 구성원을 한 명 이상 입력하세요."); return; }
       ticketNote = document.getElementById("ae-note").value.trim();
       const targets = new Set([...ticketMembers(record), ...ticketMembers(payload)]);
       targets.delete("관리자"); targets.delete(null);
       ticketNotifyTargets = [...targets];
     } else if (type === "schedules") {
-      payload = { title: document.getElementById("ae-title").value.trim(), type: document.getElementById("ae-type").value, dates: document.getElementById("ae-dates").value.split(",").map(s => s.trim()).filter(Boolean), time: document.getElementById("ae-time").value.trim(), vendor: document.getElementById("ae-vendor").value.trim(), responsible: document.getElementById("ae-responsible").value.split(",").map(s => s.trim()).filter(Boolean), updatedAt: serverTimestamp() };
+      const dates = document.getElementById("ae-dates").value.split(",").map(s => s.trim()).filter(Boolean);
+      const responsible = document.getElementById("ae-responsible").value.split(",").map(s => s.trim()).filter(Boolean);
+      payload = { title:document.getElementById("ae-title").value.trim(), type:document.getElementById("ae-type").value, dates, months:monthKeysForDates(dates), time:document.getElementById("ae-time").value.trim(), vendor:document.getElementById("ae-vendor").value.trim(), responsible, responsibleUids:responsible.map(name => adminUidByName.get(name)).filter(Boolean), schemaVersion:SCHEMA_VERSION, updatedAt:serverTimestamp() };
     } else {
-      payload = { subject: document.getElementById("ae-subject").value.trim(), receivedBy: document.getElementById("ae-received-by").value, assignee: document.getElementById("ae-assignee").value || null, urgency: document.getElementById("ae-urgency").value, status: document.getElementById("ae-status").value, updatedAt: serverTimestamp() };
+      const receivedBy = document.getElementById("ae-received-by").value;
+      const assignee = document.getElementById("ae-assignee").value || null;
+      payload = { subject:document.getElementById("ae-subject").value.trim(), receivedBy, createdByName:receivedBy, createdByUid:adminUidByName.get(receivedBy) || record.createdByUid || null, assignee, assigneeUid:adminUidByName.get(assignee) || null, urgency:document.getElementById("ae-urgency").value, status:document.getElementById("ae-status").value, schemaVersion:SCHEMA_VERSION, updatedAt:serverTimestamp() };
       if (payload.status === "확인됨" && record.status !== "확인됨") { payload.confirmedBy = "관리자"; payload.confirmedAt = serverTimestamp(); }
     }
     const changedKeys = Object.keys(payload).filter(key => key !== "updatedAt");
@@ -597,7 +619,7 @@ function applyFilterSort(type) {
   const cfg = CONFIGS[type];
   const st = state[type];
   let rows = st.rows.slice();
-  if (type === "tickets") rows = rows.filter(r => !r.archived);
+  rows = rows.filter(r => !r.archived);
 
   if (st.search.trim()) {
     const q = st.search.trim().toLowerCase();
@@ -749,20 +771,15 @@ async function bulkDeleteSelected(type) {
   const st = state[type];
   if (!st.selected.size) { alert("선택된 항목이 없습니다"); return; }
   const ids = [...st.selected];
-  if (type === "tickets") {
-    if (!confirm(`선택한 관련업무 ${ids.length}건을 자료보관으로 이동할까요? 관리자 자료보관에서 복원할 수 있습니다.`)) return;
-    for (const id of ids) {
-      try {
-        await updateDoc(doc(db, "requestTickets", id), { archived:true, archivedAt:serverTimestamp(), archivedBy:"관리자", updatedAt:serverTimestamp() });
-        await addDoc(collection(db, "auditLogs"), { targetCollection:"requestTickets", targetId:id, action:"ticket_archived", actorName:"관리자", actorUid:auth.currentUser?.uid || null, createdAt:serverTimestamp() });
-      } catch (e) { console.error("자료보관 이동 오류", e); }
-    }
-  } else {
-    const label = type === "schedules" ? "일정" : "메모";
-    if (!confirm(`선택한 ${label} ${ids.length}건을 영구 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return;
-    for (const id of ids) {
-      try { await deleteDoc(doc(db, CONFIGS[type].collectionName, id)); } catch (e) { console.error("영구삭제 오류", e); }
-    }
+  const label = type === "tickets" ? "관련업무" : type === "schedules" ? "일정" : "메모";
+  if (!confirm(`선택한 ${label} ${ids.length}건을 자료보관으로 이동할까요? 자료보관에서 복원할 수 있습니다.`)) return;
+  for (const id of ids) {
+    try {
+      const batch = writeBatch(db);
+      batch.update(doc(db, CONFIGS[type].collectionName, id), { archived:true, archivedAt:serverTimestamp(), archivedBy:"관리자", archivedByUid:adminProfile.uid, updatedAt:serverTimestamp() });
+      batch.set(doc(collection(db, "auditLogs")), { targetCollection:CONFIGS[type].collectionName, targetId:id, action:`${type}_archived`, actorName:"관리자", actorUid:adminProfile.uid, createdAt:serverTimestamp() });
+      await batch.commit();
+    } catch (e) { console.error("자료보관 이동 오류", e); }
   }
   st.rows = st.rows.filter(r => !st.selected.has(r.id));
   st.selected.clear();
@@ -930,19 +947,26 @@ document.getElementById("holiday-add-btn").addEventListener("click", async () =>
 async function loadArchive() {
   const tbody = document.getElementById("archive-tbody");
   tbody.innerHTML = `<tr><td colspan="6">불러오는 중...</td></tr>`;
-  const snap = await getDocs(query(collection(db, "requestTickets"), where("archived", "==", true), limit(100)));
-  const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const configs = [
+    { type:"관련업무", key:"ticket", collectionName:"requestTickets", author:r => r.requestedBy },
+    { type:"일정", key:"schedule", collectionName:"schedules", author:r => r.registeredBy },
+    { type:"메모", key:"memo", collectionName:"phoneMemos", author:r => r.createdByName || r.receivedBy }
+  ];
+  const snaps = await Promise.all(configs.map(cfg => getDocs(query(collection(db, cfg.collectionName), where("archived", "==", true), limit(100)))));
+  const rows = snaps.flatMap((snap, index) => snap.docs.map(d => ({ id:d.id, ...d.data(), _cfg:configs[index] })))
+    .sort((a, b) => tsMillis(b.archivedAt) - tsMillis(a.archivedAt));
   tbody.innerHTML = "";
   rows.forEach(row => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${escapeHtml(row.title || "-")}</td><td>${escapeHtml(row.requestedBy || "-")}</td><td>${escapeHtml(ticketRecipients(row).join(", ") || "-")}</td><td>${escapeHtml(row.archivedBy || "-")}</td><td>${fmtTs(row.archivedAt)}</td><td><button class="restore-btn btn-secondary">복원</button> <button class="purge-btn row-delete-btn">영구삭제</button></td>`;
-    tr.querySelector(".restore-btn").onclick = async () => { await updateDoc(doc(db, "requestTickets", row.id), { archived: false, restoredAt: serverTimestamp(), restoredBy: "관리자" }); await loadArchive(); };
+    const cfg = row._cfg;
+    tr.innerHTML = `<td>${cfg.type}</td><td>${escapeHtml(row.title || row.subject || "-")}</td><td>${escapeHtml(cfg.author(row) || "-")}</td><td>${escapeHtml(row.archivedBy || "-")}</td><td>${fmtTs(row.archivedAt)}</td><td><button class="restore-btn btn-secondary">복원</button> <button class="purge-btn row-delete-btn">영구삭제</button></td>`;
+    tr.querySelector(".restore-btn").onclick = async () => { await updateDoc(doc(db, cfg.collectionName, row.id), { archived:false, restoredAt:serverTimestamp(), restoredBy:"관리자", restoredByUid:adminProfile.uid, updatedAt:serverTimestamp() }); await loadArchive(); };
     tr.querySelector(".purge-btn").onclick = async () => {
       if (!confirm("세부사항을 포함해 영구 삭제합니다. 복구할 수 없습니다. 계속할까요?")) return;
-      const details = await getDocs(collection(db, "requestTickets", row.id, "details"));
+      const details = cfg.key === "memo" ? null : await getDocs(collection(db, cfg.collectionName, row.id, "details"));
       const batch = writeBatch(db);
-      details.docs.slice(0, 450).forEach(d => batch.delete(d.ref));
-      batch.delete(doc(db, "requestTickets", row.id));
+      if (details) details.docs.slice(0, 450).forEach(d => batch.delete(d.ref));
+      batch.delete(doc(db, cfg.collectionName, row.id));
       await batch.commit();
       await loadArchive();
     };
@@ -952,6 +976,141 @@ async function loadArchive() {
   document.getElementById("archive-count").textContent = `총 ${rows.length}건`;
 }
 document.getElementById("archive-load").addEventListener("click", loadArchive);
+
+function encodeBackupValue(value) {
+  if (value && typeof value.toDate === "function") return { __timestamp: value.toDate().toISOString() };
+  if (Array.isArray(value)) return value.map(encodeBackupValue);
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, encodeBackupValue(v)]));
+  return value;
+}
+function decodeBackupValue(value) {
+  if (value && typeof value === "object" && typeof value.__timestamp === "string") return Timestamp.fromDate(new Date(value.__timestamp));
+  if (Array.isArray(value)) return value.map(decodeBackupValue);
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, decodeBackupValue(v)]));
+  return value;
+}
+async function collectBackupDocs() {
+  const docs = [];
+  const userUids = [];
+  const topCollections = ["users", "requestTickets", "schedules", "phoneMemos", "customHolidays", "auditLogs", "system"];
+  for (const name of topCollections) {
+    const snap = await getDocs(collection(db, name));
+    snap.docs.forEach(item => docs.push({ path:item.ref.path, data:encodeBackupValue(item.data()) }));
+    if (name === "users") snap.docs.forEach(item => userUids.push(item.id));
+    if (["requestTickets", "schedules"].includes(name)) {
+      for (const item of snap.docs) {
+        const details = await getDocs(collection(db, name, item.id, "details"));
+        details.docs.forEach(detail => docs.push({ path:detail.ref.path, data:encodeBackupValue(detail.data()) }));
+      }
+    }
+  }
+  const notificationOwners = [...new Set([...TEAM_MEMBERS, ...Object.keys(USER_ACCOUNTS), ...userUids])];
+  for (const owner of notificationOwners) {
+    const snap = await getDocs(collection(db, "userNotifications", owner, "items"));
+    snap.docs.forEach(item => docs.push({ path:item.ref.path, data:encodeBackupValue(item.data()) }));
+  }
+  return docs;
+}
+document.getElementById("backup-download").addEventListener("click", async e => withBusyButton(e.currentTarget, "백업 중...", async () => {
+  const status = document.getElementById("data-management-status");
+  try {
+    const docs = await collectBackupDocs();
+    const payload = { format:"smc-fm-backup", version:1, schemaVersion:SCHEMA_VERSION, projectId:"smc-fm", exportedAt:new Date().toISOString(), documentCount:docs.length, docs };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url; link.download = `smc-fm-backup-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+    status.textContent = `${docs.length}개 문서를 백업했습니다.`;
+  } catch (error) { reportDataError("백업", error); }
+}));
+
+async function restoreBackupDocuments(entries) {
+  const userEntries = entries.filter(entry => entry.path.startsWith("users/"));
+  const ordered = entries.filter(entry => !entry.path.startsWith("users/"));
+  if (userEntries.length) {
+    const userBatch = writeBatch(db);
+    userEntries.forEach(entry => userBatch.set(doc(db, ...entry.path.split("/")), decodeBackupValue(entry.data), { merge:true }));
+    await userBatch.commit();
+  }
+  for (let offset = 0; offset < ordered.length; offset += 400) {
+    const batch = writeBatch(db);
+    ordered.slice(offset, offset + 400).forEach(entry => {
+      if (!entry.path || !entry.data) throw new Error("잘못된 백업 문서");
+      batch.set(doc(db, ...entry.path.split("/")), decodeBackupValue(entry.data), { merge:true });
+    });
+    await batch.commit();
+  }
+}
+document.getElementById("restore-run").addEventListener("click", async e => withBusyButton(e.currentTarget, "복구 중...", async () => {
+  const file = document.getElementById("restore-file").files[0];
+  if (!file) { alert("복구할 JSON 백업 파일을 선택하세요."); return; }
+  if (!confirm("백업 내용을 현재 데이터에 병합합니다. 같은 문서 ID는 백업 내용으로 갱신됩니다. 계속할까요?")) return;
+  try {
+    const payload = JSON.parse(await file.text());
+    if (payload.format !== "smc-fm-backup" || !Array.isArray(payload.docs)) throw new Error("지원하지 않는 백업 형식");
+    await restoreBackupDocuments(payload.docs);
+    document.getElementById("data-management-status").textContent = `${payload.docs.length}개 문서를 복구했습니다.`;
+    showToast("백업 복구가 완료되었습니다");
+  } catch (error) { reportDataError("백업 복구", error); }
+}));
+
+document.getElementById("notifications-cleanup").addEventListener("click", async e => withBusyButton(e.currentTarget, "정리 중...", async () => {
+  if (!confirm("90일이 지난 읽은 알림을 영구 삭제할까요?")) return;
+  const cutoff = Timestamp.fromDate(new Date(Date.now() - 90 * 86400000));
+  const users = await getDocs(collection(db, "users"));
+  const owners = [...new Set([...TEAM_MEMBERS, ...Object.keys(USER_ACCOUNTS), ...users.docs.map(item => item.id)])];
+  let deleted = 0;
+  for (const owner of owners) {
+    const snap = await getDocs(query(collection(db, "userNotifications", owner, "items"), where("readAt", "<", cutoff), limit(300)));
+    if (!snap.empty) {
+      const batch = writeBatch(db); snap.docs.forEach(item => batch.delete(item.ref)); await batch.commit(); deleted += snap.size;
+    }
+  }
+  document.getElementById("data-management-status").textContent = `${deleted}개의 오래된 알림을 정리했습니다.`;
+}));
+
+document.getElementById("schema-migrate").addEventListener("click", async e => withBusyButton(e.currentTarget, "보완 중...", async () => {
+  const users = await getDocs(collection(db, "users"));
+  const uidByName = new Map(users.docs.map(item => [item.data().name, item.id]));
+  const targets = [
+    { name:"requestTickets", patch:r => ({ schemaVersion:SCHEMA_VERSION, requestedByUid:r.requestedByUid || uidByName.get(r.requestedBy) || null, participantUids:[...new Set((r.participants || []).map(n => uidByName.get(n)).filter(Boolean))] }) },
+    { name:"schedules", patch:r => ({ schemaVersion:SCHEMA_VERSION, registeredByUid:r.registeredByUid || uidByName.get(r.registeredBy) || null, responsibleUids:[...new Set(responsibleArray(r).map(n => uidByName.get(n)).filter(Boolean))], months:monthKeysForDates(r.dates || []) }) },
+    { name:"phoneMemos", patch:r => ({ schemaVersion:SCHEMA_VERSION, createdByName:r.createdByName || r.receivedBy || null, createdByUid:r.createdByUid || uidByName.get(r.createdByName || r.receivedBy) || null, assigneeUid:r.assigneeUid || uidByName.get(r.assignee) || null }) }
+  ];
+  let updated = 0;
+  for (const target of targets) {
+    const snap = await getDocs(collection(db, target.name));
+    for (let offset = 0; offset < snap.docs.length; offset += 400) {
+      const batch = writeBatch(db);
+      snap.docs.slice(offset, offset + 400).forEach(item => batch.update(item.ref, target.patch(item.data())));
+      await batch.commit(); updated += Math.min(400, snap.docs.length - offset);
+    }
+  }
+  const schedules = await getDocs(collection(db, "schedules"));
+  for (const item of schedules.docs) {
+    const row = item.data();
+    if (row.detailsMigrated) continue;
+    const legacy = (row.history && row.history.length) ? row.history : (row.detail ? [{ text:row.detail, author:row.registeredBy, timestamp:row.registeredAt }] : []);
+    const batch = writeBatch(db);
+    legacy.slice(0, 450).forEach((detail, index) => {
+      const detailId = detail.id || `legacy-${String(index).padStart(4, "0")}`;
+      batch.set(doc(db, "schedules", item.id, "details", detailId), {
+        text:detail.text || "", author:detail.author || row.registeredBy || "-", authorUid:adminUidByName.get(detail.author) || null,
+        createdAt:detail.timestamp || row.registeredAt || serverTimestamp(), editedAt:detail.editedAt || null,
+        archived:false, migrated:true, schemaVersion:SCHEMA_VERSION
+      }, { merge:true });
+    });
+    const last = legacy.length ? legacy[legacy.length - 1] : null;
+    batch.update(item.ref, {
+      detailsMigrated:true, legacyHistoryArchived:true, history:[], detail:null, schemaVersion:SCHEMA_VERSION,
+      ...(last ? { lastDetailText:last.text || "", lastDetailAuthor:last.author || row.registeredBy || "-", lastDetailAuthorUid:adminUidByName.get(last.author) || null, lastDetailAt:last.timestamp || row.updatedAt || row.registeredAt || serverTimestamp() } : {})
+    });
+    await batch.commit();
+  }
+  await setDoc(doc(db, "system", "app"), { scheduleMonthIndexReady:true, schemaVersion:SCHEMA_VERSION, migratedAt:serverTimestamp(), migratedByUid:adminProfile.uid }, { merge:true });
+  document.getElementById("data-management-status").textContent = `${updated}개 기존 문서의 UID·월 검색 필드를 보완했습니다.`;
+}));
 
 function renderUserAdmin() {
   const tbody = document.getElementById("users-tbody");

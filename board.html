@@ -545,11 +545,13 @@
 
 <script type="module">
 import { ensureAccess } from "./auth-gate.js";
+import { installConnectionStatus, reportDataError } from "./app-runtime.js";
 import {
-  db, collection, doc, updateDoc, onSnapshot, query, orderBy, limit, serverTimestamp, Timestamp, TEAM_MEMBERS, KR_HOLIDAYS
+  db, collection, doc, updateDoc, onSnapshot, query, orderBy, limit, where, getDoc, getDocs, serverTimestamp, Timestamp, TEAM_MEMBERS, KR_HOLIDAYS
 } from "./firebase-config.js";
 
 await ensureAccess();
+installConnectionStatus();
 
 /* ───────── 시계 ───────── */
 function tickClock() {
@@ -671,23 +673,43 @@ let customHolidays = {};
 function holidayName(iso) { return customHolidays[iso] || KR_HOLIDAYS[iso]; }
 
 /* ───────── Firestore 구독 ───────── */
-onSnapshot(query(collection(db, "schedules"), orderBy("registeredAt", "desc"), limit(300)), (snap) => {
-  schedules = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  renderCalendar();
-  renderAuxWeek();
-  renderAuxToday();
-});
+let scheduleUnsubscribe = null;
+let scheduleMonthIndexReady = false;
+function monthKey(year, month) {
+  const d = new Date(year, month, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+async function subscribeScheduleRange() {
+  if (scheduleUnsubscribe) scheduleUnsubscribe();
+  try {
+    const config = await getDoc(doc(db, "system", "app"));
+    scheduleMonthIndexReady = config.exists() && config.data().scheduleMonthIndexReady === true;
+  } catch (_) { scheduleMonthIndexReady = false; }
+  const now = new Date();
+  const months = [...new Set([
+    monthKey(viewYear, viewMonth - 1), monthKey(viewYear, viewMonth), monthKey(viewYear, viewMonth + 1),
+    monthKey(now.getFullYear(), now.getMonth())
+  ])];
+  const scheduleQuery = scheduleMonthIndexReady
+    ? query(collection(db, "schedules"), where("months", "array-contains-any", months), limit(500))
+    : query(collection(db, "schedules"), orderBy("registeredAt", "desc"), limit(300));
+  scheduleUnsubscribe = onSnapshot(scheduleQuery, snap => {
+    schedules = snap.docs.map(d => ({ id:d.id, ...d.data() })).filter(s => !s.archived);
+    renderCalendar(); renderAuxWeek(); renderAuxToday();
+  }, error => reportDataError("일정 불러오기", error));
+}
+subscribeScheduleRange();
 
 onSnapshot(query(collection(db, "requestTickets"), orderBy("updatedAt", "desc"), limit(100)), (snap) => {
   tickets = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => !t.archived && t.status !== "완료");
   renderAlerts();
   renderAuxDue();
-});
+}, error => reportDataError("관련업무 불러오기", error));
 
 onSnapshot(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc"), limit(100)), (snap) => {
-  memos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  memos = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => !m.archived);
   renderAlerts();
-});
+}, error => reportDataError("메모 불러오기", error));
 
 onSnapshot(collection(db, "customHolidays"), (snap) => {
   const map = {};
@@ -1098,7 +1120,7 @@ function openDayDetail(iso, y, m, d) {
       div.style.backgroundColor = variant.bg;
       div.style.color = variant.fg;
       div.style.borderLeftColor = variant.fg;
-      const lastDetail = Array.isArray(ev.history) && ev.history.length ? ev.history[ev.history.length-1].text : ev.detail;
+      const lastDetail = ev.lastDetailText || (Array.isArray(ev.history) && ev.history.length ? ev.history[ev.history.length-1].text : ev.detail);
       div.innerHTML = `${ev.time ? `<b>${escapeHtml(ev.time)}</b> ` : ""}${escapeHtml(ev.title)}${ev.vendor ? ` (${escapeHtml(ev.vendor)})` : ""}
         <div class="dd-meta">담당: ${escapeHtml(responsibleLabel(ev))}${lastDetail ? " · " + escapeHtml(lastDetail) : ""}</div>`;
       div.addEventListener("click", (e) => {
@@ -1118,7 +1140,7 @@ dayDetailOverlay.addEventListener("click", (e) => {
 
 /* ───────── 개별 일정 상세내역 ───────── */
 const eventDetailOverlay = document.getElementById("event-detail-overlay");
-function openEventDetail(ev) {
+async function openEventDetail(ev) {
   document.getElementById("event-detail-title").textContent = ev.title || "-";
 
   const metaLines = [];
@@ -1131,15 +1153,20 @@ function openEventDetail(ev) {
 
   const histEl = document.getElementById("event-detail-history");
   histEl.innerHTML = "";
-  const hist = (ev.history && ev.history.length) ? ev.history
+  let hist = (ev.history && ev.history.length) ? ev.history
     : (ev.detail ? [{ text: ev.detail, author: ev.registeredBy, timestamp: ev.registeredAt }] : []);
+  try {
+    const detailSnap = await getDocs(query(collection(db, "schedules", ev.id, "details"), orderBy("createdAt", "asc"), limit(100)));
+    const detailRows = detailSnap.docs.map(item => ({ id:item.id, ...item.data() })).filter(item => !item.archived);
+    if (detailRows.length) hist = detailRows;
+  } catch (error) { console.warn("일정 세부사항을 불러오지 못해 기존 이력을 표시합니다.", error); }
   if (!hist.length) {
     histEl.innerHTML = `<div class="event-detail-empty-hist">등록된 상세내용이 없습니다</div>`;
   } else {
     hist.slice().reverse().forEach(h => {
       const div = document.createElement("div");
       div.className = "eh-item";
-      div.innerHTML = `<div class="eh-meta">${escapeHtml(h.author || "-")} · ${fmtTimestamp(h.timestamp)}</div><div>${escapeHtml(h.text)}</div>`;
+      div.innerHTML = `<div class="eh-meta">${escapeHtml(h.author || "-")} · ${fmtTimestamp(h.createdAt || h.timestamp)}</div><div>${escapeHtml(h.text)}</div>`;
       histEl.appendChild(div);
     });
   }
@@ -1180,17 +1207,17 @@ function openTicketDetailBoard(t) {
 
 document.getElementById("prev-month").addEventListener("click", () => {
   viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; }
-  renderCalendar();
+  subscribeScheduleRange();
 });
 document.getElementById("next-month").addEventListener("click", () => {
   viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; }
-  renderCalendar();
+  subscribeScheduleRange();
 });
 document.getElementById("month-title").addEventListener("click", () => {
   const t = new Date();
   viewYear = t.getFullYear();
   viewMonth = t.getMonth();
-  renderCalendar();
+  subscribeScheduleRange();
 });
 
 /* ───────── 알림 패널 렌더링 ───────── */

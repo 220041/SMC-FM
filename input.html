@@ -852,17 +852,29 @@
 
 <script type="module">
 import { ensureUserLogin, logoutAccount, changeOwnPassword } from "./account-auth.js";
+import { installConnectionStatus, showToast, reportDataError } from "./app-runtime.js";
+import { SCHEMA_VERSION, monthKeysForDates, archiveFields, isRecordOwner } from "./data-model.js";
 import {
   db, auth, collection, doc, addDoc, updateDoc, deleteDoc, setDoc, onSnapshot, query, orderBy, serverTimestamp,
   getDocs, getDoc, limit, where, writeBatch, TEAM_MEMBERS, KR_HOLIDAYS
 } from "./firebase-config.js";
 
 const accountProfile = await ensureUserLogin();
+installConnectionStatus();
 
 /* 작성자·알림 대상·권한 판정은 Firebase에 로그인한 계정으로 고정한다. */
 const currentUserName = accountProfile.name;
 function currentUser() { return currentUserName; }
+function currentUid() { return accountProfile.uid; }
 function isAdmin() { return accountProfile.role === "admin"; }
+const memberUidByName = new Map([[currentUser(), currentUid()]]);
+try {
+  const memberProfiles = await getDocs(collection(db, "users"));
+  memberProfiles.docs.forEach(item => { const data = item.data(); if (data.name) memberUidByName.set(data.name, item.id); });
+} catch (error) {
+  console.warn("사용자 UID 목록을 불러오지 못해 기존 이름 경로를 사용합니다.", error);
+}
+function notificationOwnerKey(name) { return memberUidByName.get(name) || name; }
 
 document.getElementById("author-change-btn").addEventListener("click", logoutAccount);
 const passwordBtn = document.createElement("button");
@@ -885,7 +897,7 @@ onSnapshot(collection(db, "customHolidays"), (snap) => {
   customHolidays = map;
   if (dpPopup.classList.contains("open")) dpRenderCalendar();
   if (document.getElementById("schedule-calendar-view").style.display !== "none") renderScheduleCalendar();
-});
+}, error => reportDataError("공휴일 불러오기", error));
 
 /* 담당자 등 이름 select 채우기 helper */
 function fillNameSelect(sel, defaultTo) {
@@ -1041,32 +1053,36 @@ function responsibleLabel(list) {
 
 /* ════════════════════════════════════════════════
    삭제 / 삭제요청-승인 공용 로직
-   작성자 본인이면 즉시 삭제, 아니면 작성자에게 삭제요청을 보내고
-   작성자가 대시보드에서 동의해야 실제로 삭제됨.
+   작성자 본인이면 즉시 자료보관으로 이동하고, 아니면 작성자에게 삭제요청을 보낸다.
+   작성자가 대시보드에서 동의하면 관리자 자료보관으로 이동한다.
    ════════════════════════════════════════════════ */
 const COLLECTION_OF = { ticket: "requestTickets", schedule: "schedules", memo: "phoneMemos" };
 const LABEL_OF = { ticket: "업무", schedule: "일정/공사", memo: "메모" };
 function authorOf(type, rec) {
   if (type === "ticket") return rec.requestedBy;
   if (type === "schedule") return rec.registeredBy;
-  if (type === "memo") return rec.receivedBy;
+  if (type === "memo") return rec.createdByName || rec.receivedBy;
   return null;
+}
+function ownsRecord(type, rec) { return isRecordOwner(type, rec, accountProfile); }
+function archivePayload() {
+  return { ...archiveFields(currentUser(), currentUid()), archivedAt: serverTimestamp(), updatedAt: serverTimestamp() };
 }
 async function handleDeleteClick(type, rec) {
   const me = currentUser();
   const author = authorOf(type, rec);
   const label = rec.title || rec.subject || "항목";
   if (type === "ticket") {
-    if (me !== author && !isAdmin()) {
+    if (!ownsRecord(type, rec) && !isAdmin()) {
       if (rec.deleteRequestedBy) { alert(`이미 ${rec.deleteRequestedBy}님이 삭제를 요청했습니다.`); return false; }
       if (!confirm(`작성자(${author || "미지정"})에게 삭제 승인을 요청할까요?`)) return false;
-      await updateDoc(doc(db, "requestTickets", rec.id), { deleteRequestedBy: me, deleteRequestedAt: serverTimestamp() });
+      await updateDoc(doc(db, "requestTickets", rec.id), { deleteRequestedBy: me, deleteRequestedByUid: currentUid(), deleteRequestedAt: serverTimestamp() });
       await notifyTicketUser(author, rec.id, "delete_requested", `${me}님이 관련업무 삭제를 요청했습니다.`);
       await auditTicket(rec.id, "delete_requested", null, { requestedBy: me });
       return true;
     }
     if (!confirm(`"${label}" 업무를 삭제할까요? 삭제된 업무는 관리자 보관함으로 이동합니다.`)) return false;
-    await updateDoc(doc(db, "requestTickets", rec.id), { archived: true, archivedAt: serverTimestamp(), archivedBy: me, deleteRequestedBy: null, deleteRequestedAt: null, updatedAt: serverTimestamp() });
+    await updateDoc(doc(db, "requestTickets", rec.id), archivePayload());
     await auditTicket(rec.id, "ticket_archived", { archived: false }, { archived: true, archivedBy: me });
     return true;
   }
@@ -1078,26 +1094,24 @@ async function handleDeleteClick(type, rec) {
     }
     return false;
   }
-  if (me === author || isAdmin()) {
-    if (!confirm(`"${label}" 항목을 삭제할까요?`)) return false;
-    await deleteDoc(doc(db, COLLECTION_OF[type], rec.id));
+  if (ownsRecord(type, rec) || isAdmin()) {
+    if (!confirm(`"${label}" 항목을 삭제할까요? 삭제된 자료는 관리자 보관함으로 이동합니다.`)) return false;
+    await updateDoc(doc(db, COLLECTION_OF[type], rec.id), archivePayload());
+    await auditRecord(type, rec.id, `${type}_archived`, { archived:false }, { archived:true, archivedBy:me });
     return true;
   } else {
     if (!confirm(`본인이 작성한 항목이 아닙니다. 작성자(${author || "미지정"})에게 삭제 요청을 보낼까요?\n작성자가 동의해야 실제로 삭제됩니다.`)) return false;
     await updateDoc(doc(db, COLLECTION_OF[type], rec.id), {
       deleteRequestedBy: me,
+      deleteRequestedByUid: currentUid(),
       deleteRequestedAt: serverTimestamp()
     });
     return true;
   }
 }
 async function approveDelete(type, id) {
-  if (type === "ticket") {
-    await updateDoc(doc(db, "requestTickets", id), { archived: true, archivedAt: serverTimestamp(), archivedBy: currentUser(), deleteRequestedBy: null, deleteRequestedAt: null, updatedAt: serverTimestamp() });
-    await auditTicket(id, "delete_request_approved", null, { approvedBy: currentUser() });
-    return;
-  }
-  await deleteDoc(doc(db, COLLECTION_OF[type], id));
+  await updateDoc(doc(db, COLLECTION_OF[type], id), archivePayload());
+  await auditRecord(type, id, "delete_request_approved", null, { approvedBy: currentUser() });
 }
 async function denyDelete(type, id) {
   await updateDoc(doc(db, COLLECTION_OF[type], id), { deleteRequestedBy: null, deleteRequestedAt: null });
@@ -1114,15 +1128,20 @@ async function bulkDelete(type, allItems, selectedSet) {
   const me = currentUser();
   const already = items.filter(x => x.deleteRequestedBy);
   const actionable = items.filter(x => !x.deleteRequestedBy);
-  const mine = actionable.filter(x => authorOf(type, x) === me || isAdmin());
-  const others = actionable.filter(x => authorOf(type, x) !== me && !isAdmin());
-  let msg = `총 ${items.length}건 선택됨\n- 즉시 삭제: ${mine.length}건\n- 삭제 요청 전송(작성자 승인 필요): ${others.length}건`;
+  const mine = actionable.filter(x => ownsRecord(type, x) || isAdmin());
+  const others = actionable.filter(x => !ownsRecord(type, x) && !isAdmin());
+  let msg = `총 ${items.length}건 선택됨\n- 자료보관 이동: ${mine.length}건\n- 삭제 요청 전송(작성자 승인 필요): ${others.length}건`;
   if (already.length) msg += `\n- 이미 삭제 요청 중이라 건너뜀: ${already.length}건`;
   if (!confirm(msg)) return;
-  for (const rec of mine) await deleteDoc(doc(db, COLLECTION_OF[type], rec.id));
-  for (const rec of others) {
-    await updateDoc(doc(db, COLLECTION_OF[type], rec.id), { deleteRequestedBy: me, deleteRequestedAt: serverTimestamp() });
+  const batch = writeBatch(db);
+  for (const rec of mine) {
+    batch.update(doc(db, COLLECTION_OF[type], rec.id), archivePayload());
+    addAuditToBatch(batch, type, rec.id, `${type}_archived`, { archived:false }, { archived:true, archivedBy:me });
   }
+  for (const rec of others) {
+    batch.update(doc(db, COLLECTION_OF[type], rec.id), { deleteRequestedBy: me, deleteRequestedByUid: currentUid(), deleteRequestedAt: serverTimestamp() });
+  }
+  await batch.commit();
   selectedSet.clear();
 }
 
@@ -1346,33 +1365,59 @@ let tickets = [];
 let ticketDetailUnsubscribe = null;
 const ticketDetailsById = new Map();
 
-async function auditTicket(ticketId, action, beforeData, afterData) {
+async function auditRecord(type, targetId, action, beforeData, afterData) {
   await addDoc(collection(db, "auditLogs"), {
-    targetCollection: "requestTickets", targetId: ticketId, action,
+    targetCollection: COLLECTION_OF[type] || type, targetId, action,
     actorName: currentUser(), actorUid: auth.currentUser?.uid || null,
     before: beforeData || null, after: afterData || null, createdAt: serverTimestamp()
   });
 }
+function addAuditToBatch(batch, type, targetId, action, beforeData, afterData) {
+  batch.set(doc(collection(db, "auditLogs")), {
+    targetCollection: COLLECTION_OF[type] || type, targetId, action,
+    actorName:currentUser(), actorUid:currentUid(), before:beforeData || null,
+    after:afterData || null, createdAt:serverTimestamp()
+  });
+}
+async function auditTicket(ticketId, action, beforeData, afterData) {
+  return auditRecord("ticket", ticketId, action, beforeData, afterData);
+}
 
 async function notifyTicketUser(name, ticketId, type, message) {
   if (!name || name === currentUser()) return;
-  await addDoc(collection(db, "userNotifications", name, "items"), {
-    ticketId, type, message, actor: currentUser(), createdAt: serverTimestamp(), readAt: null
+  const recipientUid = memberUidByName.get(name) || null;
+  await addDoc(collection(db, "userNotifications", notificationOwnerKey(name), "items"), {
+    ticketId, type, message, actor: currentUser(), actorUid:currentUid(), recipientName:name, recipientUid,
+    createdAt: serverTimestamp(), readAt: null, schemaVersion:SCHEMA_VERSION
+  });
+}
+function addNotificationToBatch(batch, name, ticketId, type, message) {
+  if (!name || name === currentUser()) return;
+  const recipientUid = memberUidByName.get(name) || null;
+  batch.set(doc(collection(db, "userNotifications", notificationOwnerKey(name), "items")), {
+    ticketId, type, message, actor:currentUser(), actorUid:currentUid(), recipientName:name, recipientUid,
+    createdAt:serverTimestamp(), readAt:null, schemaVersion:SCHEMA_VERSION
   });
 }
 async function notifyTicketMembers(ticket, type, message, excludedName = currentUser()) {
   const targets = ticketMembers(ticket).filter(name => name !== excludedName);
-  await Promise.all(targets.map(name => notifyTicketUser(name, ticket.id, type, message)));
+  if (!targets.length) return;
+  const batch = writeBatch(db);
+  targets.forEach(name => addNotificationToBatch(batch, name, ticket.id, type, message));
+  await batch.commit();
 }
 
 async function addTicketDetail(ticketId, text, kind = "detail", author = currentUser()) {
-  const detailRef = await addDoc(collection(db, "requestTickets", ticketId, "details"), {
+  const detailRef = doc(collection(db, "requestTickets", ticketId, "details"));
+  const batch = writeBatch(db);
+  batch.set(detailRef, {
     text, kind, author, authorUid: auth.currentUser?.uid || null,
     createdAt: serverTimestamp(), editedAt: null, archived: false
   });
-  await updateDoc(doc(db, "requestTickets", ticketId), {
+  batch.update(doc(db, "requestTickets", ticketId), {
     lastDetailText: text, lastDetailAuthor: author, lastDetailKind: kind, lastDetailAt: serverTimestamp(), updatedAt: serverTimestamp()
   });
+  await batch.commit();
   return detailRef;
 }
 
@@ -1407,16 +1452,21 @@ function subscribeTicketDetails(ticket) {
 const ticketFilterRequester = document.getElementById("ticket-filter-requester");
 TEAM_MEMBERS.forEach(n => ticketFilterRequester.appendChild(new Option(n, n)));
 
-onSnapshot(query(collection(db, "requestTickets"), orderBy("requestedAt", "desc")), (snap) => {
+let optimizedMemberQueries = false;
+try { const config = await getDoc(doc(db, "system", "app")); optimizedMemberQueries = config.exists() && config.data().scheduleMonthIndexReady === true; } catch (_) {}
+const ticketListQuery = optimizedMemberQueries
+  ? query(collection(db, "requestTickets"), where("participantUids", "array-contains", currentUid()), limit(300))
+  : query(collection(db, "requestTickets"), orderBy("requestedAt", "desc"), limit(300));
+onSnapshot(ticketListQuery, (snap) => {
   tickets = snap.docs.map(d => {
     const row = { id: d.id, ...d.data() };
     if (["요청됨", "미확인"].includes(row.status)) row.status = "미수신";
     if (row.status === "확인됨") row.status = "열람";
     return row;
-  }).filter(t => !t.archived);
+  }).filter(t => !t.archived).sort((a, b) => tsMillis(b.requestedAt) - tsMillis(a.requestedAt));
   renderTickets();
   renderDashboard();
-});
+}, error => reportDataError("관련업무 불러오기", error));
 
 document.getElementById("ticket-filter-status").addEventListener("change", renderTickets);
 ticketFilterRequester.addEventListener("change", renderTickets);
@@ -1466,7 +1516,7 @@ function ticketDateShort(t) {
 function buildTicketRow(t, me) {
   const overdue = isTicketOverdue(t);
   const deadlineLevel = ticketDeadlineLevel(t);
-  const isAuthor = t.requestedBy === me || isAdmin();
+  const isAuthor = ownsRecord("ticket", t) || isAdmin();
   const unseen = hasUnseenUpdate("ticket", t);
   const tr = document.createElement("tr");
   if (overdue) tr.classList.add("row-overdue", "breathing");
@@ -1612,7 +1662,7 @@ function openTicketDetail(id, forceView) {
   if (!t) return;
   ticketEditingId = id;
   const me = currentUser();
-  const isAuthor = t.requestedBy === me || isAdmin();
+  const isAuthor = ownsRecord("ticket", t) || isAdmin();
   const recipients = ticketRecipients(t);
   const isRecipient = recipients.length ? recipients.includes(me) : t.requestedBy !== me;
   const editMode = forceView ? false : isAuthor;
@@ -1809,12 +1859,19 @@ function renderTicketWorkActions(ticket, isRecipient, isAuthor) {
       button.disabled = true; button.textContent = "처리 중...";
       try {
         const before = ticket.status;
-        await updateDoc(doc(db, "requestTickets", ticket.id), { status, updatedAt: serverTimestamp(), reopenedAt: before === "완료" ? serverTimestamp() : null, reopenedBy: before === "완료" ? currentUser() : null });
-        await addTicketDetail(ticket.id, reason ? `업무 재개: ${reason}` : `상태 변경: ${before} → ${status}`, "status");
-        await Promise.all([
-          notifyTicketMembers(ticket, "status", `${currentUser()}님이 상태를 ${status}(으)로 변경했습니다.`),
-          auditTicket(ticket.id, before === "완료" ? "ticket_reopened" : "status_changed", { status: before }, { status, reason: reason || null })
-        ]);
+        const detailText = reason ? `업무 재개: ${reason}` : `상태 변경: ${before} → ${status}`;
+        const batch = writeBatch(db);
+        batch.update(doc(db, "requestTickets", ticket.id), {
+          status, updatedAt:serverTimestamp(), reopenedAt:before === "완료" ? serverTimestamp() : null,
+          reopenedBy:before === "완료" ? currentUser() : null, lastDetailText:detailText,
+          lastDetailAuthor:currentUser(), lastDetailAuthorUid:currentUid(), lastDetailKind:"status", lastDetailAt:serverTimestamp()
+        });
+        batch.set(doc(collection(db, "requestTickets", ticket.id, "details")), {
+          text:detailText, kind:"status", author:currentUser(), authorUid:currentUid(), createdAt:serverTimestamp(), editedAt:null, archived:false, schemaVersion:SCHEMA_VERSION
+        });
+        ticketMembers(ticket).filter(name => name !== currentUser()).forEach(name => addNotificationToBatch(batch, name, ticket.id, "status", `${currentUser()}님이 상태를 ${status}(으)로 변경했습니다.`));
+        addAuditToBatch(batch, "ticket", ticket.id, before === "완료" ? "ticket_reopened" : "status_changed", { status:before }, { status, reason:reason || null });
+        await batch.commit();
         ticketOverlay.classList.remove("open");
       } catch (e) { alert("처리하지 못했습니다. 다시 시도해 주세요."); button.disabled = false; button.textContent = label; }
     };
@@ -1849,18 +1906,23 @@ document.getElementById("ticket-save").addEventListener("click", async () => {
     const due = document.getElementById("ticket-due").value || null;
     const content = document.getElementById("ticket-content").value.trim();
     const initialHistory = [{ id:newHistId(), text:`새 업무 등록 · 구성원: ${recipients.join(", ")}`, author:requester, timestamp:new Date(), type:"status" }];
-    const ticketRef = await addDoc(collection(db, "requestTickets"), {
-      title, requestedBy: requester, requestedAt: serverTimestamp(),
-      assignee: recipients[0], participants: [requester, ...recipients], dueDate: due,
+    const ticketRef = doc(collection(db, "requestTickets"));
+    const batch = writeBatch(db);
+    const ticketPayload = {
+      title, requestedBy: requester, requestedByUid: currentUid(), requestedAt: serverTimestamp(),
+      assignee: recipients[0], assigneeUid:memberUidByName.get(recipients[0]) || null,
+      participants: [requester, ...recipients], participantUids:[currentUid(), ...recipients.map(name => memberUidByName.get(name)).filter(Boolean)], dueDate: due,
       status: "미수신", receivedBy: null, receivedAt: null, openedBy: {}, history: initialHistory,
-      archived: false, detailsMigrated: true, updatedAt: serverTimestamp()
-    });
-    if (content) await addTicketDetail(ticketRef.id, content);
-    const createdTicket = { id:ticketRef.id, title, requestedBy:requester, assignee:recipients[0], participants:[requester, ...recipients] };
-    await Promise.all([
-      notifyTicketMembers(createdTicket, "new_ticket", `${requester}님이 새 업무방을 만들었습니다: ${title}`, requester),
-      auditTicket(ticketRef.id, "ticket_created", null, { title, requestedBy: requester, participants:[requester, ...recipients], dueDate: due })
-    ]);
+      archived: false, detailsMigrated: true, schemaVersion: SCHEMA_VERSION, updatedAt: serverTimestamp()
+    };
+    if (content) Object.assign(ticketPayload, { lastDetailText:content, lastDetailAuthor:requester, lastDetailAuthorUid:currentUid(), lastDetailKind:"detail", lastDetailAt:serverTimestamp() });
+    batch.set(ticketRef, ticketPayload);
+    if (content) {
+      batch.set(doc(collection(db, "requestTickets", ticketRef.id, "details")), { text:content, kind:"detail", author:requester, authorUid:currentUid(), createdAt:serverTimestamp(), editedAt:null, archived:false, schemaVersion:SCHEMA_VERSION });
+    }
+    recipients.forEach(name => addNotificationToBatch(batch, name, ticketRef.id, "new_ticket", `${requester}님이 새 업무방을 만들었습니다: ${title}`));
+    addAuditToBatch(batch, "ticket", ticketRef.id, "ticket_created", null, { title, requestedBy:requester, participants:[requester, ...recipients], dueDate:due });
+    await batch.commit();
   } else {
     const t = tickets.find(x => x.id === ticketEditingId);
     const noteText = document.getElementById("ticket-note-text").value.trim();
@@ -1895,7 +1957,9 @@ document.getElementById("ticket-save").addEventListener("click", async () => {
     if (recipientsChanged) history.push({ id:newHistId(), text:`구성원 변경: ${oldRecipients.join(", ") || "미지정"} → ${newRecipients.join(", ")}${changeReason ? ` · 사유: ${changeReason}` : ""}`, author, timestamp:new Date(), type:"status" });
     await updateDoc(doc(db, "requestTickets", ticketEditingId), {
       status: normalizedTicketStatus(t.status), dueDate: newDue,
-      assignee: newRecipients[0], participants: [t.requestedBy, ...newRecipients],
+      requestedByUid:t.requestedByUid || memberUidByName.get(t.requestedBy) || currentUid(),
+      assignee: newRecipients[0], assigneeUid:memberUidByName.get(newRecipients[0]) || null,
+      participants: [t.requestedBy, ...newRecipients], participantUids:[t.requestedByUid || memberUidByName.get(t.requestedBy), ...newRecipients.map(name => memberUidByName.get(name))].filter(Boolean),
       history, updatedAt: serverTimestamp()
     });
     if (noteText) await addTicketDetail(ticketEditingId, noteText);
@@ -1932,13 +1996,13 @@ let scheduleViewMode = "list"; // "list" | "calendar"
 function earliestDate(s) {
   return (Array.isArray(s.dates) && s.dates.length) ? [...s.dates].sort()[0] : "9999-99-99";
 }
-onSnapshot(collection(db, "schedules"), (snap) => {
-  schedules = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+onSnapshot(query(collection(db, "schedules"), orderBy("registeredAt", "desc"), limit(500)), (snap) => {
+  schedules = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(s => !s.archived);
   schedules.sort((a, b) => earliestDate(a).localeCompare(earliestDate(b)) || tsMillis(a.registeredAt) - tsMillis(b.registeredAt)); // 날짜순(이전 → 이후)
   renderSchedules();
   if (scheduleViewMode === "calendar") renderScheduleCalendar();
   renderDashboard();
-});
+}, error => reportDataError("일정 불러오기", error));
 
 function appendFocusGroupHeader(tbody, label, count, kind, colspan) {
   if (kind === "team" && tbody.children.length) {
@@ -1986,7 +2050,7 @@ function renderSchedules() {
       const tr = document.createElement("tr");
       if (Array.isArray(s.dates) && s.dates.includes(today)) tr.classList.add("row-active-today");
       const respArr = responsibleArray(s);
-      const isAuthor = s.registeredBy === me || isAdmin();
+      const isAuthor = ownsRecord("schedule", s) || isAdmin();
       const editIcon = isAuthor ? `<button type="button" class="row-edit-btn" title="수정">✏️</button>` : "";
       tr.innerHTML = `
         <td class="td-check"><input type="checkbox" class="row-check" ${selectedScheduleIds.has(s.id) ? "checked" : ""} /></td>
@@ -2213,6 +2277,58 @@ const scheduleOverlay = document.getElementById("schedule-modal-overlay");
 let scheduleDateSet = new Set();
 let scheduleEditingId = null;
 let scheduleEditMode = false; // 지금 열려있는 일정 모달이 실제 수정모드인지(true) 열람모드인지(false)
+let scheduleDetailUnsubscribe = null;
+const scheduleDetailsById = new Map();
+
+async function ensureScheduleDetailsMigrated(schedule) {
+  if (schedule.detailsMigrated) return;
+  if (!ownsRecord("schedule", schedule) && !isAdmin()) return;
+  const legacy = (schedule.history && schedule.history.length)
+    ? schedule.history
+    : (schedule.detail ? [{ id:"legacy-0000", text:schedule.detail, author:schedule.registeredBy, timestamp:schedule.registeredAt }] : []);
+  const batch = writeBatch(db);
+  legacy.slice(0, 450).forEach((item, index) => {
+    const id = item.id || `legacy-${String(index).padStart(4, "0")}`;
+    batch.set(doc(db, "schedules", schedule.id, "details", id), {
+      text: item.text || "", author: item.author || schedule.registeredBy || "-",
+      authorUid: item.authorUid || null, createdAt: item.timestamp || schedule.registeredAt || serverTimestamp(),
+      editedAt: item.editedAt || null, archived: false, migrated: true, schemaVersion: SCHEMA_VERSION
+    }, { merge: true });
+  });
+  const last = legacy.length ? legacy[legacy.length - 1] : null;
+  batch.update(doc(db, "schedules", schedule.id), {
+    detailsMigrated:true, legacyHistoryArchived:true, history:[], detail:null, schemaVersion:SCHEMA_VERSION,
+    ...(last ? { lastDetailText:last.text || "", lastDetailAuthor:last.author || schedule.registeredBy || "-", lastDetailAuthorUid:last.authorUid || memberUidByName.get(last.author) || null, lastDetailAt:last.timestamp || schedule.updatedAt || schedule.registeredAt || serverTimestamp() } : {})
+  });
+  await batch.commit();
+}
+
+function subscribeScheduleDetails(schedule) {
+  if (scheduleDetailUnsubscribe) scheduleDetailUnsubscribe();
+  ensureScheduleDetailsMigrated(schedule).catch(error => reportDataError("일정 이력 이전", error));
+  scheduleDetailUnsubscribe = onSnapshot(
+    query(collection(db, "schedules", schedule.id, "details"), orderBy("createdAt", "asc"), limit(200)),
+    snap => {
+      let rows = snap.docs.map(d => ({ id:d.id, ...d.data() })).filter(d => !d.archived);
+      if (!rows.length && !schedule.detailsMigrated) {
+        rows = (schedule.history && schedule.history.length) ? schedule.history
+          : (schedule.detail ? [{ id:"legacy-0000", text:schedule.detail, author:schedule.registeredBy, timestamp:schedule.registeredAt }] : []);
+      }
+      scheduleDetailsById.set(schedule.id, rows);
+      if (scheduleEditingId === schedule.id) renderScheduleHistory(schedule, rows);
+    },
+    error => reportDataError("일정 세부사항 불러오기", error)
+  );
+}
+
+function addScheduleDetailToBatch(batch, scheduleId, text) {
+  const detailRef = doc(collection(db, "schedules", scheduleId, "details"));
+  batch.set(detailRef, {
+    text, author:currentUser(), authorUid:currentUid(), createdAt:serverTimestamp(),
+    editedAt:null, archived:false, schemaVersion:SCHEMA_VERSION
+  });
+  return detailRef;
+}
 
 /* 선택된 날짜들을 연속 구간별로 묶어서 반환 (기간으로 추가한 날짜들을 칩 하나로 압축 표시하기 위함) */
 function scheduleDateGroups() {
@@ -2317,7 +2433,7 @@ function openScheduleEdit(id, forceView) {
   const s = schedules.find(x => x.id === id);
   if (!s) return;
   scheduleEditingId = id;
-  const isAuthor = s.registeredBy === currentUser() || isAdmin();
+  const isAuthor = ownsRecord("schedule", s) || isAdmin();
   const editMode = forceView ? false : isAuthor;
   scheduleEditMode = editMode;
   document.getElementById("schedule-modal-title").textContent = "일정 " + (editMode ? "수정" : "열람");
@@ -2341,8 +2457,8 @@ function openScheduleEdit(id, forceView) {
   document.getElementById("schedule-delete").style.display = "inline-block";
   setScheduleFieldsEditable(editMode);
 
-  const hist = (s.history && s.history.length) ? s.history
-    : (s.detail ? [{ text: s.detail, author: s.registeredBy, timestamp: s.registeredAt }] : []);
+  const hist = scheduleDetailsById.get(s.id) || ((s.history && s.history.length) ? s.history
+    : (s.detail ? [{ text: s.detail, author: s.registeredBy, timestamp: s.registeredAt }] : []));
   try {
     renderScheduleHistory(s, hist);
   } catch (e) {
@@ -2354,6 +2470,7 @@ function openScheduleEdit(id, forceView) {
   document.getElementById("schedule-detail-input").value = "";
 
   scheduleOverlay.classList.add("open");
+  subscribeScheduleDetails(s);
   markSeen("schedule", id);
 }
 
@@ -2371,10 +2488,10 @@ function renderScheduleHistory(s, hist) {
     div.className = "history-item";
     const readBy = h.id ? noteReadBy(s, h, candidates) : [];
     const readNote = readBy.length ? `<div class="small-note">읽음: ${readBy.map(escapeHtml).join(", ")}</div>` : "";
-    div.innerHTML = `<div class="meta">${h.author || "-"} · ${fmtTs(h.timestamp)}${h.editedAt ? " (수정됨)" : ""}</div><div>${escapeHtml(h.text)}</div>${readNote}`;
+    div.innerHTML = `<div class="meta">${escapeHtml(h.author || "-")} · ${fmtTs(h.createdAt || h.timestamp)}${h.editedAt ? " (수정됨)" : ""}</div><div>${escapeHtml(h.text)}</div>${readNote}`;
     if (h.id && scheduleEditingId !== null) {
       // 본인이 쓴 세부사항은 수정·삭제 가능. 관리자 계정은 예외 없이 전부 수정/삭제 가능
-      const canModify = isAdmin() || h.author === currentUser();
+      const canModify = isAdmin() || (h.authorUid ? h.authorUid === currentUid() : h.author === currentUser());
       if (canModify) {
         const editBtn = document.createElement("button");
         editBtn.type = "button";
@@ -2424,11 +2541,8 @@ async function editScheduleNote(id, text) {
   if (scheduleEditingId === null) return;
   const s = schedules.find(x => x.id === scheduleEditingId);
   if (!s) return;
-  const baseHist = (s.history && s.history.length ? s.history
-    : (s.detail ? [{ text: s.detail, author: s.registeredBy, timestamp: s.registeredAt }] : [])).slice();
-  const history = baseHist.map(h => h.id === id ? { ...h, text, editedAt: new Date() } : h);
-  await updateDoc(doc(db, "schedules", scheduleEditingId), { history, updatedAt: serverTimestamp() });
-  openScheduleEdit(scheduleEditingId);
+  await updateDoc(doc(db, "schedules", scheduleEditingId, "details", id), { text, editedAt:serverTimestamp() });
+  await updateDoc(doc(db, "schedules", scheduleEditingId), { lastDetailText:text, lastDetailAuthor:currentUser(), lastDetailAt:serverTimestamp(), updatedAt:serverTimestamp() });
 }
 
 /* 본인이 쓴 세부사항/댓글 삭제 */
@@ -2436,11 +2550,8 @@ async function deleteScheduleNote(id) {
   if (scheduleEditingId === null) return;
   const s = schedules.find(x => x.id === scheduleEditingId);
   if (!s) return;
-  const baseHist = (s.history && s.history.length ? s.history
-    : (s.detail ? [{ text: s.detail, author: s.registeredBy, timestamp: s.registeredAt }] : [])).slice();
-  const history = baseHist.filter(h => h.id !== id);
-  await updateDoc(doc(db, "schedules", scheduleEditingId), { history, updatedAt: serverTimestamp() });
-  openScheduleEdit(scheduleEditingId);
+  await updateDoc(doc(db, "schedules", scheduleEditingId, "details", id), { archived:true, archivedAt:serverTimestamp(), archivedBy:currentUser(), archivedByUid:currentUid() });
+  await updateDoc(doc(db, "schedules", scheduleEditingId), { updatedAt: serverTimestamp() });
 }
 
 document.getElementById("schedule-cancel").addEventListener("click", () => scheduleOverlay.classList.remove("open"));
@@ -2450,12 +2561,15 @@ document.getElementById("schedule-save").addEventListener("click", async () => {
   const noteText = document.getElementById("schedule-detail-input").value.trim();
 
   if (orig && !scheduleEditMode) {
-    // 열람 모드(작성자 본인이 아니거나, 그냥 열람으로 연 경우): 추가사항만 등록 가능
     if (!noteText) { alert("추가할 내용을 입력하세요"); return; }
-    const history = (orig.history && orig.history.length ? orig.history
-      : (orig.detail ? [{ text: orig.detail, author: orig.registeredBy, timestamp: orig.registeredAt }] : [])).slice();
-    history.push({ id: newHistId(), text: noteText, author: currentUser(), timestamp: new Date(), type: "note" });
-    await updateDoc(doc(db, "schedules", scheduleEditingId), { history, updatedAt: serverTimestamp() });
+    const batch = writeBatch(db);
+    addScheduleDetailToBatch(batch, scheduleEditingId, noteText);
+    batch.update(doc(db, "schedules", scheduleEditingId), {
+      lastDetailText:noteText, lastDetailAuthor:currentUser(), lastDetailAuthorUid:currentUid(),
+      lastDetailAt:serverTimestamp(), updatedAt:serverTimestamp(), detailsMigrated:true
+    });
+    addAuditToBatch(batch, "schedule", scheduleEditingId, "detail_added", null, { author:currentUser() });
+    await batch.commit();
     scheduleOverlay.classList.remove("open");
     return;
   }
@@ -2469,22 +2583,33 @@ document.getElementById("schedule-save").addEventListener("click", async () => {
     vendor: document.getElementById("schedule-vendor").value.trim(),
     time: document.getElementById("schedule-time").value || null,
     responsible: [...scheduleResponsibleSet],
+    responsibleUids: [...scheduleResponsibleSet].map(name => memberUidByName.get(name)).filter(Boolean),
     dates: [...scheduleDateSet],
+    months: monthKeysForDates([...scheduleDateSet]),
+    schemaVersion: SCHEMA_VERSION,
     updatedAt: serverTimestamp()
   };
-  const history = (orig && orig.history ? orig.history.slice()
-    : (orig && orig.detail ? [{ text: orig.detail, author: orig.registeredBy, timestamp: orig.registeredAt }] : []));
-  if (noteText) history.push({ id: newHistId(), text: noteText, author: currentUser(), timestamp: new Date(), type: "note" });
-  payload.history = history;
-
+  const scheduleRef = scheduleEditingId === null ? doc(collection(db, "schedules")) : doc(db, "schedules", scheduleEditingId);
+  const batch = writeBatch(db);
   if (scheduleEditingId === null) {
     payload.registeredBy = currentUser();
+    payload.registeredByUid = currentUid();
     payload.registeredAt = serverTimestamp();
-    await addDoc(collection(db, "schedules"), payload);
+    payload.archived = false;
+    payload.detailsMigrated = true;
+    if (noteText) Object.assign(payload, { lastDetailText:noteText, lastDetailAuthor:currentUser(), lastDetailAuthorUid:currentUid(), lastDetailAt:serverTimestamp() });
+    batch.set(scheduleRef, payload);
+    addAuditToBatch(batch, "schedule", scheduleRef.id, "schedule_created", null, { title, dates:payload.dates });
   } else {
     payload.registeredBy = orig.registeredBy;
-    await updateDoc(doc(db, "schedules", scheduleEditingId), payload);
+    payload.registeredByUid = orig.registeredByUid || memberUidByName.get(orig.registeredBy) || currentUid();
+    if (noteText) Object.assign(payload, { lastDetailText:noteText, lastDetailAuthor:currentUser(), lastDetailAuthorUid:currentUid(), lastDetailAt:serverTimestamp() });
+    batch.update(scheduleRef, payload);
+    addAuditToBatch(batch, "schedule", scheduleRef.id, "schedule_updated", { title:orig.title, dates:orig.dates }, { title, dates:payload.dates });
   }
+  if (noteText) addScheduleDetailToBatch(batch, scheduleRef.id, noteText);
+  await batch.commit();
+  showToast("일정이 저장되었습니다");
   scheduleOverlay.classList.remove("open");
 });
 
@@ -2532,11 +2657,11 @@ function renderMemoAssigneeChecks() {
     wrap.appendChild(chip);
   });
 }
-onSnapshot(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc")), (snap) => {
-  memos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+onSnapshot(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc"), limit(500)), (snap) => {
+  memos = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => !m.archived);
   renderMemos();
   renderDashboard();
-});
+}, error => reportDataError("메모 불러오기", error));
 document.getElementById("memo-filter-status").addEventListener("change", renderMemos);
 
 function renderMemos() {
@@ -2596,6 +2721,7 @@ document.getElementById("memo-bulk-delete").addEventListener("click", () => bulk
 
 const memoOverlay = document.getElementById("memo-modal-overlay");
 let memoEditingId = null;
+let memoEditFull = false;
 
 function nowLocalDatetimeValue() {
   const d = new Date();
@@ -2605,6 +2731,7 @@ function nowLocalDatetimeValue() {
 
 document.getElementById("memo-new-btn").addEventListener("click", () => {
   memoEditingId = null;
+  memoEditFull = true;
   document.getElementById("memo-modal-title").textContent = "새 메모 등록";
   fillNameSelect(document.getElementById("memo-receiver"), currentUser());
   const defaultAssignee = TEAM_MEMBERS.includes("강보선") ? "강보선" : currentUser();
@@ -2617,6 +2744,9 @@ document.getElementById("memo-new-btn").addEventListener("click", () => {
   document.getElementById("memo-time").value = nowLocalDatetimeValue();
   document.getElementById("memo-status-field").style.display = "none";
   document.getElementById("memo-delete").style.display = "none";
+  document.getElementById("memo-save").style.display = "inline-block";
+  ["memo-receiver", "memo-assignee", "memo-subject", "memo-urgency", "memo-time"].forEach(fieldId => { document.getElementById(fieldId).disabled = false; });
+  document.getElementById("memo-status-select").disabled = false;
   memoOverlay.classList.add("open");
 });
 
@@ -2624,6 +2754,7 @@ function openMemoEdit(id) {
   const m = memos.find(x => x.id === id);
   if (!m) return;
   memoEditingId = id;
+  memoEditFull = ownsRecord("memo", m) || isAdmin();
   document.getElementById("memo-modal-title").textContent = "메모 수정";
   fillNameSelect(document.getElementById("memo-receiver"), m.receivedBy);
   fillNameSelect(document.getElementById("memo-assignee"), m.assignee);
@@ -2637,6 +2768,11 @@ function openMemoEdit(id) {
   document.getElementById("memo-status-field").style.display = "block";
   document.getElementById("memo-status-select").value = m.status || "미확인";
   document.getElementById("memo-delete").style.display = "inline-block";
+  ["memo-receiver", "memo-assignee", "memo-subject", "memo-urgency", "memo-time"].forEach(fieldId => {
+    document.getElementById(fieldId).disabled = !memoEditFull;
+  });
+  document.getElementById("memo-status-select").disabled = !(memoEditFull || m.assignee === currentUser());
+  document.getElementById("memo-save").style.display = (memoEditFull || m.assignee === currentUser()) ? "inline-block" : "none";
   memoOverlay.classList.add("open");
 }
 
@@ -2664,7 +2800,10 @@ document.getElementById("memo-save").addEventListener("click", async () => {
     assignees.forEach(assignee => {
       batch.set(doc(collection(db, "phoneMemos")), {
         receivedBy: document.getElementById("memo-receiver").value,
+        createdByName: currentUser(),
+        createdByUid: currentUid(),
         assignee,
+        assigneeUid:memberUidByName.get(assignee) || null,
         subject,
         urgency: document.getElementById("memo-urgency").value,
         receivedAt,
@@ -2672,21 +2811,23 @@ document.getElementById("memo-save").addEventListener("click", async () => {
         confirmedBy: null,
         confirmedAt: null,
         broadcastId,
-        broadcastRecipients: assignees
+        broadcastRecipients: assignees,
+        archived: false,
+        schemaVersion: SCHEMA_VERSION,
+        updatedAt: serverTimestamp()
       });
     });
     await batch.commit();
   } else {
     const newStatus = document.getElementById("memo-status-select").value;
     const m = memos.find(x => x.id === memoEditingId);
-    const payload = {
+    const payload = memoEditFull ? {
       receivedBy: document.getElementById("memo-receiver").value,
       assignee: document.getElementById("memo-assignee").value,
-      subject,
-      urgency: document.getElementById("memo-urgency").value,
-      receivedAt,
-      status: newStatus
-    };
+      assigneeUid:memberUidByName.get(document.getElementById("memo-assignee").value) || null,
+      subject, urgency: document.getElementById("memo-urgency").value, receivedAt,
+      status:newStatus, updatedAt:serverTimestamp()
+    } : { status:newStatus, updatedAt:serverTimestamp() };
     if (newStatus === "확인됨" && m.status !== "확인됨") {
       payload.confirmedBy = currentUser();
       payload.confirmedAt = new Date();
@@ -2710,10 +2851,15 @@ function daysDiffIso(a, b) {
   return Math.round((db - da) / 86400000);
 }
 let userNotifications = [];
-onSnapshot(query(collection(db, "userNotifications", currentUser(), "items"), orderBy("createdAt", "desc"), limit(50)), snap => {
-  userNotifications = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  renderDashboard();
-});
+const notificationBuckets = new Map();
+function subscribeNotificationOwner(ownerKey) {
+  onSnapshot(query(collection(db, "userNotifications", ownerKey, "items"), orderBy("createdAt", "desc"), limit(50)), snap => {
+    notificationBuckets.set(ownerKey, snap.docs.map(d => ({ id:d.id, _ownerKey:ownerKey, ...d.data() })));
+    userNotifications = [...notificationBuckets.values()].flat().sort((a, b) => tsMillis(b.createdAt) - tsMillis(a.createdAt)).slice(0, 50);
+    renderDashboard();
+  }, error => reportDataError("알림 불러오기", error));
+}
+[...new Set([currentUid(), currentUser()])].forEach(subscribeNotificationOwner);
 
 let dashboardActivityExpanded = false;
 document.getElementById("dash-activity-toggle").addEventListener("click", () => {
@@ -2767,7 +2913,7 @@ function renderDashboard() {
       </div>
       <button type="button" class="dash-confirm-btn">확인</button>`;
     div.querySelector(".dash-confirm-btn").addEventListener("click", async () => {
-      if (notification) await updateDoc(doc(db, "userNotifications", me, "items", notification.id), { readAt: serverTimestamp() });
+      if (notification) await updateDoc(doc(db, "userNotifications", notification._ownerKey || notificationOwnerKey(me), "items", notification.id), { readAt: serverTimestamp() });
       else if (rec) await markSeen(type, rec.id);
       renderDashboard();
     });

@@ -3,53 +3,179 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function passwordUser() { return signedIn() && request.auth.token.email != null; }
-    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
-    function admin() { return passwordUser() && me().role == 'admin'; }
-    function participant(data) {
-      return passwordUser() && (
-        data.requestedBy == me().name ||
-        data.assignee == me().name ||
-        (data.participants is list && data.participants.hasAny([me().name]))
+    function adminEmail() { return passwordUser() && request.auth.token.email == 'yakolibre@gmail.com'; }
+    function userPath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function hasProfile() { return passwordUser() && exists(userPath()); }
+    function me() { return get(userPath()).data; }
+    function admin() { return hasProfile() && me().role == 'admin'; }
+    function expectedName() {
+      return request.auth.token.email == 'kw5232@naver.com' ? '강은석' :
+        request.auth.token.email == 'parkjh8372@naver.com' ? '박재현' :
+        request.auth.token.email == 'bosun1245@daum.net' ? '강보선' :
+        request.auth.token.email == 'kimwimi23@naver.com' ? '김류현' :
+        request.auth.token.email == '220041@naver.com' ? '김준형' :
+        request.auth.token.email == 'yakolibre@gmail.com' ? '관리자' : '';
+    }
+    function validText(value, maxLength) { return value is string && value.size() > 0 && value.size() <= maxLength; }
+    function affectedOnly(fields) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields); }
+    function same(field) { return request.resource.data[field] == resource.data[field]; }
+    function legacyOrUidOwner(data, uidField, nameField) {
+      return hasProfile() && (
+        (uidField in data && data[uidField] == request.auth.uid) ||
+        ((!(uidField in data) || data[uidField] == null) && nameField in data && data[nameField] == me().name)
       );
+    }
+    function ticketParticipant(data) {
+      return hasProfile() && (
+        legacyOrUidOwner(data, 'requestedByUid', 'requestedBy') ||
+        ('participantUids' in data && data.participantUids is list && data.participantUids.hasAny([request.auth.uid])) ||
+        ('participants' in data && data.participants is list && data.participants.hasAny([me().name])) ||
+        ('assigneeUid' in data && data.assigneeUid == request.auth.uid) ||
+        ('assignee' in data && data.assignee == me().name)
+      );
+    }
+    function scheduleOwner(data) { return legacyOrUidOwner(data, 'registeredByUid', 'registeredBy'); }
+    function memoOwner(data) { return legacyOrUidOwner(data, 'createdByUid', 'createdByName') || (!("createdByUid" in data) && data.receivedBy == me().name); }
+    function memoAssignee(data) {
+      return hasProfile() && (('assigneeUid' in data && data.assigneeUid == request.auth.uid) || data.assignee == me().name);
     }
 
     match /users/{uid} {
-      allow read: if passwordUser() && (request.auth.uid == uid || admin());
-      allow create: if passwordUser() && request.auth.uid == uid && request.resource.data.role == 'member';
-      allow update: if passwordUser() && request.auth.uid == uid
+      allow read: if passwordUser();
+      allow create: if adminEmail() || (passwordUser() && request.auth.uid == uid
+        && expectedName() != '' && request.resource.data.name == expectedName()
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role == 'member');
+      allow update: if admin() || (passwordUser() && request.auth.uid == uid
         && request.resource.data.role == resource.data.role
-        || admin();
+        && request.resource.data.name == resource.data.name
+        && request.resource.data.email == resource.data.email
+        && affectedOnly(['active', 'updatedAt']));
       allow delete: if admin();
     }
 
     match /requestTickets/{ticketId} {
-      // 전자칠판의 익명 읽기를 유지한다. 쓰기는 실제 이메일 계정만 가능하다.
       allow read: if signedIn();
-      allow create: if passwordUser() && request.resource.data.requestedBy == me().name;
-      allow update: if participant(resource.data) || admin();
+      allow create: if admin() || (hasProfile()
+        && request.resource.data.requestedByUid == request.auth.uid
+        && request.resource.data.requestedBy == me().name
+        && validText(request.resource.data.title, 300)
+        && request.resource.data.participantUids is list
+        && request.resource.data.participantUids.hasAny([request.auth.uid]));
+      allow update: if admin() || (
+        ticketParticipant(resource.data)
+        && same('requestedBy')
+        && ((!('requestedByUid' in resource.data)) || resource.data.requestedByUid == null || same('requestedByUid'))
+        && (
+          legacyOrUidOwner(resource.data, 'requestedByUid', 'requestedBy') ||
+          affectedOnly(['status','receivedAt','receivedBy','openedBy','history','updatedAt','reopenedAt','reopenedBy','lastDetailText','lastDetailAuthor','lastDetailAuthorUid','lastDetailKind','lastDetailAt','deleteRequestedBy','deleteRequestedByUid','deleteRequestedAt'])
+        )
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['archived','archivedAt','archivedBy','archivedByUid']) ||
+          legacyOrUidOwner(resource.data, 'requestedByUid', 'requestedBy')
+        )
+      );
       allow delete: if admin();
+
       match /details/{detailId} {
-        allow read: if passwordUser() && (participant(get(/databases/$(database)/documents/requestTickets/$(ticketId)).data) || admin());
-        allow create: if passwordUser() && (participant(get(/databases/$(database)/documents/requestTickets/$(ticketId)).data) || admin());
-        allow update: if passwordUser() && (resource.data.authorUid == request.auth.uid || resource.data.author == me().name || admin());
+        function parent() { return get(/databases/$(database)/documents/requestTickets/$(ticketId)).data; }
+        function parentAfter() { return getAfter(/databases/$(database)/documents/requestTickets/$(ticketId)).data; }
+        allow read: if passwordUser() && (ticketParticipant(parent()) || admin());
+        allow create: if passwordUser() && (ticketParticipant(parentAfter()) || admin());
+        allow update: if admin() || (passwordUser() && (
+          resource.data.authorUid == request.auth.uid ||
+          ((!('authorUid' in resource.data) || resource.data.authorUid == null) && resource.data.author == me().name)
+        ) && affectedOnly(['text','editedAt','archived','archivedAt','archivedBy','archivedByUid']));
         allow delete: if admin();
       }
     }
 
-    match /userNotifications/{name}/items/{notificationId} {
-      allow read, update: if passwordUser() && (me().name == name || admin());
-      allow create: if passwordUser();
+    match /schedules/{scheduleId} {
+      allow read: if signedIn();
+      allow create: if admin() || (hasProfile()
+        && request.resource.data.registeredByUid == request.auth.uid
+        && request.resource.data.registeredBy == me().name
+        && validText(request.resource.data.title, 300)
+        && request.resource.data.dates is list
+        && request.resource.data.dates.size() > 0
+        && request.resource.data.dates.size() <= 370
+        && request.resource.data.type in ['공사','미팅','업무','기타']);
+      allow update: if admin() || (
+        passwordUser()
+        && same('registeredBy')
+        && ((!('registeredByUid' in resource.data)) || resource.data.registeredByUid == null || same('registeredByUid'))
+        && (
+          scheduleOwner(resource.data) ||
+          affectedOnly(['lastDetailText','lastDetailAuthor','lastDetailAuthorUid','lastDetailAt','updatedAt','detailsMigrated','schemaVersion','deleteRequestedBy','deleteRequestedByUid','deleteRequestedAt'])
+        )
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['archived','archivedAt','archivedBy','archivedByUid']) || scheduleOwner(resource.data)
+        )
+      );
+      allow delete: if admin();
+
+      match /details/{detailId} {
+        function parent() { return get(/databases/$(database)/documents/schedules/$(scheduleId)).data; }
+        allow read: if signedIn();
+        allow create: if admin() || (hasProfile() && validText(request.resource.data.text, 10000) && (
+          (request.resource.data.authorUid == request.auth.uid && request.resource.data.author == me().name) ||
+          (request.resource.data.migrated == true && (scheduleOwner(parent()) || admin()))
+        ));
+        allow update: if admin() || (hasProfile() && (
+          resource.data.authorUid == request.auth.uid ||
+          ((!('authorUid' in resource.data) || resource.data.authorUid == null) && resource.data.author == me().name)
+        ) && affectedOnly(['text','editedAt','archived','archivedAt','archivedBy','archivedByUid']));
+        allow delete: if admin();
+      }
+    }
+
+    match /phoneMemos/{memoId} {
+      allow read: if signedIn();
+      allow create: if admin() || (hasProfile()
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.createdByName == me().name
+        && validText(request.resource.data.subject, 2000)
+        && request.resource.data.urgency in ['상','중','하']);
+      allow update: if admin() || (
+        signedIn() && (
+          (passwordUser() && memoOwner(resource.data)
+            && same('createdByUid') && same('createdByName')) ||
+          (passwordUser() && memoAssignee(resource.data)
+            && affectedOnly(['status','confirmedBy','confirmedAt','updatedAt'])) ||
+          (!passwordUser() && affectedOnly(['status','confirmedBy','confirmedAt'])) ||
+          (passwordUser() && affectedOnly(['deleteRequestedBy','deleteRequestedByUid','deleteRequestedAt']))
+        )
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['archived','archivedAt','archivedBy','archivedByUid']) || memoOwner(resource.data)
+        )
+      );
+      allow delete: if admin();
+    }
+
+    match /userNotifications/{ownerKey}/items/{notificationId} {
+      allow read, update: if admin() || (hasProfile() && (request.auth.uid == ownerKey || me().name == ownerKey));
+      allow create: if admin() || (hasProfile() && (
+        request.resource.data.recipientUid == ownerKey || request.resource.data.recipientName == ownerKey
+      ) && request.resource.data.actorUid == request.auth.uid);
       allow delete: if admin();
     }
 
     match /auditLogs/{logId} {
-      allow create: if passwordUser();
+      allow create: if admin() || (hasProfile()
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.actorName == me().name
+        && request.resource.data.createdAt == request.time);
       allow read: if admin();
       allow update, delete: if false;
     }
 
-    match /schedules/{id} { allow read: if signedIn(); allow write: if passwordUser(); }
-    match /phoneMemos/{id} { allow read: if signedIn(); allow write: if signedIn(); }
-    match /customHolidays/{id} { allow read: if signedIn(); allow write: if admin(); }
+    match /customHolidays/{id} {
+      allow read: if signedIn();
+      allow write: if admin();
+    }
+    match /system/{id} {
+      allow read: if signedIn();
+      allow write: if admin();
+    }
   }
 }
