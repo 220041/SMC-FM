@@ -10,7 +10,7 @@
 - `orders.html`: 계약팀 Google Sheet 조회 화면
 - `admin.html`: 관리자 편집, 자료보관, 사용자, 백업·복구, 데이터 관리
 
-공용 코드는 `firebase-config.js`, `account-auth.js`, `auth-gate.js`, `app-runtime.js`, `data-model.js`, `common.css`에 있습니다.
+페이지 동작은 `input-page.js`, `board-page.js`, `admin-page.js`로 분리되어 있습니다. 공용 코드는 `firebase-config.js`, `account-auth.js`, `auth-gate.js`, `app-runtime.js`, `data-model.js`, `common.css`에 있습니다.
 
 ## 인증 계정
 
@@ -62,15 +62,17 @@ system/app
 
 Firebase CLI를 설치하고 로그인한 뒤 다음을 실행합니다.
 
-보안 규칙 에뮬레이터 테스트에는 Java 11 이상이 필요합니다.
+보안 규칙 에뮬레이터 테스트에는 Java 21 이상을 사용합니다.
 
 ```bash
-npm install
+npm ci
 firebase login
 firebase use smc-fm
-npm run test:rules
+npm test
 firebase deploy --only firestore:rules,firestore:indexes
 ```
+
+`main` 브랜치와 pull request에는 GitHub Actions가 JavaScript 구문 검사와 Firestore 규칙 테스트를 자동 실행합니다.
 
 CLI를 사용하지 않으면 `firestore.rules` 내용을 Firebase Console → Firestore Database → Rules에 붙여넣어 게시할 수 있습니다. 규칙 배포 후 관리자 페이지에서 다음 순서로 실행합니다.
 

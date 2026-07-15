@@ -3,11 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:rules": "firebase emulators:exec --only firestore \"node --test tests/firestore.rules.test.mjs\""
+    "test:syntax": "node --check firebase-config.js && node --check account-auth.js && node --check auth-gate.js && node --check app-runtime.js && node --check data-model.js && node --check input-page.js && node --check board-page.js && node --check admin-page.js",
+    "test:rules": "firebase emulators:exec --only firestore \"node --test tests/firestore.rules.test.mjs\"",
+    "test": "npm run test:syntax && npm run test:rules"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.0",
     "firebase": "^12.16.0",
-    "firebase-tools": "^14.0.0"
+    "firebase-tools": "^15.23.0"
   }
 }
