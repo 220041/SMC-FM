@@ -101,6 +101,8 @@
     font-size: 17px; font-weight: 800;
   }
   .focus-group-row.team td { background: var(--bg); color: var(--ink-soft); border-color: var(--line-strong); }
+  .focus-group-spacer { cursor: default; }
+  .focus-group-spacer td { height: 18px; padding: 0; background: var(--surface); border: 0; }
   .focus-group-count {
     display: inline-block; margin-left: 7px; padding: 1px 8px; border-radius: 10px;
     background: var(--surface); color: inherit; font-size: 13px; vertical-align: 1px;
@@ -681,7 +683,7 @@
     <div class="table-scroll"><table>
       <thead><tr>
         <th class="th-check"><input type="checkbox" id="memo-select-all" /></th>
-        <th>담당자-내용</th><th>긴급도</th><th>받은사람</th><th>받은시간</th><th>상태</th><th class="th-del"></th>
+        <th>담당자-내용</th><th>긴급도</th><th>작성자</th><th>받은시간</th><th>상태</th><th class="th-del"></th>
       </tr></thead>
       <tbody id="memo-tbody"></tbody>
     </table></div>
@@ -820,7 +822,7 @@
     <button type="button" class="modal-close-x" id="memo-close-x" aria-label="닫기">×</button>
     <h3 id="memo-modal-title">새 메모 등록</h3>
     <div class="row2">
-      <div class="field"><label>받은사람 (전달받은 사람)</label><select id="memo-receiver"></select></div>
+      <div class="field"><label>작성자 (전달받은 사람)</label><select id="memo-receiver"></select></div>
       <div class="field"><label>담당자 (처리할 사람)</label>
         <select id="memo-assignee"></select>
         <div id="memo-assignee-multi" style="display:none;">
@@ -1027,8 +1029,14 @@ function formatDateRangesShort(dates) {
 /* 담당자가 여러 명일 때 표에서 한 줄로 맞추기 위해 축약 ("홍길동, 김철수 외 2명"). 전체 명단은 title 툴팁으로 확인 */
 function responsibleShort(list) {
   if (!list.length) return "미지정";
+  if (TEAM_MEMBERS.length > 0 && TEAM_MEMBERS.every(name => list.includes(name))) return "전체";
   if (list.length <= 2) return list.join(", ");
   return `${list[0]}, ${list[1]} 외 ${list.length - 2}명`;
+}
+function responsibleLabel(list) {
+  if (!list.length) return "미지정";
+  if (TEAM_MEMBERS.length > 0 && TEAM_MEMBERS.every(name => list.includes(name))) return "전체";
+  return list.join(", ");
 }
 
 /* ════════════════════════════════════════════════
@@ -1933,6 +1941,12 @@ onSnapshot(collection(db, "schedules"), (snap) => {
 });
 
 function appendFocusGroupHeader(tbody, label, count, kind, colspan) {
+  if (kind === "team" && tbody.children.length) {
+    const spacer = document.createElement("tr");
+    spacer.className = "focus-group-spacer";
+    spacer.innerHTML = `<td colspan="${colspan}" aria-hidden="true"></td>`;
+    tbody.appendChild(spacer);
+  }
   const row = document.createElement("tr");
   row.className = "focus-group-row " + kind;
   row.innerHTML = `<td colspan="${colspan}">${escapeHtml(label)}<span class="focus-group-count">${count}건</span></td>`;
@@ -1980,7 +1994,7 @@ function renderSchedules() {
         <td title="${escapeHtml(typeLabel(s.type))}"><span class="badge type-${s.type}">${escapeHtml(s.type)}</span></td>
         <td title="${escapeHtml(formatDateRanges(s.dates))}${s.time ? " " + escapeHtml(s.time) : ""}">${escapeHtml(formatDateRangesShort(s.dates))}${s.time ? ` ${escapeHtml(s.time)}` : ""}</td>
         <td title="${escapeHtml(s.vendor || "")}">${escapeHtml(s.vendor || "-")}</td>
-        <td title="${escapeHtml(respArr.join(", ") || "미지정")}">${escapeHtml(responsibleShort(respArr))}</td>
+        <td title="${escapeHtml(responsibleLabel(respArr))}">${escapeHtml(responsibleShort(respArr))}</td>
         <td title="${escapeHtml(s.registeredBy || "")}">${escapeHtml(s.registeredBy || "-")}</td>
         <td class="td-del"><button type="button" class="row-delete-btn" title="삭제">🗑</button></td>
       `;
@@ -2248,7 +2262,7 @@ function renderScheduleViewSummary(s) {
   document.getElementById("sv-title").textContent = s.title || "-";
   document.getElementById("sv-type").textContent = typeLabel(s.type);
   document.getElementById("sv-vendor").textContent = s.vendor || "-";
-  document.getElementById("sv-responsible").textContent = responsibleArray(s).join(", ") || "미지정";
+  document.getElementById("sv-responsible").textContent = responsibleLabel(responsibleArray(s));
   document.getElementById("sv-dates").textContent = formatDateRanges(s.dates) + (s.time ? ` ${s.time}` : "");
 }
 
@@ -2793,7 +2807,7 @@ function renderDashboard() {
     div.className = "dash-card dash-update-card";
     div.style.cursor = "default";
     div.innerHTML = `<div class="dash-update-body"><div class="dc-title"><span class="attention-badge">${memo.urgency === "상" ? "긴급" : "미확인"}</span> [메모] ${escapeHtml(memo.subject || "메모")}</div>
-      <div class="dc-meta">받은사람 ${escapeHtml(memo.receivedBy || "-")} · ${fmtTs(memo.receivedAt)}</div></div>
+      <div class="dc-meta">작성자 ${escapeHtml(memo.receivedBy || "-")} · ${fmtTs(memo.receivedAt)}</div></div>
       <button type="button" class="dash-confirm-btn">내용 보기</button>`;
     div.querySelector("button").addEventListener("click", () => openMemoEdit(memo.id));
     alertList.appendChild(div);
@@ -2870,7 +2884,7 @@ function renderDashboard() {
           <div class="timeline-meta">
             <span>${escapeHtml(typeLabel(s.type))}</span>
             <span>${formatDateRanges(s.dates)}${s.time ? " " + escapeHtml(s.time) : ""}</span>
-            <span>담당: ${escapeHtml(responsibleArray(s).join(", ") || "미지정")}</span>
+            <span>담당: ${escapeHtml(responsibleLabel(responsibleArray(s)))}</span>
           </div>
         `;
         div.addEventListener("click", () => { openScheduleEdit(s.id); });
@@ -2890,7 +2904,7 @@ function renderDashboard() {
         <div class="timeline-meta">
           <span>${escapeHtml(typeLabel(s.type))}</span>
           <span>${formatDateRanges(s.dates)}${s.time ? " " + escapeHtml(s.time) : ""}</span>
-          <span>담당: ${escapeHtml(responsibleArray(s).join(", ") || "미지정")}</span>
+          <span>담당: ${escapeHtml(responsibleLabel(responsibleArray(s)))}</span>
         </div>
       `;
       div.addEventListener("click", () => { openScheduleEdit(s.id); });
@@ -2914,7 +2928,7 @@ function renderDashboard() {
       const div = document.createElement("div");
       div.className = "dash-card";
       div.innerHTML = `<div class="dc-title">${m.urgency === "상" ? '<span class="attention-badge">긴급</span> ' : ""}${escapeHtml(m.assignee || "미지정")} - ${escapeHtml(m.subject || "")} <span class="badge status-${m.status}">${m.status}</span></div>
-        <div class="dc-meta">받은사람 ${m.receivedBy || "-"} · ${fmtTs(m.receivedAt)}</div>`;
+        <div class="dc-meta">작성자 ${escapeHtml(m.receivedBy || "-")} · ${fmtTs(m.receivedAt)}</div>`;
       div.addEventListener("click", () => { openMemoEdit(m.id); });
       mEl.appendChild(div);
     });

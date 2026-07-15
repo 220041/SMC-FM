@@ -706,6 +706,12 @@ function responsibleArray(rec) {
   if (rec.responsible) return [rec.responsible];
   return [];
 }
+function responsibleLabel(rec) {
+  const list = responsibleArray(rec);
+  if (!list.length) return "미지정";
+  if (TEAM_MEMBERS.length > 0 && TEAM_MEMBERS.every(name => list.includes(name))) return "전체";
+  return list.join(", ");
+}
 function ticketRecipients(rec) {
   const participants = Array.isArray(rec.participants)
     ? rec.participants.filter(name => name && name !== rec.requestedBy && name !== "관리자")
@@ -1094,7 +1100,7 @@ function openDayDetail(iso, y, m, d) {
       div.style.borderLeftColor = variant.fg;
       const lastDetail = Array.isArray(ev.history) && ev.history.length ? ev.history[ev.history.length-1].text : ev.detail;
       div.innerHTML = `${ev.time ? `<b>${escapeHtml(ev.time)}</b> ` : ""}${escapeHtml(ev.title)}${ev.vendor ? ` (${escapeHtml(ev.vendor)})` : ""}
-        <div class="dd-meta">담당: ${responsibleArray(ev).join(", ") || "미지정"}${lastDetail ? " · " + escapeHtml(lastDetail) : ""}</div>`;
+        <div class="dd-meta">담당: ${escapeHtml(responsibleLabel(ev))}${lastDetail ? " · " + escapeHtml(lastDetail) : ""}</div>`;
       div.addEventListener("click", (e) => {
         e.stopPropagation();
         openEventDetail(ev);
@@ -1118,7 +1124,7 @@ function openEventDetail(ev) {
   const metaLines = [];
   metaLines.push(`유형: <b>${escapeHtml(ev.type === "공사" ? "공사(작업)" : (ev.type || "-"))}</b>`);
   if (ev.vendor) metaLines.push(`업체/부서: <b>${escapeHtml(ev.vendor)}</b>`);
-  metaLines.push(`담당: <b>${escapeHtml(responsibleArray(ev).join(", ") || "미지정")}</b>`);
+  metaLines.push(`담당: <b>${escapeHtml(responsibleLabel(ev))}</b>`);
   metaLines.push(`날짜: <b>${escapeHtml(formatDateRanges(ev.dates))}</b>${ev.time ? ` <b>${escapeHtml(ev.time)}</b>` : ""}`);
   metaLines.push(`등록자: <b>${escapeHtml(ev.registeredBy || "-")}</b>`);
   document.getElementById("event-detail-meta").innerHTML = metaLines.join("<br>");
@@ -1343,7 +1349,7 @@ function buildAgendaRow(dateLabel, ev) {
   row.innerHTML = `
     ${dateLabel ? `<span class="agenda-date">${escapeHtml(dateLabel)}</span>` : ""}
     <span class="agenda-title">${escapeHtml(ev.title || "-")}</span>
-    <span class="agenda-assignee">${escapeHtml(responsibleArray(ev).join(", ") || "미지정")}</span>
+    <span class="agenda-assignee">${escapeHtml(responsibleLabel(ev))}</span>
   `;
   row.addEventListener("click", () => openEventDetail(ev));
   return row;
@@ -1484,8 +1490,8 @@ function openMemoDetail(group, isDone) {
     const div = document.createElement("div");
     div.className = "eh-item";
     div.innerHTML = isDone
-      ? `<div class="eh-meta">받은사람 ${escapeHtml(m.receivedBy || "-")} · ${fmtTimestamp(m.receivedAt)}</div><div>확인함: ${escapeHtml(m.confirmedBy || "-")} · ${fmtTimestamp(m.confirmedAt)}</div>`
-      : `<div class="eh-meta">받은사람 ${escapeHtml(m.receivedBy || "-")} · ${fmtTimestamp(m.receivedAt)}</div>`;
+      ? `<div class="eh-meta">작성자 ${escapeHtml(m.receivedBy || "-")} · ${fmtTimestamp(m.receivedAt)}</div><div>확인함: ${escapeHtml(m.confirmedBy || "-")} · ${fmtTimestamp(m.confirmedAt)}</div>`
+      : `<div class="eh-meta">작성자 ${escapeHtml(m.receivedBy || "-")} · ${fmtTimestamp(m.receivedAt)}</div>`;
     itemsEl.appendChild(div);
   });
 

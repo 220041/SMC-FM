@@ -247,7 +247,7 @@
       <button class="btn-secondary" id="memos-load-more" style="display:none;">더 불러오기</button>
     </div>
     <div class="filter-bar">
-      <label>검색</label><input type="text" id="memos-search" placeholder="용건/담당자/받은사람" />
+      <label>검색</label><input type="text" id="memos-search" placeholder="용건/담당자/작성자" />
       <label>상태</label>
       <select id="memos-status-filter">
         <option value="all">전체</option>
@@ -454,7 +454,7 @@ function openAdminEditor(type, record) {
   } else {
     adminEditFields.innerHTML =
       adminField("용건", inputControl("ae-subject", record.subject)) +
-      adminField("받은 사람", selectControl("ae-received-by", memberOptions(record.receivedBy))) +
+      adminField("작성자", selectControl("ae-received-by", memberOptions(record.receivedBy))) +
       adminField("담당자", selectControl("ae-assignee", memberOptions(record.assignee, true))) +
       adminField("긴급도", selectControl("ae-urgency", ["상","중","하"].map(s => `<option value="${s}" ${s === record.urgency ? "selected" : ""}>${s}</option>`).join(""))) +
       adminField("상태", selectControl("ae-status", ["미확인","확인됨"].map(s => `<option value="${s}" ${s === record.status ? "selected" : ""}>${s}</option>`).join("")));
@@ -570,7 +570,7 @@ const CONFIGS = {
       { key: "assignee", label: "담당자", get: r => escapeHtml(r.assignee || "미지정"), sort: r => r.assignee || "" },
       { key: "subject", label: "용건", get: r => escapeHtml(r.subject || "-"), sort: r => r.subject || "" },
       { key: "urgency", label: "긴급도", get: r => `<span class="badge urgency-${r.urgency}">${escapeHtml(r.urgency || "-")}</span>`, sort: r => r.urgency || "" },
-      { key: "receivedBy", label: "받은사람", get: r => escapeHtml(r.receivedBy || "-"), sort: r => r.receivedBy || "" },
+      { key: "receivedBy", label: "작성자", get: r => escapeHtml(r.receivedBy || "-"), sort: r => r.receivedBy || "" },
       { key: "receivedAt", label: "받은시간", get: r => fmtTs(r.receivedAt), sort: r => tsMillis(r.receivedAt) },
       { key: "status", label: "상태", get: r => `<span class="badge status-${r.status}">${escapeHtml(r.status || "-")}</span>`, sort: r => r.status || "" },
       { key: "confirmedBy", label: "확인자", get: r => escapeHtml(r.confirmedBy || "-"), sort: r => r.confirmedBy || "" },
@@ -579,7 +579,7 @@ const CONFIGS = {
     ],
     excelRow: r => ({
       "담당자": r.assignee || "미지정", "용건": r.subject || "", "긴급도": r.urgency || "",
-      "받은사람": r.receivedBy || "", "받은시간": fmtTs(r.receivedAt), "상태": r.status || "",
+      "작성자": r.receivedBy || "", "받은시간": fmtTs(r.receivedAt), "상태": r.status || "",
       "확인자": r.confirmedBy || "", "확인시간": fmtTs(r.confirmedAt)
     })
   }
