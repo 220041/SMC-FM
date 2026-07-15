@@ -960,10 +960,23 @@ function distributeWeekHeights(natural, minimum, available) {
     remaining = Math.max(0, available - heights.reduce((sum, h) => sum + h, 0));
   }
   if (remaining > 0) {
-    const weightTotal = natural.reduce((sum, h) => sum + Math.max(1, h), 0);
-    natural.forEach((h, i) => { heights[i] += remaining * (Math.max(1, h) / weightTotal); });
+    // Once every week has its natural height, share spare screen space evenly.
+    // Weighting this by content made an already busy week retain a large blank area.
+    const extraPerWeek = remaining / Math.max(1, heights.length);
+    heights.forEach((_, i) => { heights[i] += extraPerWeek; });
   }
   return heights;
+}
+function applyWeekHeights(weeks, heights, minimum, available) {
+  let used = 0;
+  weeks.forEach((week, index) => {
+    const height = index === weeks.length - 1
+      ? Math.max(minimum[index], available - used)
+      : Math.max(minimum[index], Math.floor(heights[index]));
+    week.style.flex = `0 0 ${height}px`;
+    week.style.height = `${height}px`;
+    used += height;
+  });
 }
 function collapseOverflowingWeek(week) {
   const lanesEl = week.querySelector(".cal-lanes");
@@ -1008,14 +1021,32 @@ function fitCalendarDensity() {
     if (natural.reduce((sum, h) => sum + h, 0) <= available) break;
   }
 
-  const heights = distributeWeekHeights(natural, minimum, available);
-  let used = 0;
-  weeks.forEach((week, index) => {
-    const height = index === weeks.length - 1 ? Math.max(minimum[index], available - used) : Math.max(minimum[index], Math.floor(heights[index]));
-    week.style.flex = `0 0 ${height}px`;
-    week.style.height = `${height}px`;
-    used += height;
-  });
+  let heights = distributeWeekHeights(natural, minimum, available);
+  applyWeekHeights(weeks, heights, minimum, available);
+
+  // Compaction changes the natural height of a busy week. Re-measure after that
+  // change so a height calculated from the pre-compaction rows is not left blank.
+  for (let pass = 0; pass < 2; pass++) {
+    let compacted = false;
+    weeks.forEach(week => {
+      if (!week.classList.contains("week-compact") && week.querySelector(".cal-lanes") && week.scrollHeight > week.clientHeight + 1) {
+        week.classList.add("week-compact");
+        compacted = true;
+      }
+    });
+    if (!compacted) break;
+
+    weeks.forEach(week => {
+      week.style.flex = "0 0 auto";
+      week.style.height = "auto";
+    });
+    void grid.offsetHeight;
+    natural = weeks.map(naturalWeekHeight);
+    minimum = weeks.map(week => Math.ceil((week.querySelector(".cal-daynums")?.scrollHeight || 0) + 24));
+    heights = distributeWeekHeights(natural, minimum, available);
+    applyWeekHeights(weeks, heights, minimum, available);
+  }
+
   weeks.forEach(collapseOverflowingWeek);
 }
 let densityResizeTimer = null;
