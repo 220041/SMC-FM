@@ -6,6 +6,8 @@
 <title>시설관리팀 업무</title>
 <link rel="stylesheet" href="common.css" />
 <style>
+  /* 탭마다 세로 스크롤 유무가 달라도 콘텐츠의 가로 위치를 고정한다. */
+  html { overflow-y: scroll; scrollbar-gutter: stable; }
   body { padding-bottom: 44px; }
   #topbar {
     display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
@@ -889,6 +891,20 @@ let scheduleResponsibleEditable = true;
 function renderResponsibleChecks() {
   const wrap = document.getElementById("schedule-responsible-checks");
   wrap.innerHTML = "";
+
+  const allSelected = TEAM_MEMBERS.length > 0 && TEAM_MEMBERS.every(name => scheduleResponsibleSet.has(name));
+  const allChip = document.createElement("button");
+  allChip.type = "button";
+  allChip.className = "resp-chip" + (allSelected ? " active" : "");
+  allChip.textContent = "전체";
+  allChip.setAttribute("aria-pressed", String(allSelected));
+  allChip.disabled = !scheduleResponsibleEditable;
+  allChip.addEventListener("click", () => {
+    scheduleResponsibleSet = allSelected ? new Set() : new Set(TEAM_MEMBERS);
+    renderResponsibleChecks();
+  });
+  wrap.appendChild(allChip);
+
   TEAM_MEMBERS.forEach(n => {
     const chip = document.createElement("button");
     chip.type = "button";
