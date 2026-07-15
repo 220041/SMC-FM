@@ -38,6 +38,7 @@
   }
   .icon-btn:active { background: var(--line); }
   .icon-btn.is-active { color: var(--accent); border-color: var(--accent); }
+  .icon-btn.is-muted { color:var(--alert); border-color:var(--alert); background:var(--alert-bg); }
   #clock { font-size: clamp(13px, 1.15vw, 18px); font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
   #topbar-right { display: flex; align-items: center; gap: 12px; justify-self: end; }
   .nav-link {
@@ -68,6 +69,17 @@
   #cal-wrap.density-1 { --chip-font: clamp(11.5px, 0.9vw, 15px); --daynum-font: clamp(14px, 1.1vw, 19px); --lane-gap: 3px; --lane-pad: 3px 7px; }
   #cal-wrap.density-2 { --chip-font: clamp(10.5px, 0.8vw, 13px); --daynum-font: clamp(13px, 1vw, 16px); --lane-gap: 2px; --lane-pad: 2px 6px; }
   #cal-wrap.density-3 { --chip-font: clamp(9.5px, 0.7vw, 11.5px); --daynum-font: clamp(12px, 0.9vw, 14px); --lane-gap: 2px; --lane-pad: 2px 5px; }
+  /* A busy week gets one extra local compaction pass before any event row is hidden. */
+  .cal-week.week-compact .cal-lanes { gap: 1px; padding-bottom: 4px; }
+  .cal-week.week-compact .cal-lane { gap: 2px; }
+  .cal-week.week-compact .event-chip {
+    font-size: clamp(9.5px, .72vw, 12px); line-height: 1.15;
+    padding: 2px 5px; border-left-width: 3px; border-radius: 5px;
+  }
+  .cal-week.week-compact .event-chip.single-day .event-main {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .cal-week.week-compact .event-chip.single-day .event-sub { display: none; }
   /* cal-grid-outer를 세로 flex 컨테이너로 만들어, dow-row(고정 높이) 이외의 남는 공간을
      전부 cal-grid에 넘겨주도록 함 (퍼센트 높이 대신 flex로 계산해야 dow-row 높이만큼
      넘치면서 스크롤이 생기는 문제가 없음) */
@@ -179,7 +191,7 @@
   .urgency-중 { background: #E1A63B; color: #fff; }
   .urgency-하 { background: #9AA5B1; color: #fff; }
 
-  /* 미확인 알림/완료 목록에 전화메모와 관련업무를 함께 표시하기 위한 종류 태그 */
+  /* 미확인 알림/완료 목록에 메모와 관련업무를 함께 표시하기 위한 종류 태그 */
   .type-tag {
     display: inline-block; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 5px;
     flex-shrink: 0; background: var(--dim-bg); color: var(--ink-soft); vertical-align: middle;
@@ -268,7 +280,7 @@
   .agenda-assignee { flex-shrink: 0; color: var(--ink-soft); font-size: 0.9em; }
   .agenda-day-group { padding:0 2px 5px; }
   .agenda-day-group + .agenda-day-group { border-top:2px solid var(--line); padding-top:8px; margin-top:5px; }
-  .agenda-day-head { font-size:clamp(13px,1vw,16px); font-weight:900; color:var(--accent); margin:0 2px 3px; }
+  .agenda-day-head { font-size:calc(var(--aux-font) + 1px); font-weight:900; color:var(--accent); margin:0 2px 3px; }
   .agenda-day-head.is-today { color:var(--today); }
   .week-columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; align-items:start; }
   .week-column { min-width:0; }
@@ -284,14 +296,9 @@
   .due-label { flex-shrink:0; min-width:78px; font-weight:900; color:var(--accent); }
   .due-label.is-overdue { color:var(--alert); }
   .due-label.is-today { color:#B26A00; }
-  #aux-back-btn {
-    align-self: center; border: none; border-radius: 12px; padding: 12px 26px; font-size: 15px; font-weight: 800;
-    background: var(--accent); color: #fff; cursor: pointer; flex-shrink: 0;
-  }
-  #aux-back-btn:active { background: #1f3a5f; }
   #aux-screen.clock-only-mode { justify-content:center; align-items:center; }
   #aux-screen.clock-only-mode #aux-clock-box { width:100%; }
-  #aux-screen.clock-only-mode #aux-date, #aux-screen.clock-only-mode #aux-body, #aux-screen.clock-only-mode #aux-back-btn { display:none; }
+  #aux-screen.clock-only-mode #aux-date, #aux-screen.clock-only-mode #aux-body { display:none; }
   #aux-screen.clock-only-mode #aux-time { font-size:clamp(110px,18vw,260px); letter-spacing:4px; }
   #aux-screen.aux-density-1 { --aux-row-pad:6px 3px; --aux-list-pad:8px 11px; --aux-font:clamp(12px,.9vw,14px); --aux-head-pad:9px 13px; }
   #aux-screen.aux-density-2 { --aux-row-pad:4px 2px; --aux-list-pad:6px 9px; --aux-font:clamp(11px,.82vw,13px); --aux-head-pad:7px 11px; }
@@ -379,7 +386,7 @@
   #event-detail-history .eh-meta { color: var(--ink-soft); font-size: 12.5px; margin-bottom: 3px; }
   .event-detail-empty-hist { color: var(--dim); font-size: 14px; padding: 6px 0; }
 
-  /* ── 전화메모 상세보기 (미확인 알림 / 완료된 항목 공용) ────── */
+  /* ── 메모 상세보기 (미확인 알림 / 완료된 항목 공용) ────── */
   #memo-detail-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.55);
     display: none; align-items: center; justify-content: center; z-index: 950; padding: 24px;
@@ -420,6 +427,7 @@
       <button type="button" id="fullscreen-btn" class="icon-btn" title="전체화면">⛶</button>
       <button type="button" id="aux-preview-btn" class="icon-btn" title="보조화면 미리보기">🖥️</button>
       <button type="button" id="chime-test-btn" class="icon-btn" title="17:26 알림음 테스트" aria-label="17시 26분 알림음 테스트">🔊</button>
+      <button type="button" id="sound-mute-btn" class="icon-btn" title="전자칠판 소리 끄기" aria-label="전자칠판 소리 끄기" aria-pressed="false">🔇</button>
       <div id="clock">--:--</div>
       <a class="nav-link" href="input.html" title="업무 화면으로 이동">
         <span class="nav-link-icon">✏️</span><span class="nav-link-text">업무</span>
@@ -461,7 +469,7 @@
     </div>
   </div>
 
-  <div id="aux-screen" class="fade-el">
+  <div id="aux-screen" class="fade-el" tabindex="0" aria-label="보조화면. 누르면 월간일정으로 돌아갑니다" title="누르면 월간일정으로 돌아갑니다">
     <div id="aux-clock-box">
       <div id="aux-date">-</div>
       <div id="aux-time">--:--:--</div>
@@ -484,7 +492,6 @@
         <div id="aux-today-list" class="scrollbar-thin"></div>
       </div>
     </div>
-    <button type="button" id="aux-back-btn">🗓️ 월간일정으로 돌아가기</button>
   </div>
 </div>
 
@@ -548,6 +555,7 @@ setInterval(tickClock, 1000); // 초 단위로 갱신 — 화면이 살아있는
 
 /* ───────── 매일 17:26 짧은 3음 알림 ───────── */
 let boardAudioContext = null;
+let boardSoundMuted = localStorage.getItem("smcfm_board_muted") === "1";
 async function ensureBoardAudio() {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return false;
@@ -558,6 +566,7 @@ async function ensureBoardAudio() {
   return boardAudioContext.state === "running";
 }
 async function playBoardChime() {
+  if (boardSoundMuted) return false;
   if (!(await ensureBoardAudio())) return false;
   const start = boardAudioContext.currentTime;
   [659.25, 783.99, 987.77].forEach((frequency, index) => {
@@ -576,13 +585,37 @@ async function playBoardChime() {
 }
 document.getElementById("chime-test-btn").addEventListener("click", async () => {
   const played = await playBoardChime();
-  if (!played) alert("브라우저에서 소리를 재생하지 못했습니다. 전자칠판의 음량과 브라우저 소리 권한을 확인해 주세요.");
+  if (!played) alert(boardSoundMuted ? "현재 음소거 상태입니다. 음소거를 해제한 뒤 다시 눌러주세요." : "브라우저에서 소리를 재생하지 못했습니다. 전자칠판의 음량과 브라우저 소리 권한을 확인해 주세요.");
 });
+function updateMuteButton() {
+  const button = document.getElementById("sound-mute-btn");
+  button.classList.toggle("is-muted", boardSoundMuted);
+  button.setAttribute("aria-pressed", String(boardSoundMuted));
+  button.title = boardSoundMuted ? "전자칠판 소리 켜기" : "전자칠판 소리 끄기";
+  button.setAttribute("aria-label", button.title);
+}
+document.getElementById("sound-mute-btn").addEventListener("click", () => {
+  boardSoundMuted = !boardSoundMuted;
+  localStorage.setItem("smcfm_board_muted", boardSoundMuted ? "1" : "0");
+  if (boardSoundMuted && "speechSynthesis" in window) window.speechSynthesis.cancel();
+  updateMuteButton();
+});
+function speakHourlyTime(now) {
+  if (boardSoundMuted || !("speechSynthesis" in window)) return false;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(`${now.getHours()}시입니다.`);
+  utterance.lang = "ko-KR";
+  utterance.rate = 0.92;
+  utterance.pitch = 1;
+  utterance.volume = 1;
+  window.speechSynthesis.speak(utterance);
+  return true;
+}
+updateMuteButton();
 // 페이지 이용 중 최초 클릭/키 입력 때 오디오를 준비해 17:26 자동재생 차단 가능성을 줄인다.
 document.addEventListener("pointerdown", ensureBoardAudio, { once:true });
 document.addEventListener("keydown", ensureBoardAudio, { once:true });
 ensureBoardAudio();
-localStorage.removeItem("smcfm_board_sound");
 
 /* ───────── 전체화면 토글 ───────── */
 const fullscreenBtn = document.getElementById("fullscreen-btn");
@@ -661,6 +694,14 @@ function responsibleArray(rec) {
   if (rec.responsible) return [rec.responsible];
   return [];
 }
+function ticketRecipients(rec) {
+  const participants = Array.isArray(rec.participants)
+    ? rec.participants.filter(name => name && name !== rec.requestedBy && name !== "관리자")
+    : [];
+  if (participants.length) return [...new Set(participants)];
+  return rec.assignee && rec.assignee !== "관리자" ? [rec.assignee] : [];
+}
+function ticketRecipientLabel(rec) { return ticketRecipients(rec).join(", ") || "미지정"; }
 /* "2026-07-15" → "07/15" */
 function mdShort(iso) { return iso.slice(5,7) + "/" + iso.slice(8,10); }
 /* 연속된 날짜들을 "07/15~07/23" 형태의 범위 목록으로 압축 (입력화면과 동일한 방식) */
@@ -900,6 +941,7 @@ function resetWeekOverflow(weeks) {
   weeks.forEach(week => {
     week.style.flex = "0 0 auto";
     week.style.height = "auto";
+    week.classList.remove("week-compact");
     week.querySelectorAll(".cal-lane").forEach(lane => { lane.hidden = false; });
     week.querySelector(".week-more")?.remove();
   });
@@ -926,6 +968,13 @@ function distributeWeekHeights(natural, minimum, available) {
 function collapseOverflowingWeek(week) {
   const lanesEl = week.querySelector(".cal-lanes");
   if (!lanesEl || week.scrollHeight <= week.clientHeight + 1) return;
+
+  // Keep every schedule visible when compact single-line rows are enough.
+  // Only fall back to +N after this busy-week-only layout has also overflowed.
+  week.classList.add("week-compact");
+  void week.offsetHeight;
+  if (week.scrollHeight <= week.clientHeight + 1) return;
+
   const laneRows = [...lanesEl.querySelectorAll(".cal-lane")];
   let hiddenCount = 0;
   const marker = document.createElement("div");
@@ -945,8 +994,9 @@ function fitCalendarDensity() {
   const available = grid.clientHeight;
   if (!weeks.length || available <= 0) return;
 
-  // 과도하게 작아지지 않도록 density-2까지만 사용한다.
-  const tiers = ["density-plus-4", "density-plus-3", "density-plus-2", "density-plus-1", "", "density-1", "density-2"];
+  // Try the smallest global tier before hiding rows. Busy weeks can still use
+  // their own compact single-line layout in collapseOverflowingWeek().
+  const tiers = ["density-plus-4", "density-plus-3", "density-plus-2", "density-plus-1", "", "density-1", "density-2", "density-3"];
   let natural = [];
   let minimum = [];
   for (const tier of tiers) {
@@ -1058,6 +1108,7 @@ function openTicketDetailBoard(t) {
   const metaLines = [];
   metaLines.push(`상태: <b>${escapeHtml(t.status || "-")}</b>`);
   metaLines.push(`요청자: <b>${escapeHtml(t.requestedBy || "-")}</b>`);
+  metaLines.push(`구성원: <b>${escapeHtml(ticketRecipientLabel(t))}</b>`);
   metaLines.push(`요청일: <b>${fmtTimestamp(t.requestedAt)}</b>`);
   if (t.dueDate) metaLines.push(`희망기한: <b>${escapeHtml(t.dueDate)}</b>`);
   document.getElementById("event-detail-meta").innerHTML = metaLines.join("<br>");
@@ -1139,7 +1190,7 @@ function buildMemoAlertCard(g, now) {
   const countText = g.items.length > 1 ? ` · ${g.items.length}건` : "";
   card.innerHTML = `
     <div class="alert-line">
-      <span class="title">${escapeHtml(g.subject || "")}(전화${countText})</span>
+      <span class="title">${escapeHtml(g.subject || "")}(메모${countText})</span>
       <span class="alert-sep">/</span>
       <span class="assignee-name">${escapeHtml(g.assignee || "미지정")}</span>
     </div>
@@ -1174,7 +1225,7 @@ function buildProgressCard(t, variant) {
   card.className = "progress-card" + (variant ? " " + variant : "");
   card.innerHTML = `
     <div class="title-row"><span class="type-tag type-tag-ticket">업무</span><span class="title">${escapeHtml(t.title || "-")}</span></div>
-    <div>${escapeHtml(t.status || "-")} · 요청 ${escapeHtml(t.requestedBy || "-")} · ${fmtTimestamp(t.updatedAt)}</div>
+    <div>${escapeHtml(t.status || "-")} · 요청 ${escapeHtml(t.requestedBy || "-")} · 구성원 ${escapeHtml(ticketRecipientLabel(t))} · ${fmtTimestamp(t.updatedAt)}</div>
   `;
   card.addEventListener("click", () => openTicketDetailBoard(t));
   return card;
@@ -1344,7 +1395,7 @@ function renderAuxDue() {
     row.className = "agenda-row";
     const label = days < 0 ? `초과 ${Math.abs(days)}일` : days === 0 ? "오늘" : `D-${days}`;
     const labelClass = days < 0 ? " is-overdue" : days === 0 ? " is-today" : "";
-    row.innerHTML = `<span class="due-label${labelClass}">${label}</span><span class="agenda-title">${escapeHtml(t.title || "-")}</span><span class="agenda-assignee">${escapeHtml(t.requestedBy || "-")} → ${escapeHtml(t.assignee || "미지정")}</span>`;
+    row.innerHTML = `<span class="due-label${labelClass}">${label}</span><span class="agenda-title">${escapeHtml(t.title || "-")}</span><span class="agenda-assignee">${escapeHtml(t.requestedBy || "-")} → ${escapeHtml(ticketRecipientLabel(t))}</span>`;
     row.addEventListener("click", () => openTicketDetailBoard(t));
     el.appendChild(row);
   });
@@ -1375,7 +1426,7 @@ function renderAuxToday() {
   scheduleAuxFit();
 }
 
-/* ───────── 전화메모 상세보기 (미확인 알림 / 완료된 항목 공용) ───────── */
+/* ───────── 메모 상세보기 (미확인 알림 / 완료된 항목 공용) ───────── */
 const memoDetailOverlay = document.getElementById("memo-detail-overlay");
 function openMemoDetail(group, isDone) {
   document.getElementById("memo-detail-title").textContent = `${group.assignee || "미지정"} - ${group.subject || ""}`;
@@ -1531,10 +1582,26 @@ function auxPanelNaturalHeight(id) {
   const list = panel.querySelector("[id$='-list']");
   return (heading?.offsetHeight || 0) + (list?.scrollHeight || 0) + 2;
 }
+function maximizeAuxPanelFont(panelId, listId) {
+  const panel = document.getElementById(panelId);
+  const list = document.getElementById(listId);
+  const row = list.querySelector(".agenda-row");
+  if (!row || list.clientHeight <= 0) return;
+  const baseSize = Math.max(9, parseFloat(getComputedStyle(row).fontSize) || 13);
+  let bestSize = baseSize;
+  for (let size = Math.ceil(baseSize) + 1; size <= 21; size++) {
+    panel.style.setProperty("--aux-font", `${size}px`);
+    void list.offsetHeight;
+    if (list.scrollHeight > list.clientHeight + 1) break;
+    bestSize = size;
+  }
+  panel.style.setProperty("--aux-font", `${bestSize}px`);
+}
 function fitAuxLayout() {
   auxFitFrame = null;
   if (auxScreenEl.style.display !== "flex" || auxScreenEl.classList.contains("clock-only-mode")) return;
   const body = document.getElementById("aux-body");
+  ["aux-week-col", "aux-today-section"].forEach(id => document.getElementById(id).style.removeProperty("--aux-font"));
   const alertUnits = auxListUnits("aux-alert-list");
   const weekUnits = auxListUnits("aux-week-list");
   const dueUnits = auxListUnits("aux-due-list");
@@ -1564,6 +1631,8 @@ function fitAuxLayout() {
     });
     if (fits) break;
   }
+  maximizeAuxPanelFont("aux-week-col", "aux-week-list");
+  maximizeAuxPanelFont("aux-today-section", "aux-today-list");
 }
 function scheduleAuxFit() {
   if (auxFitFrame) cancelAnimationFrame(auxFitFrame);
@@ -1587,6 +1656,7 @@ function showAuxScreen({ clockOnly = false } = {}) {
     auxScreenEl.classList.add("fade-out");
     void auxScreenEl.offsetHeight;
     auxScreenEl.classList.remove("fade-out");
+    auxScreenEl.focus({ preventScroll:true });
     scheduleAuxFit();
   }, 600);
 }
@@ -1619,8 +1689,16 @@ function returnToMainScreen() {
   showMainScreen();
   scheduleAuxCycle();
 }
-document.getElementById("aux-back-btn").addEventListener("click", returnToMainScreen);
-/* 자동 전환 시간이 아니어도 언제든 수동으로 미리보기 가능 (자동 5분 제한 없이 "돌아가기" 누를 때까지 유지) */
+auxScreenEl.addEventListener("click", event => {
+  if (auxScreenEl.style.display !== "flex") return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  returnToMainScreen();
+}, true);
+auxScreenEl.addEventListener("keydown", event => {
+  if (["Enter", " ", "Escape"].includes(event.key)) { event.preventDefault(); returnToMainScreen(); }
+});
+/* 자동 전환 시간이 아니어도 언제든 수동으로 미리보기 가능 */
 document.getElementById("aux-preview-btn").addEventListener("click", () => {
   if (auxCycleTimeoutId) clearTimeout(auxCycleTimeoutId);
   if (auxDurationTimeoutId) { clearTimeout(auxDurationTimeoutId); auxDurationTimeoutId = null; }
@@ -1637,9 +1715,17 @@ function showClockOnlyMoment(now = new Date()) {
   clockOnlyTimeoutId = setTimeout(returnToMainScreen, untilNextMinute);
 }
 let lastClockOnlyMoment = "";
+let lastHourlyAnnouncement = "";
 function handleTimedBoardEvents() {
   const now = new Date();
   const dateKey = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;
+  if (now.getMinutes() === 0) {
+    const hourKey = `${dateKey}-${now.getHours()}`;
+    if (hourKey !== lastHourlyAnnouncement) {
+      lastHourlyAnnouncement = hourKey;
+      speakHourlyTime(now);
+    }
+  }
   if (now.getHours() === 17 && now.getMinutes() === 26) {
     const momentKey = `${dateKey}-1726`;
     if (momentKey !== lastClockOnlyMoment) {

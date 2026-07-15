@@ -132,7 +132,7 @@
   <div class="tab-group"><span class="tab-group-label">업무 데이터</span>
     <button class="tab-btn active" data-tab="tickets" role="tab" aria-selected="true" aria-controls="panel-tickets">관련업무</button>
     <button class="tab-btn" data-tab="schedules" role="tab" aria-selected="false" aria-controls="panel-schedules">일정관리</button>
-    <button class="tab-btn" data-tab="memos" role="tab" aria-selected="false" aria-controls="panel-memos">전화 및 메모</button>
+    <button class="tab-btn" data-tab="memos" role="tab" aria-selected="false" aria-controls="panel-memos">메모</button>
   </div>
   <div class="tab-group"><span class="tab-group-label">운영 관리</span>
     <button class="tab-btn" data-tab="activity" role="tab" aria-selected="false" aria-controls="panel-activity">변경사항 이력</button>
@@ -165,7 +165,7 @@
       <button class="btn-secondary" id="tickets-load-more" style="display:none;">더 불러오기</button>
     </div>
     <div class="filter-bar">
-      <label>검색</label><input type="text" id="tickets-search" placeholder="제목/요청자" />
+      <label>검색</label><input type="text" id="tickets-search" placeholder="제목/요청자/구성원" />
       <label>상태</label>
       <select id="tickets-status-filter">
         <option value="all">전체</option>
@@ -226,10 +226,10 @@
     </table></div>
   </div>
 
-  <!-- ══════════ 전화 및 메모 ══════════ -->
+  <!-- ══════════ 메모 ══════════ -->
   <div class="panel" id="panel-memos">
     <div class="panel-head">
-      <h2>전화 및 메모 전체 <span class="count-note" id="memos-count"></span></h2>
+      <h2>메모 전체 <span class="count-note" id="memos-count"></span></h2>
       <div class="panel-head-actions" style="display:flex; gap:8px;">
         <span class="selected-note" id="memos-selected-note"></span>
         <button class="btn-secondary btn-danger-outline" id="memos-bulk-delete" style="color:#C23B3B; border-color:#C23B3B;">선택 영구삭제</button>
@@ -374,6 +374,12 @@ function responsibleArray(rec) {
   if (rec.responsible) return [rec.responsible];
   return [];
 }
+function ticketRecipients(rec) {
+  const participants = Array.isArray(rec.participants) ? rec.participants.filter(name => name && name !== rec.requestedBy && name !== "관리자") : [];
+  if (participants.length) return [...new Set(participants)];
+  return rec.assignee && rec.assignee !== "관리자" ? [rec.assignee] : [];
+}
+function ticketMembers(rec) { return [...new Set([rec.requestedBy, ...ticketRecipients(rec)].filter(Boolean))]; }
 function formatDateRanges(dates) {
   if (!dates || !dates.length) return "-";
   const sorted = [...new Set(dates)].sort();
@@ -426,13 +432,13 @@ function selectControl(id, options) { return `<select id="${id}" style="width:10
 function openAdminEditor(type, record) {
   adminEditorReturnFocus = document.activeElement;
   adminEditing = { type, record };
-  document.getElementById("admin-edit-title").textContent = `${type === "tickets" ? "관련업무" : type === "schedules" ? "일정" : "전화메모"} 편집`;
+  document.getElementById("admin-edit-title").textContent = `${type === "tickets" ? "관련업무" : type === "schedules" ? "일정" : "메모"} 편집`;
   if (type === "tickets") {
     const statuses = ["미수신","열람","접수","진행중","보류","완료"];
     adminEditFields.innerHTML =
       adminField("제목", inputControl("ae-title", record.title)) +
       adminField("요청자", selectControl("ae-requested-by", memberOptions(record.requestedBy))) +
-      adminField("수신자", selectControl("ae-assignee", memberOptions(record.assignee, true))) +
+      adminField("구성원 (쉼표로 구분)", inputControl("ae-participants", ticketRecipients(record).join(", "))) +
       adminField("상태", selectControl("ae-status", statuses.map(s => `<option value="${s}" ${s === record.status ? "selected" : ""}>${s}</option>`).join(""))) +
       adminField("희망기한", inputControl("ae-due", record.dueDate, "date")) +
       adminField("관리자 세부사항", `<textarea id="ae-note" style="width:100%;min-height:90px;padding:10px;border:1px solid var(--line);border-radius:8px;" placeholder="필요한 경우 입력"></textarea>`);
@@ -476,12 +482,12 @@ document.getElementById("admin-edit-save").onclick = async () => {
     let ticketNote = "";
     let ticketNotifyTargets = [];
     if (type === "tickets") {
-      payload = { title: document.getElementById("ae-title").value.trim(), requestedBy: document.getElementById("ae-requested-by").value, assignee: document.getElementById("ae-assignee").value || null, status: document.getElementById("ae-status").value, dueDate: document.getElementById("ae-due").value || null, updatedAt: serverTimestamp() };
-      if (!payload.title || !payload.assignee) { alert("제목과 수신자를 입력하세요."); return; }
-      if (payload.requestedBy === payload.assignee) { alert("요청자와 수신자는 달라야 합니다."); return; }
-      if (payload.assignee !== record.assignee) { payload.receivedBy = null; payload.receivedAt = null; if (payload.status !== "미수신") payload.status = "미수신"; }
+      const requestedBy = document.getElementById("ae-requested-by").value;
+      const recipients = [...new Set(document.getElementById("ae-participants").value.split(",").map(name => name.trim()).filter(name => TEAM_MEMBERS.includes(name) && name !== requestedBy))];
+      payload = { title:document.getElementById("ae-title").value.trim(), requestedBy, assignee:recipients[0] || null, participants:[requestedBy, ...recipients], status:document.getElementById("ae-status").value, dueDate:document.getElementById("ae-due").value || null, updatedAt:serverTimestamp() };
+      if (!payload.title || !recipients.length) { alert("제목과 구성원을 한 명 이상 입력하세요."); return; }
       ticketNote = document.getElementById("ae-note").value.trim();
-      const targets = new Set([record.requestedBy, record.assignee, payload.requestedBy, payload.assignee]);
+      const targets = new Set([...ticketMembers(record), ...ticketMembers(payload)]);
       targets.delete("관리자"); targets.delete(null);
       ticketNotifyTargets = [...targets];
     } else if (type === "schedules") {
@@ -505,7 +511,7 @@ document.getElementById("admin-edit-save").onclick = async () => {
 };
 
 /* ════════════════════════════════════════════════
-   탭 설정: 관련업무 / 일정관리 / 전화 및 메모
+   탭 설정: 관련업무 / 일정관리 / 메모
    각 탭은 동일한 구조(검색+상태/유형필터+기간필터+정렬가능한 헤더+엑셀다운로드)를 공유
    ════════════════════════════════════════════════ */
 const CONFIGS = {
@@ -514,10 +520,11 @@ const CONFIGS = {
     orderField: "requestedAt",
     dateOf: r => tsMillis(r.requestedAt),
     statusOf: r => r.status || "",
-    searchText: r => [r.title, r.requestedBy].filter(Boolean).join(" "),
+    searchText: r => [r.title, r.requestedBy, ...ticketRecipients(r)].filter(Boolean).join(" "),
     columns: [
       { key: "title", label: "제목", get: r => escapeHtml(r.title || "-"), sort: r => r.title || "" },
       { key: "requestedBy", label: "요청자", get: r => escapeHtml(r.requestedBy || "-"), sort: r => r.requestedBy || "" },
+      { key: "participants", label: "구성원", get: r => escapeHtml(ticketRecipients(r).join(", ") || "-"), sort: r => ticketRecipients(r).join(", ") },
       { key: "requestedAt", label: "요청일", get: r => fmtTs(r.requestedAt), sort: r => tsMillis(r.requestedAt) },
       { key: "dueDate", label: "희망기한", get: r => r.dueDate || "-", sort: r => r.dueDate || "" },
       { key: "status", label: "상태", get: r => `<span class="badge ${r.status}">${escapeHtml(r.status || "-")}</span>`, sort: r => r.status || "" },
@@ -526,7 +533,7 @@ const CONFIGS = {
       { key: "deleteReq", label: "삭제요청", get: r => r.deleteRequestedBy ? escapeHtml(r.deleteRequestedBy) : "-", sort: null }
     ],
     excelRow: r => ({
-      "제목": r.title || "", "요청자": r.requestedBy || "",
+      "제목": r.title || "", "요청자": r.requestedBy || "", "구성원": ticketRecipients(r).join(", "),
       "요청일": fmtTs(r.requestedAt), "희망기한": r.dueDate || "", "상태": r.status || "",
       "최종수정": fmtTs(r.updatedAt), "최근내용": lastHistoryText(r)
     })
@@ -751,7 +758,7 @@ async function bulkDeleteSelected(type) {
       } catch (e) { console.error("자료보관 이동 오류", e); }
     }
   } else {
-    const label = type === "schedules" ? "일정" : "전화메모";
+    const label = type === "schedules" ? "일정" : "메모";
     if (!confirm(`선택한 ${label} ${ids.length}건을 영구 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return;
     for (const id of ids) {
       try { await deleteDoc(doc(db, CONFIGS[type].collectionName, id)); } catch (e) { console.error("영구삭제 오류", e); }
@@ -816,12 +823,12 @@ const AUDIT_ACTION_LABELS = {
   ticket_archived: "자료보관 이동", legacy_assignee_assigned: "기존 업무 수신자 지정",
   delete_requested: "삭제 요청", delete_request_approved: "삭제 요청 승인"
 };
-const AUDIT_COLLECTION_LABELS = { requestTickets: "관련업무", schedules: "일정관리", phoneMemos: "전화 및 메모" };
+const AUDIT_COLLECTION_LABELS = { requestTickets: "관련업무", schedules: "일정관리", phoneMemos: "메모" };
 function memoEvents(r) {
   const events = [];
-  if (r.receivedAt) events.push({ coll: "전화메모", title: r.subject || "-", text: "메모 등록", author: r.receivedBy || "-", timestamp: r.receivedAt });
+  if (r.receivedAt) events.push({ coll: "메모", title: r.subject || "-", text: "메모 등록", author: r.receivedBy || "-", timestamp: r.receivedAt });
   if (r.status === "확인됨" && r.confirmedAt) {
-    events.push({ coll: "전화메모", title: r.subject || "-", text: `확인 처리`, author: r.confirmedBy || "-", timestamp: r.confirmedAt });
+    events.push({ coll: "메모", title: r.subject || "-", text: `확인 처리`, author: r.confirmedBy || "-", timestamp: r.confirmedAt });
   }
   return events;
 }
@@ -928,7 +935,7 @@ async function loadArchive() {
   tbody.innerHTML = "";
   rows.forEach(row => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${escapeHtml(row.title || "-")}</td><td>${escapeHtml(row.requestedBy || "-")}</td><td>${escapeHtml(row.assignee || "-")}</td><td>${escapeHtml(row.archivedBy || "-")}</td><td>${fmtTs(row.archivedAt)}</td><td><button class="restore-btn btn-secondary">복원</button> <button class="purge-btn row-delete-btn">영구삭제</button></td>`;
+    tr.innerHTML = `<td>${escapeHtml(row.title || "-")}</td><td>${escapeHtml(row.requestedBy || "-")}</td><td>${escapeHtml(ticketRecipients(row).join(", ") || "-")}</td><td>${escapeHtml(row.archivedBy || "-")}</td><td>${fmtTs(row.archivedAt)}</td><td><button class="restore-btn btn-secondary">복원</button> <button class="purge-btn row-delete-btn">영구삭제</button></td>`;
     tr.querySelector(".restore-btn").onclick = async () => { await updateDoc(doc(db, "requestTickets", row.id), { archived: false, restoredAt: serverTimestamp(), restoredBy: "관리자" }); await loadArchive(); };
     tr.querySelector(".purge-btn").onclick = async () => {
       if (!confirm("세부사항을 포함해 영구 삭제합니다. 복구할 수 없습니다. 계속할까요?")) return;
@@ -973,7 +980,7 @@ document.getElementById("unassigned-load").addEventListener("click", async () =>
     tr.innerHTML = `<td>${escapeHtml(ticket.title || "-")}</td><td>${escapeHtml(ticket.requestedBy || "-")}</td><td><select>${options}</select> <button class="btn-primary">지정</button></td>`;
     tr.querySelector("button").onclick = async () => {
       const assignee = tr.querySelector("select").value;
-      await updateDoc(doc(db, "requestTickets", ticket.id), { assignee, status: "미수신", receivedAt: null, receivedBy: null, updatedAt: serverTimestamp() });
+      await updateDoc(doc(db, "requestTickets", ticket.id), { assignee, participants:[ticket.requestedBy, assignee], status:"미수신", receivedAt:null, receivedBy:null, updatedAt:serverTimestamp() });
       await setDoc(doc(collection(db, "auditLogs")), { targetCollection: "requestTickets", targetId: ticket.id, action: "legacy_assignee_assigned", actorName: "관리자", before: { assignee: null }, after: { assignee }, createdAt: serverTimestamp() });
       tr.remove();
     };

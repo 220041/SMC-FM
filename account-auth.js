@@ -66,7 +66,10 @@ export async function ensureUserLogin({ adminOnly = false } = {}) {
   overlay.setAttribute("role", "dialog");
   overlay.setAttribute("aria-modal", "true");
   overlay.setAttribute("aria-label", adminOnly ? "관리자 로그인" : "사용자 로그인");
-  const accountIds = Object.entries(USER_ACCOUNTS).filter(([, a]) => !adminOnly || a.role === "admin").map(([id]) => id);
+  const memberOrder = ["강보선", "강은석", "박재현", "김준형", "김류현"];
+  const accountIds = adminOnly
+    ? Object.entries(USER_ACCOUNTS).filter(([, account]) => account.role === "admin").map(([id]) => id)
+    : memberOrder.filter(id => USER_ACCOUNTS[id] && USER_ACCOUNTS[id].role !== "admin");
   let selectedId = accountIds[0];
   const choices = accountIds.map((id, index) => `<button type="button" class="account-choice ${index === 0 ? "selected" : ""}" data-id="${id}" aria-pressed="${index === 0}"><span class="icon">${id === "admin" ? "🛡️" : "👤"}</span>${id === "admin" ? "관리자" : id}</button>`).join("");
   overlay.innerHTML = `<div class="account-card"><h2>${adminOnly ? "관리자 로그인" : "사용자 로그인"}</h2><p>본인 계정을 선택하고 비밀번호를 입력하세요.</p><div class="account-choices">${choices}</div><label>비밀번호</label><input id="account-pw" type="password"><button id="account-login">로그인</button><button class="secondary" id="account-reset">비밀번호 재설정 메일</button>${adminOnly ? `<button class="account-back" id="account-back">← 시작 화면으로 돌아가기</button>` : ""}<div class="account-error" id="account-error"></div></div>`;

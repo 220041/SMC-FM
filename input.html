@@ -180,6 +180,8 @@
   }
   .resp-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
   .resp-chip:disabled { cursor: not-allowed; opacity: 0.55; }
+  #schedule-time { position:relative; padding-left:38px; }
+  #schedule-time::-webkit-calendar-picker-indicator { position:absolute; left:10px; right:auto; margin:0; cursor:pointer; }
 
   /* ── 관련업무: 수신/발송 토글(스크롤 이동 버튼) + 개수/업데이트 표시 ─────────────── */
   .dir-toggle { display: flex; gap: 6px; }
@@ -381,6 +383,10 @@
     color: var(--ink-soft);
     margin-top: 4px;
   }
+  .activity-change-part {
+    display:inline-block; margin-right:6px; padding:2px 7px; border-radius:6px;
+    background:var(--type-미팅-bg); color:var(--type-미팅); font-size:11.5px; font-weight:900;
+  }
   .activity-feed-time {
     font-size: 12px;
     color: var(--dim);
@@ -521,7 +527,7 @@
   <button class="tab-btn active" data-tab="dashboard" role="tab" aria-selected="true" aria-controls="panel-dashboard">대시보드</button>
   <button class="tab-btn" data-tab="tickets" role="tab" aria-selected="false" aria-controls="panel-tickets">관련업무</button>
   <button class="tab-btn" data-tab="schedules" role="tab" aria-selected="false" aria-controls="panel-schedules">일정관리</button>
-  <button class="tab-btn" data-tab="memos" role="tab" aria-selected="false" aria-controls="panel-memos">전화 및 메모</button>
+  <button class="tab-btn" data-tab="memos" role="tab" aria-selected="false" aria-controls="panel-memos">메모</button>
 </div>
 
 <div id="content">
@@ -546,7 +552,7 @@
       </section>
     </div>
     <section class="dash-col dash-wide-section">
-      <button type="button" class="dash-column-header" data-tab="memos" title="전화 및 메모 탭으로 이동">☎️ 전화 및 메모 <span class="dash-count" id="dash-memo-count">0</span></button>
+      <button type="button" class="dash-column-header" data-tab="memos" title="메모 탭으로 이동">📝 메모 <span class="dash-count" id="dash-memo-count">0</span></button>
       <div class="dash-list" id="dash-memo-list"></div>
     </section>
     <section class="dash-activity-section">
@@ -588,7 +594,7 @@
       <h3>📥 수신 <span class="small-note" id="ticket-section-received-count"></span></h3>
       <div class="table-scroll"><table class="ticket-table-compact">
         <thead><tr>
-          <th>제목</th><th>상대방 / 수신확인</th><th>첫 세부사항</th><th>요청일(희망기한)</th><th>현상태</th><th>세부사항 이력</th><th class="th-del"></th>
+          <th>제목</th><th>요청자 / 구성원·열람</th><th>첫 세부사항</th><th>요청일(희망기한)</th><th>현상태</th><th>세부사항 이력</th><th class="th-del"></th>
         </tr></thead>
         <tbody id="ticket-tbody-received"></tbody>
       </table></div>
@@ -597,7 +603,7 @@
       <h3>📤 발송 <span class="small-note" id="ticket-section-sent-count"></span></h3>
       <div class="table-scroll"><table class="ticket-table-compact">
         <thead><tr>
-          <th>제목</th><th>상대방 / 수신확인</th><th>첫 세부사항</th><th>요청일(희망기한)</th><th>현상태</th><th>세부사항 이력</th><th class="th-del"></th>
+          <th>제목</th><th>요청자 / 구성원·열람</th><th>첫 세부사항</th><th>요청일(희망기한)</th><th>현상태</th><th>세부사항 이력</th><th class="th-del"></th>
         </tr></thead>
         <tbody id="ticket-tbody-sent"></tbody>
       </table></div>
@@ -640,10 +646,10 @@
     </div>
   </div>
 
-  <!-- ══════════ 3. 전화 및 메모 ══════════ -->
+  <!-- ══════════ 3. 메모 ══════════ -->
   <div class="panel" id="panel-memos">
     <div class="panel-head">
-      <h2>전화 및 메모</h2>
+      <h2>메모</h2>
       <div class="filter-bar">
         <label>상태</label>
         <select id="memo-filter-status">
@@ -677,9 +683,9 @@
     <div id="ticket-new-fields">
       <div class="field"><label>제목</label><input type="text" id="ticket-title" /></div>
       <div class="field"><label>요청자</label><div class="static-value" id="ticket-requester-display">-</div></div>
-      <div class="field"><label>수신자</label><select id="ticket-assignee"></select></div>
+      <div class="field"><label>수신자</label><div class="chip-list" id="ticket-assignee-checks"></div></div>
       <div class="field"><label>요청희망기한</label><input type="text" id="ticket-due" /></div>
-      <div class="field"><label>세부사항</label><textarea id="ticket-content" placeholder="첫 세부사항을 작성하세요"></textarea></div>
+      <div class="field"><label>세부사항</label><textarea id="ticket-content"></textarea></div>
     </div>
 
     <div id="ticket-detail-fields" style="display:none;">
@@ -701,7 +707,7 @@
           <div class="field"><label>요청희망기한</label><input type="text" id="ticket-due-edit" /></div>
         </div>
         <div class="field"><label>요청자</label><div class="static-value" id="ticket-requester-display-edit">-</div></div>
-        <div class="field"><label>수신자</label><select id="ticket-assignee-edit"></select></div>
+        <div class="field"><label>구성원</label><div class="chip-list" id="ticket-assignee-edit-checks"></div></div>
       </div>
 
       <div class="field"><label id="ticket-status-label">진행상태</label>
@@ -711,8 +717,8 @@
         <div class="history-list" id="ticket-note-history-list"></div>
       </div>
       <div id="ticket-work-actions" class="modal-actions" style="justify-content:flex-start; display:none; margin:0 0 14px;"></div>
-      <div class="field"><label>세부사항 작성 <span class="small-note" style="display:inline;">(요청자와 수신자가 함께 작성)</span></label>
-        <textarea id="ticket-note-text" placeholder="새 세부사항을 입력하세요"></textarea>
+      <div class="field"><label>세부사항 작성 <span class="small-note" style="display:inline;">(업무방 구성원이 함께 작성)</span></label>
+        <textarea id="ticket-note-text"></textarea>
       </div>
     </div>
 
@@ -751,12 +757,7 @@
         </div>
       </div>
       <div class="field"><label>업체 / 부서</label><input type="text" id="schedule-vendor" /></div>
-      <div class="field"><label>시간 (선택)</label>
-        <div style="display:flex; align-items:center; gap:9px;">
-          <button type="button" id="schedule-time-picker-btn" style="border:none; background:none; font-size:19px; cursor:pointer; padding:0;" title="시간 선택">🕒</button>
-          <input type="time" id="schedule-time" style="flex:1;" />
-        </div>
-      </div>
+      <div class="field"><label>시간 (선택)</label><input type="time" id="schedule-time" /></div>
 
       <div class="field">
         <label>날짜 선택 <span class="small-note" style="display:inline;">(숫자만 입력해도 자동 반영, 또는 달력에서 선택 · 주말·공휴일 색상 표시)</span></label>
@@ -786,7 +787,7 @@
     </div>
     <div class="field">
       <label id="schedule-detail-label">추가사항</label>
-      <textarea id="schedule-detail-input" placeholder="상세사항 기재란"></textarea>
+      <textarea id="schedule-detail-input"></textarea>
     </div>
     <div class="field"><label>등록자</label><div class="static-value" id="schedule-registrar-display">-</div></div>
 
@@ -798,7 +799,7 @@
   </div>
 </div>
 
-<!-- ══════════ 모달: 전화 및 기타메모 ══════════ -->
+<!-- ══════════ 모달: 메모 ══════════ -->
 <div class="modal-overlay" id="memo-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="memo-modal-title">
   <div class="modal-box" tabindex="-1">
     <button type="button" class="modal-close-x" id="memo-close-x" aria-label="닫기">×</button>
@@ -893,6 +894,7 @@ function renderResponsibleChecks() {
     chip.type = "button";
     chip.className = "resp-chip" + (scheduleResponsibleSet.has(n) ? " active" : "");
     chip.textContent = n;
+    chip.setAttribute("aria-pressed", String(scheduleResponsibleSet.has(n)));
     chip.disabled = !scheduleResponsibleEditable;
     chip.addEventListener("click", () => {
       if (scheduleResponsibleSet.has(n)) scheduleResponsibleSet.delete(n);
@@ -1099,15 +1101,34 @@ function responsibleArray(rec) {
   if (rec.responsible) return [rec.responsible];
   return [];
 }
+/* 관련업무 구성원 정규화: 새 자료는 participants, 기존 자료는 단일 assignee를 사용한다. */
+function ticketRecipients(rec) {
+  const participants = Array.isArray(rec.participants)
+    ? rec.participants.filter(name => name && name !== rec.requestedBy && name !== "관리자")
+    : [];
+  if (participants.length) return [...new Set(participants)];
+  if (Array.isArray(rec.assignees)) return [...new Set(rec.assignees.filter(name => name && name !== rec.requestedBy && name !== "관리자"))];
+  return rec.assignee && rec.assignee !== rec.requestedBy && rec.assignee !== "관리자" ? [rec.assignee] : [];
+}
+function ticketMembers(rec) {
+  return [...new Set([rec.requestedBy, ...ticketRecipients(rec)].filter(name => name && name !== "관리자"))];
+}
+function ticketRecipientLabel(rec) { return ticketRecipients(rec).join(", ") || "수신자 미지정"; }
 function roleAOf(type, rec) { return type === "ticket" ? rec.requestedBy : rec.registeredBy; }
-/* 업무(ticket)는 더 이상 담당자 필드가 없음 - 요청자 본인 외의 다른 상대는 두지 않음 */
-function roleBOf(type, rec) { return type === "ticket" ? (rec.assignee || null) : responsibleArray(rec); }
+function roleBOf(type, rec) { return type === "ticket" ? ticketRecipients(rec) : responsibleArray(rec); }
 function lastHistoryAuthor(rec) {
   return (rec.history && rec.history.length) ? rec.history[rec.history.length - 1].author : null;
 }
+function latestTicketWriter(rec) {
+  const lastHistory = rec.history && rec.history.length ? rec.history[rec.history.length - 1] : null;
+  const historyTime = lastHistory ? tsMillis(lastHistory.timestamp) : 0;
+  const detailTime = tsMillis(rec.lastDetailAt);
+  return detailTime >= historyTime ? (rec.lastDetailAuthor || lastHistory?.author || null) : (lastHistory?.author || rec.lastDetailAuthor || null);
+}
 function notifyTargets(type, rec) {
-  const writer = lastHistoryAuthor(rec);
+  const writer = type === "ticket" ? latestTicketWriter(rec) : lastHistoryAuthor(rec);
   if (!writer) return [];
+  if (type === "ticket") return ticketMembers(rec).filter(name => name !== writer);
   const a = roleAOf(type, rec);
   if (type === "schedule") {
     // 지정된 담당자 전원 + 등록자(작성자 본인 제외)에게 알림
@@ -1116,10 +1137,7 @@ function notifyTargets(type, rec) {
     responsibleArray(rec).forEach(n => { if (n && n !== writer) targets.add(n); });
     return [...targets];
   }
-  const b = roleBOf(type, rec);
-  if (writer === a) return b ? [b] : [];
-  if (writer === b) return a ? [a] : [];
-  return [a, b].filter(Boolean).filter(n => n !== writer);
+  return [];
 }
 function updatedMillis(rec) {
   if (rec.updatedAt) return tsMillis(rec.updatedAt);
@@ -1305,6 +1323,10 @@ async function notifyTicketUser(name, ticketId, type, message) {
     ticketId, type, message, actor: currentUser(), createdAt: serverTimestamp(), readAt: null
   });
 }
+async function notifyTicketMembers(ticket, type, message, excludedName = currentUser()) {
+  const targets = ticketMembers(ticket).filter(name => name !== excludedName);
+  await Promise.all(targets.map(name => notifyTicketUser(name, ticket.id, type, message)));
+}
 
 async function addTicketDetail(ticketId, text, kind = "detail", author = currentUser()) {
   const detailRef = await addDoc(collection(db, "requestTickets", ticketId, "details"), {
@@ -1312,7 +1334,7 @@ async function addTicketDetail(ticketId, text, kind = "detail", author = current
     createdAt: serverTimestamp(), editedAt: null, archived: false
   });
   await updateDoc(doc(db, "requestTickets", ticketId), {
-    lastDetailText: text, lastDetailAuthor: author, lastDetailAt: serverTimestamp(), updatedAt: serverTimestamp()
+    lastDetailText: text, lastDetailAuthor: author, lastDetailKind: kind, lastDetailAt: serverTimestamp(), updatedAt: serverTimestamp()
   });
   return detailRef;
 }
@@ -1417,8 +1439,12 @@ function buildTicketRow(t, me) {
   const unseenDot = unseen ? `<span class="blink-dot" title="새 소식이 있습니다"></span>` : "";
   const firstNote = (t.history || []).find(h => historyEntryType(h) === "note");
   const contentText = firstNote ? firstNote.text : "-";
-  const counterpart = t.requestedBy === me ? (t.assignee || "수신자 미지정") : t.requestedBy;
-  const receiptText = t.receivedAt ? `수신확인 ${t.receivedBy || t.assignee || "-"} · ${fmtTs(t.receivedAt)}` : "수신대기";
+  const recipientLabel = ticketRecipientLabel(t);
+  const counterpart = t.requestedBy === me ? recipientLabel : `${t.requestedBy || "-"} · 구성원 ${recipientLabel}`;
+  const openedNames = Object.keys(t.openedBy || {});
+  const receiptText = openedNames.length
+    ? `열람 ${openedNames.join(", ")}`
+    : t.receivedAt ? `수신확인 ${t.receivedBy || "-"} · ${fmtTs(t.receivedAt)}` : "수신대기";
   const editIcon = isAuthor ? `<button type="button" class="row-edit-btn" title="수정">✏️</button>` : "";
   tr.innerHTML = `
     <td>${unseenDot}${escapeHtml(t.title)}${deleteRequestBadge(t)}${editIcon}</td>
@@ -1466,8 +1492,11 @@ function renderTickets() {
     return true;
   };
 
-  // assignee가 없는 기존 자료는 이전 방식대로 요청자 외 전원에게 보이도록 유지한다.
-  const received = tickets.filter(t => (isAdmin() || (t.assignee ? t.assignee === me : t.requestedBy !== me)) && passesFilters(t));
+  // 구성원 목록이 없는 기존 자료만 이전 방식대로 요청자 외 전원에게 보이도록 유지한다.
+  const received = tickets.filter(t => {
+    const recipients = ticketRecipients(t);
+    return (isAdmin() || (recipients.length ? recipients.includes(me) : t.requestedBy !== me)) && passesFilters(t);
+  });
   const sent = isAdmin() ? [] : tickets.filter(t => t.requestedBy === me && passesFilters(t));
 
   renderTicketGroup(received, me, "ticket-tbody-received", "ticket-count-received", "ticket-dir-received", "ticket-section-received-count");
@@ -1477,6 +1506,37 @@ function renderTickets() {
 const ticketOverlay = document.getElementById("ticket-modal-overlay");
 let ticketEditingId = null;
 let ticketEditMode = false; // 지금 열려있는 업무 모달이 실제 수정모드인지(true) 열람모드인지(false)
+let ticketRecipientSet = new Set();
+let ticketRecipientEditSet = new Set();
+
+function renderTicketRecipientChecks(wrapId, selectedSet, requester) {
+  const wrap = document.getElementById(wrapId);
+  const available = TEAM_MEMBERS.filter(name => name !== requester);
+  wrap.innerHTML = "";
+  const allSelected = available.length > 0 && available.every(name => selectedSet.has(name));
+  const allChip = document.createElement("button");
+  allChip.type = "button";
+  allChip.className = "resp-chip" + (allSelected ? " active" : "");
+  allChip.textContent = "전체";
+  allChip.setAttribute("aria-pressed", String(allSelected));
+  allChip.addEventListener("click", () => {
+    if (allSelected) selectedSet.clear(); else available.forEach(name => selectedSet.add(name));
+    renderTicketRecipientChecks(wrapId, selectedSet, requester);
+  });
+  wrap.appendChild(allChip);
+  available.forEach(name => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "resp-chip" + (selectedSet.has(name) ? " active" : "");
+    chip.textContent = name;
+    chip.setAttribute("aria-pressed", String(selectedSet.has(name)));
+    chip.addEventListener("click", () => {
+      if (selectedSet.has(name)) selectedSet.delete(name); else selectedSet.add(name);
+      renderTicketRecipientChecks(wrapId, selectedSet, requester);
+    });
+    wrap.appendChild(chip);
+  });
+}
 
 document.getElementById("ticket-new-btn").addEventListener("click", () => {
   ticketEditingId = null;
@@ -1487,10 +1547,8 @@ document.getElementById("ticket-new-btn").addEventListener("click", () => {
   document.getElementById("ticket-due").value = "";
   document.getElementById("ticket-content").value = "";
   document.getElementById("ticket-requester-display").textContent = currentUser();
-  fillAssigneeSelect(document.getElementById("ticket-assignee"), "");
-  Array.from(document.getElementById("ticket-assignee").options).forEach(o => {
-    if (o.value === currentUser() || o.value === "관리자") o.disabled = true;
-  });
+  ticketRecipientSet = new Set();
+  renderTicketRecipientChecks("ticket-assignee-checks", ticketRecipientSet, currentUser());
   document.getElementById("ticket-delete").style.display = "none";
   ticketOverlay.classList.add("open");
 });
@@ -1518,23 +1576,24 @@ function openTicketDetail(id, forceView) {
   ticketEditingId = id;
   const me = currentUser();
   const isAuthor = t.requestedBy === me || isAdmin();
-  const isRecipient = t.assignee ? t.assignee === me : t.requestedBy !== me;
+  const recipients = ticketRecipients(t);
+  const isRecipient = recipients.length ? recipients.includes(me) : t.requestedBy !== me;
   const editMode = forceView ? false : isAuthor;
   ticketEditMode = editMode;
 
-  /* 요청자 본인이 아닌 사람이 처음 열람하면, "미확인" 상태를 자동으로 "확인됨"으로 전환 */
-  if (!isAuthor && isRecipient && ["미수신", "미확인", "요청됨"].includes(t.status)) {
+  /* 각 수신자의 최초 열람을 따로 기록하고, 업무방 공통 상태는 첫 열람 때만 변경한다. */
+  if (!isAuthor && isRecipient && !(t.openedBy && t.openedBy[me])) {
+    const firstOpen = ["미수신", "미확인", "요청됨"].includes(t.status);
     const history = (t.history || []).slice();
     history.push({ id: newHistId(), text: `열람: ${me}`, author: me, timestamp: new Date(), type: "status" });
-    t.status = "열람";
+    if (firstOpen) t.status = "열람";
     t.history = history;
-    t.receivedBy = me;
-    t.receivedAt = new Date();
-    updateDoc(doc(db, "requestTickets", id), {
-      status: "열람", receivedBy: me, receivedAt: serverTimestamp(), history, updatedAt: serverTimestamp()
-    }).then(() => Promise.all([
-      notifyTicketUser(t.requestedBy, id, "opened", `${me}님이 업무를 열람했습니다.`),
-      auditTicket(id, "ticket_opened", { status: "미수신" }, { status: "열람", receivedBy: me })
+    t.openedBy = { ...(t.openedBy || {}), [me]: Date.now() };
+    const openPayload = { [`openedBy.${me}`]: Date.now(), history, updatedAt: serverTimestamp() };
+    if (firstOpen) Object.assign(openPayload, { status:"열람", receivedBy:me, receivedAt:serverTimestamp() });
+    updateDoc(doc(db, "requestTickets", id), openPayload).then(() => Promise.all([
+      notifyTicketMembers(t, "opened", `${me}님이 업무방을 열람했습니다.`, me),
+      auditTicket(id, "ticket_opened", { status:firstOpen ? "미수신" : t.status }, { status:t.status, receivedBy:me })
     ])).catch(console.error);
   }
 
@@ -1558,24 +1617,23 @@ function openTicketDetail(id, forceView) {
   document.getElementById("ticket-readonly-note").style.display = editMode ? "none" : "block";
   document.getElementById("ticket-readonly-note").textContent = isAuthor
     ? "제목 옆 편집 아이콘(✏️)을 클릭하면 수정할 수 있습니다."
-    : "작성자(요청자) 본인만 위 항목을 수정할 수 있습니다. 추가사항은 누구나 남길 수 있습니다.";
+    : "작성자(요청자)만 위 항목을 수정할 수 있으며, 업무방 구성원은 세부사항을 계속 남길 수 있습니다.";
 
   if (editMode) {
     document.getElementById("ticket-status-badge-edit").innerHTML = ticketStatusBadge(t.status);
     document.getElementById("ticket-due-edit").value = t.dueDate || "";
     document.getElementById("ticket-requester-display-edit").textContent = t.requestedBy || "-";
-    fillAssigneeSelect(document.getElementById("ticket-assignee-edit"), t.assignee || "");
-    Array.from(document.getElementById("ticket-assignee-edit").options).forEach(o => {
-      if (o.value === t.requestedBy || o.value === "관리자") o.disabled = true;
-    });
+    ticketRecipientEditSet = new Set(ticketRecipients(t));
+    renderTicketRecipientChecks("ticket-assignee-edit-checks", ticketRecipientEditSet, t.requestedBy);
   } else {
     document.getElementById("tv-requester").textContent = t.requestedBy || "-";
-    document.getElementById("tv-assignee").textContent = t.assignee || "미지정(기존 업무)";
+    document.getElementById("tv-assignee").textContent = ticketRecipientLabel(t);
     document.getElementById("tv-dates").textContent = ticketDatesLabel(t);
     document.getElementById("tv-status").innerHTML = ticketStatusBadge(t.status);
-    document.getElementById("tv-received").textContent = t.receivedAt
-      ? `${t.receivedBy || t.assignee || "-"} · ${fmtTs(t.receivedAt)}`
-      : "아직 수신하지 않음";
+    const openedNames = Object.keys(t.openedBy || {});
+    document.getElementById("tv-received").textContent = openedNames.length
+      ? openedNames.join(", ")
+      : t.receivedAt ? `${t.receivedBy || "-"} · ${fmtTs(t.receivedAt)}` : "아직 수신하지 않음";
   }
   document.getElementById("ticket-note-text").value = "";
   subscribeTicketDetails(t);
@@ -1611,7 +1669,7 @@ function renderTicketNoteHistory(t, noteHist) {
   const noteHistEl = document.getElementById("ticket-note-history-list");
   noteHistEl.innerHTML = "";
   if (!noteHist.length) { noteHistEl.innerHTML = `<div class="small-note">세부사항이 없습니다</div>`; return; }
-  const candidates = [t.requestedBy, t.assignee];
+  const candidates = ticketMembers(t);
 
   /* 댓글(답글) 기능은 제거하고, 한 업무에 대한 모든 세부사항/추가사항을 시간순(오래된 것이 위)
      하나의 트리(목록)로 이어서 보여줌 - 계속 업데이트하거나 의견을 더하는 용도이므로 단순한 목록이 더 직관적 */
@@ -1671,16 +1729,24 @@ function renderTicketNoteHistory(t, noteHist) {
 /* 본인이 쓴 세부사항 수정 */
 async function editTicketNote(id, text) {
   if (ticketEditingId === null) return;
+  const ticket = tickets.find(item => item.id === ticketEditingId);
   await updateDoc(doc(db, "requestTickets", ticketEditingId, "details", id), { text, editedAt: serverTimestamp() });
-  await auditTicket(ticketEditingId, "detail_edited", null, { detailId: id });
+  await Promise.all([
+    auditTicket(ticketEditingId, "detail_edited", null, { detailId:id }),
+    ticket ? notifyTicketMembers(ticket, "detail_edited", `${currentUser()}님이 세부사항을 수정했습니다.`) : Promise.resolve()
+  ]);
 }
 
 /* 본인이 쓴 세부사항/댓글 삭제 */
 async function deleteTicketNote(id) {
   if (ticketEditingId === null) return;
+  const ticket = tickets.find(item => item.id === ticketEditingId);
   try {
     await updateDoc(doc(db, "requestTickets", ticketEditingId, "details", id), { archived: true, archivedAt: serverTimestamp(), archivedBy: currentUser() });
-    await auditTicket(ticketEditingId, "detail_archived", null, { detailId: id });
+    await Promise.all([
+      auditTicket(ticketEditingId, "detail_archived", null, { detailId:id }),
+      ticket ? notifyTicketMembers(ticket, "detail_archived", `${currentUser()}님이 세부사항을 삭제했습니다.`) : Promise.resolve()
+    ]);
   } catch (error) {
     console.error("세부사항 삭제 오류", error);
     alert("세부사항을 삭제하지 못했습니다. 최신 Firestore 보안 규칙이 게시되었는지 확인해 주세요.");
@@ -1709,7 +1775,7 @@ function renderTicketWorkActions(ticket, isRecipient, isAuthor) {
         await updateDoc(doc(db, "requestTickets", ticket.id), { status, updatedAt: serverTimestamp(), reopenedAt: before === "완료" ? serverTimestamp() : null, reopenedBy: before === "완료" ? currentUser() : null });
         await addTicketDetail(ticket.id, reason ? `업무 재개: ${reason}` : `상태 변경: ${before} → ${status}`, "status");
         await Promise.all([
-          notifyTicketUser(ticket.requestedBy === currentUser() ? ticket.assignee : ticket.requestedBy, ticket.id, "status", `${currentUser()}님이 상태를 ${status}(으)로 변경했습니다.`),
+          notifyTicketMembers(ticket, "status", `${currentUser()}님이 상태를 ${status}(으)로 변경했습니다.`),
           auditTicket(ticket.id, before === "완료" ? "ticket_reopened" : "status_changed", { status: before }, { status, reason: reason || null })
         ]);
         ticketOverlay.classList.remove("open");
@@ -1741,19 +1807,22 @@ document.getElementById("ticket-save").addEventListener("click", async () => {
     const title = document.getElementById("ticket-title").value.trim();
     if (!title) { alert("제목을 입력하세요"); return; }
     const requester = currentUser();
-    const assignee = document.getElementById("ticket-assignee").value;
-    if (!assignee) { alert("수신자를 선택하세요"); return; }
+    const recipients = TEAM_MEMBERS.filter(name => ticketRecipientSet.has(name) && name !== requester);
+    if (!recipients.length) { alert("수신자를 한 명 이상 선택하세요"); return; }
     const due = document.getElementById("ticket-due").value || null;
     const content = document.getElementById("ticket-content").value.trim();
+    const initialHistory = [{ id:newHistId(), text:`새 업무 등록 · 구성원: ${recipients.join(", ")}`, author:requester, timestamp:new Date(), type:"status" }];
     const ticketRef = await addDoc(collection(db, "requestTickets"), {
       title, requestedBy: requester, requestedAt: serverTimestamp(),
-      assignee, dueDate: due, status: "미수신", receivedBy: null, receivedAt: null,
+      assignee: recipients[0], participants: [requester, ...recipients], dueDate: due,
+      status: "미수신", receivedBy: null, receivedAt: null, openedBy: {}, history: initialHistory,
       archived: false, detailsMigrated: true, updatedAt: serverTimestamp()
     });
     if (content) await addTicketDetail(ticketRef.id, content);
+    const createdTicket = { id:ticketRef.id, title, requestedBy:requester, assignee:recipients[0], participants:[requester, ...recipients] };
     await Promise.all([
-      notifyTicketUser(assignee, ticketRef.id, "new_ticket", `${requester}님이 새 업무를 발송했습니다: ${title}`),
-      auditTicket(ticketRef.id, "ticket_created", null, { title, requestedBy: requester, assignee, dueDate: due })
+      notifyTicketMembers(createdTicket, "new_ticket", `${requester}님이 새 업무방을 만들었습니다: ${title}`, requester),
+      auditTicket(ticketRef.id, "ticket_created", null, { title, requestedBy: requester, participants:[requester, ...recipients], dueDate: due })
     ]);
   } else {
     const t = tickets.find(x => x.id === ticketEditingId);
@@ -1764,38 +1833,45 @@ document.getElementById("ticket-save").addEventListener("click", async () => {
       if (!noteText) { alert("추가할 내용을 입력하세요"); return; }
       await addTicketDetail(ticketEditingId, noteText);
       await Promise.all([
-        notifyTicketUser(t.requestedBy === author ? t.assignee : t.requestedBy, t.id, "detail", `${author}님이 세부사항을 추가했습니다.`),
+        notifyTicketMembers(t, "detail", `${author}님이 세부사항을 추가했습니다.`),
         auditTicket(t.id, "detail_added", null, { author })
       ]);
       ticketOverlay.classList.remove("open");
       return;
     }
 
-    // 수정 모드(작성자 본인): 기한·수신자·추가사항만 수정. 상태는 단계 버튼으로만 변경한다.
+    // 수정 모드(작성자 본인): 기한·구성원·추가사항만 수정. 상태는 단계 버튼으로만 변경한다.
     const newDue = document.getElementById("ticket-due-edit").value || null;
-    const newAssignee = document.getElementById("ticket-assignee-edit").value || t.assignee;
+    const oldRecipients = ticketRecipients(t);
+    const newRecipients = TEAM_MEMBERS.filter(name => ticketRecipientEditSet.has(name) && name !== t.requestedBy);
+    if (!newRecipients.length) { alert("구성원을 한 명 이상 선택하세요"); return; }
+    const recipientsChanged = oldRecipients.slice().sort().join("|") !== newRecipients.slice().sort().join("|");
 
     let changeReason = null;
-    if (newAssignee !== t.assignee && t.receivedAt) {
-      changeReason = prompt("이미 열람된 업무입니다. 수신자 변경 사유를 입력하세요.");
+    if (recipientsChanged && (t.receivedAt || Object.keys(t.openedBy || {}).length)) {
+      changeReason = prompt("이미 열람된 업무입니다. 구성원 변경 사유를 입력하세요.");
       if (!changeReason) return;
     }
 
+    const history = (t.history || []).slice();
+    if (newDue !== t.dueDate) history.push({ id:newHistId(), text:`희망기한 변경: ${t.dueDate || "미지정"} → ${newDue || "미지정"}`, author, timestamp:new Date(), type:"status" });
+    if (recipientsChanged) history.push({ id:newHistId(), text:`구성원 변경: ${oldRecipients.join(", ") || "미지정"} → ${newRecipients.join(", ")}${changeReason ? ` · 사유: ${changeReason}` : ""}`, author, timestamp:new Date(), type:"status" });
     await updateDoc(doc(db, "requestTickets", ticketEditingId), {
-      status: newAssignee !== t.assignee ? "미수신" : normalizedTicketStatus(t.status), dueDate: newDue, assignee: newAssignee,
-      receivedBy: newAssignee !== t.assignee ? null : (t.receivedBy || null),
-      receivedAt: newAssignee !== t.assignee ? null : (t.receivedAt || null),
-      updatedAt: serverTimestamp()
+      status: normalizedTicketStatus(t.status), dueDate: newDue,
+      assignee: newRecipients[0], participants: [t.requestedBy, ...newRecipients],
+      history, updatedAt: serverTimestamp()
     });
     if (noteText) await addTicketDetail(ticketEditingId, noteText);
+    const updatedTicket = { ...t, assignee:newRecipients[0], participants:[t.requestedBy, ...newRecipients], dueDate:newDue };
     const jobs = [];
-    if (noteText) jobs.push(notifyTicketUser(t.assignee, t.id, "detail", `${author}님이 세부사항을 추가했습니다.`));
-    if (newDue !== t.dueDate) jobs.push(notifyTicketUser(newAssignee, t.id, "due_changed", `기한이 ${newDue || "미지정"}(으)로 변경되었습니다.`));
-    if (newAssignee !== t.assignee) {
-      jobs.push(notifyTicketUser(t.assignee, t.id, "assignee_changed", `업무 수신자가 ${newAssignee}(으)로 변경되었습니다.`));
-      jobs.push(notifyTicketUser(newAssignee, t.id, "assignee_changed", `${author}님이 업무를 전달했습니다.`));
+    if (noteText) jobs.push(notifyTicketMembers(updatedTicket, "detail", `${author}님이 세부사항을 추가했습니다.`));
+    if (newDue !== t.dueDate) jobs.push(notifyTicketMembers(updatedTicket, "due_changed", `희망기한이 ${newDue || "미지정"}(으)로 변경되었습니다.`));
+    if (recipientsChanged) {
+      const allAffected = new Set([...oldRecipients, ...newRecipients, t.requestedBy]);
+      allAffected.delete(author);
+      allAffected.forEach(name => jobs.push(notifyTicketUser(name, t.id, "participants_changed", `${author}님이 업무방 구성원을 변경했습니다.${changeReason ? ` 사유: ${changeReason}` : ""}`)));
     }
-    jobs.push(auditTicket(t.id, "ticket_updated", { status: t.status, dueDate: t.dueDate, assignee: t.assignee }, { status: newAssignee !== t.assignee ? "미수신" : normalizedTicketStatus(t.status), dueDate: newDue, assignee: newAssignee, reason: changeReason }));
+    jobs.push(auditTicket(t.id, "ticket_updated", { status:t.status, dueDate:t.dueDate, participants:ticketMembers(t) }, { status:normalizedTicketStatus(t.status), dueDate:newDue, participants:ticketMembers(updatedTicket), reason:changeReason }));
     await Promise.all(jobs);
   }
   ticketOverlay.classList.remove("open");
@@ -2174,15 +2250,6 @@ function openScheduleNew() {
   scheduleOverlay.classList.add("open");
 }
 document.getElementById("schedule-new-btn").addEventListener("click", openScheduleNew);
-document.getElementById("schedule-time-picker-btn").addEventListener("click", () => {
-  const input = document.getElementById("schedule-time");
-  if (typeof input.showPicker === "function") {
-    input.showPicker();
-  } else {
-    input.focus();
-    input.click();
-  }
-});
 
 /* forceView === true 이면 작성자 여부와 관계없이 항상 열람(읽기전용) 모드로 연다.
    forceView가 없으면(=제목 옆 [edit] 아이콘/캘린더뷰/대시보드 등 기존 진입경로) 작성자 본인일 때만 수정 가능 */
@@ -2370,7 +2437,7 @@ document.getElementById("schedule-delete").addEventListener("click", async () =>
 });
 
 /* ════════════════════════════════════════════════
-   3. 전화 및 기타메모
+   3. 메모
    ════════════════════════════════════════════════ */
 let memos = [];
 let selectedMemoIds = new Set();
@@ -2385,6 +2452,7 @@ function renderMemoAssigneeChecks() {
   allChip.type = "button";
   allChip.className = "resp-chip" + (allSelected ? " active" : "");
   allChip.textContent = "전체";
+  allChip.setAttribute("aria-pressed", String(allSelected));
   allChip.addEventListener("click", () => {
     memoAssigneeSet = allSelected ? new Set() : new Set(TEAM_MEMBERS);
     renderMemoAssigneeChecks();
@@ -2395,6 +2463,7 @@ function renderMemoAssigneeChecks() {
     chip.type = "button";
     chip.className = "resp-chip" + (memoAssigneeSet.has(name) ? " active" : "");
     chip.textContent = name;
+    chip.setAttribute("aria-pressed", String(memoAssigneeSet.has(name)));
     chip.addEventListener("click", () => {
       if (memoAssigneeSet.has(name)) memoAssigneeSet.delete(name);
       else memoAssigneeSet.add(name);
@@ -2582,6 +2651,17 @@ document.getElementById("dash-activity-toggle").addEventListener("click", () => 
   renderDashboard();
 });
 
+function activityChangePart(text, fallback = "내용") {
+  const value = String(text || "");
+  const parts = [];
+  if (/새 업무 등록|등록$/.test(value)) parts.push("신규 등록");
+  if (/상태|열람|접수|진행|보류|완료|재개/.test(value)) parts.push("진행상태");
+  if (/구성원|수신자|담당자/.test(value)) parts.push("구성원");
+  if (/기한|날짜/.test(value)) parts.push("일정·기한");
+  if (/삭제/.test(value)) parts.push("삭제");
+  return [...new Set(parts)].join("·") || fallback;
+}
+
 function renderDashboard() {
   const me = currentUser();
 
@@ -2656,7 +2736,7 @@ function renderDashboard() {
     const div = document.createElement("div");
     div.className = "dash-card dash-update-card";
     div.style.cursor = "default";
-    div.innerHTML = `<div class="dash-update-body"><div class="dc-title"><span class="attention-badge">${memo.urgency === "상" ? "긴급" : "미확인"}</span> [전화 및 메모] ${escapeHtml(memo.subject || "메모")}</div>
+    div.innerHTML = `<div class="dash-update-body"><div class="dc-title"><span class="attention-badge">${memo.urgency === "상" ? "긴급" : "미확인"}</span> [메모] ${escapeHtml(memo.subject || "메모")}</div>
       <div class="dc-meta">받은사람 ${escapeHtml(memo.receivedBy || "-")} · ${fmtTs(memo.receivedAt)}</div></div>
       <button type="button" class="dash-confirm-btn">내용 보기</button>`;
     div.querySelector("button").addEventListener("click", () => openMemoEdit(memo.id));
@@ -2665,7 +2745,10 @@ function renderDashboard() {
   if (!alertCount) alertList.innerHTML = `<div class="dash-empty">확인이 필요한 알림이 없습니다</div>`;
 
   const today = todayIso();
-  const myTickets = isAdmin() ? tickets.slice() : tickets.filter(t => t.requestedBy === me || t.assignee === me || (!t.assignee && t.requestedBy !== me));
+  const myTickets = isAdmin() ? tickets.slice() : tickets.filter(t => {
+    const recipients = ticketRecipients(t);
+    return t.requestedBy === me || (recipients.length ? recipients.includes(me) : t.requestedBy !== me);
+  });
   const activeTickets = myTickets.filter(t => t.status !== "완료");
   const attentionTickets = activeTickets.filter(t => {
     const days = t.dueDate ? daysDiffIso(today, t.dueDate) : null;
@@ -2688,7 +2771,7 @@ function renderDashboard() {
       const div = document.createElement("div");
       div.className = "dash-card";
       div.innerHTML = `<div class="dc-title"><span class="${dueClass}">[${dueText}]</span> ${escapeHtml(t.title)} <span class="badge ${normalizedTicketStatus(t.status)}">${normalizedTicketStatus(t.status)}</span></div>
-        <div class="dc-meta">${t.requestedBy === me ? "수신 " + escapeHtml(t.assignee || "미지정") : "요청 " + escapeHtml(t.requestedBy || "-")} · ${t.dueDate || "기한 미지정"}</div>`;
+        <div class="dc-meta">${t.requestedBy === me ? "구성원 " + escapeHtml(ticketRecipientLabel(t)) : "요청 " + escapeHtml(t.requestedBy || "-")} · ${t.dueDate || "기한 미지정"}</div>`;
       div.addEventListener("click", () => { openTicketDetail(t.id); });
       tEl.appendChild(div);
     });
@@ -2779,7 +2862,7 @@ function renderDashboard() {
       div.addEventListener("click", () => { openMemoEdit(m.id); });
       mEl.appendChild(div);
     });
-    if (activeMemos.length > 5) mEl.insertAdjacentHTML("beforeend", `<div class="small-note" style="text-align:center;">외 ${activeMemos.length - 5}건 · 제목을 눌러 전화 및 메모 전체보기</div>`);
+    if (activeMemos.length > 5) mEl.insertAdjacentHTML("beforeend", `<div class="small-note" style="text-align:center;">외 ${activeMemos.length - 5}건 · 제목을 눌러 메모 전체보기</div>`);
   }
 
   /* 🔔 관련 변경사항 (최근 활동 피드) 생성 및 렌더링 */
@@ -2795,9 +2878,18 @@ function renderDashboard() {
           title: t.title,
           author: h.author || t.requestedBy || "미지정",
           text: h.text,
+          changePart: historyEntryType(h) === "note" ? "세부사항" : activityChangePart(h.text, "업무 정보"),
           timestamp: h.timestamp ? (h.timestamp.toDate ? h.timestamp.toDate() : new Date(h.timestamp)) : new Date(),
           icon: "✏️"
         });
+      });
+    }
+    const detailAlreadyInHistory = (t.history || []).some(h => historyEntryType(h) === "note" && h.text === t.lastDetailText);
+    if (t.lastDetailAt && t.lastDetailText && !detailAlreadyInHistory) {
+      activities.push({
+        type:"ticket", id:t.id, title:t.title, author:t.lastDetailAuthor || t.requestedBy || "미지정",
+        text:t.lastDetailText, changePart:t.lastDetailKind === "detail" ? "세부사항" : activityChangePart(t.lastDetailText, "세부사항"),
+        timestamp:t.lastDetailAt.toDate ? t.lastDetailAt.toDate() : new Date(t.lastDetailAt), icon:"✏️"
       });
     }
   });
@@ -2813,6 +2905,7 @@ function renderDashboard() {
           title: s.title,
           author: h.author || s.registeredBy || "미지정",
           text: h.text,
+          changePart: historyEntryType(h) === "note" ? "세부사항" : activityChangePart(h.text, "일정 정보"),
           timestamp: h.timestamp ? (h.timestamp.toDate ? h.timestamp.toDate() : new Date(h.timestamp)) : new Date(),
           icon: "🗓️"
         });
@@ -2825,13 +2918,14 @@ function renderDashboard() {
         title: s.title,
         author: s.registeredBy || "미지정",
         text: s.detail,
+        changePart: "세부사항",
         timestamp: s.registeredAt ? (s.registeredAt.toDate ? s.registeredAt.toDate() : new Date(s.registeredAt)) : new Date(),
         icon: "🗓️"
       });
     }
   });
 
-  // 3. 전화/메모 이력 추가
+  // 3. 메모 이력 추가
   myMemos.forEach(m => {
     if (m.receivedAt) {
       activities.push({
@@ -2839,9 +2933,10 @@ function renderDashboard() {
         id: m.id,
         title: `${m.assignee || "미지정"} - ${m.subject}`,
         author: m.receivedBy || "미지정",
-        text: "전화메모 등록",
+        text: "메모 등록",
+        changePart: "신규 등록",
         timestamp: m.receivedAt.toDate ? m.receivedAt.toDate() : new Date(m.receivedAt),
-        icon: "📞"
+        icon: "📝"
       });
     }
     if (m.status === "확인됨" && m.confirmedAt) {
@@ -2850,7 +2945,8 @@ function renderDashboard() {
         id: m.id,
         title: `${m.assignee || "미지정"} - ${m.subject}`,
         author: m.confirmedBy || "미지정",
-        text: "전화메모 확인 완료",
+        text: "메모 확인 완료",
+        changePart: "확인상태",
         timestamp: m.confirmedAt.toDate ? m.confirmedAt.toDate() : new Date(m.confirmedAt),
         icon: "✅"
       });
@@ -2876,7 +2972,7 @@ function renderDashboard() {
       div.innerHTML = `
         <div class="activity-feed-icon">${act.icon}</div>
         <div class="activity-feed-content">
-          <div style="font-weight: 800; font-size: 14.5px;">[${escapeHtml(act.type === "schedule" ? typeLabel(act.scheduleType) : LABEL_OF[act.type])}] ${escapeHtml(act.title)}</div>
+          <div style="font-weight: 800; font-size: 14.5px;"><span class="activity-change-part">${escapeHtml(act.changePart || "내용")}</span>[${escapeHtml(act.type === "schedule" ? typeLabel(act.scheduleType) : LABEL_OF[act.type])}] ${escapeHtml(act.title)}</div>
           <div class="activity-feed-meta"><b>${escapeHtml(act.author)}</b> · ${escapeHtml(act.text)}</div>
         </div>
         <div class="activity-feed-time">${timeStr}</div>

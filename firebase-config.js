@@ -47,7 +47,8 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 
 // 팀원 목록 (고정 초기값, 필요 시 여기 배열만 수정하면 전체 화면에 반영됨)
-export const TEAM_MEMBERS = ["강보선", "강은석", "박재현", "김준형", "김류현", "관리자"];
+// 일반 업무·일정·메모의 선택 대상. 관리자는 index.html의 관리자 전용 진입만 사용한다.
+export const TEAM_MEMBERS = ["강보선", "강은석", "박재현", "김준형", "김류현"];
 
 export const USER_ACCOUNTS = {
   "강은석": { email: "kw5232@naver.com", role: "member" },

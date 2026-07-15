@@ -5,7 +5,13 @@ service cloud.firestore {
     function passwordUser() { return signedIn() && request.auth.token.email != null; }
     function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
     function admin() { return passwordUser() && me().role == 'admin'; }
-    function participant(data) { return passwordUser() && (data.requestedBy == me().name || data.assignee == me().name); }
+    function participant(data) {
+      return passwordUser() && (
+        data.requestedBy == me().name ||
+        data.assignee == me().name ||
+        (data.participants is list && data.participants.hasAny([me().name]))
+      );
+    }
 
     match /users/{uid} {
       allow read: if passwordUser() && (request.auth.uid == uid || admin());
@@ -24,8 +30,8 @@ service cloud.firestore {
       allow delete: if admin();
       match /details/{detailId} {
         allow read: if passwordUser() && (participant(get(/databases/$(database)/documents/requestTickets/$(ticketId)).data) || admin());
-        allow create: if passwordUser() && participant(get(/databases/$(database)/documents/requestTickets/$(ticketId)).data);
-        allow update: if passwordUser() && (resource.data.authorUid == request.auth.uid || admin());
+        allow create: if passwordUser() && (participant(get(/databases/$(database)/documents/requestTickets/$(ticketId)).data) || admin());
+        allow update: if passwordUser() && (resource.data.authorUid == request.auth.uid || resource.data.author == me().name || admin());
         allow delete: if admin();
       }
     }
