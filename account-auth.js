@@ -87,7 +87,10 @@ export async function ensureUserLogin({ adminOnly = false } = {}) {
         await persistProfile(p); overlay.remove();
         if (password === INITIAL_PASSWORD) await forceInitialPasswordChange(credential.user);
         resolve(p);
-      } catch (e) { err.textContent = "아이디 또는 비밀번호를 확인하세요."; }
+      } catch (e) {
+        console.error("[account-auth] login failed", e?.code || e?.message || "unknown-error");
+        err.textContent = "아이디 또는 비밀번호를 확인하세요.";
+      }
     };
     overlay.querySelectorAll(".account-choice").forEach(button => button.onclick = () => {
       selectedId = button.dataset.id;
