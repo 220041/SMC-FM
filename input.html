@@ -94,6 +94,19 @@
   tr.row-emphasized td { font-weight: 900; }
   tr.row-dimmed td { color: var(--dim); }
 
+  .focus-group-row { cursor: default; }
+  .focus-group-row td {
+    padding: 10px 12px; background: #EAF1F7; color: var(--accent);
+    border-top: 2px solid #C9D8E6; border-bottom: 1px solid #C9D8E6;
+    font-size: 17px; font-weight: 800;
+  }
+  .focus-group-row.team td { background: var(--bg); color: var(--ink-soft); border-color: var(--line-strong); }
+  .focus-group-count {
+    display: inline-block; margin-left: 7px; padding: 1px 8px; border-radius: 10px;
+    background: var(--surface); color: inherit; font-size: 13px; vertical-align: 1px;
+  }
+  .focus-group-empty td { padding: 18px 12px; color: var(--dim); text-align: center; cursor: default; }
+
   .empty-row td { text-align: center; padding: 33px; color: var(--dim); }
 
   .row-delete-btn {
@@ -1919,61 +1932,78 @@ onSnapshot(collection(db, "schedules"), (snap) => {
   renderDashboard();
 });
 
+function appendFocusGroupHeader(tbody, label, count, kind, colspan) {
+  const row = document.createElement("tr");
+  row.className = "focus-group-row " + kind;
+  row.innerHTML = `<td colspan="${colspan}">${escapeHtml(label)}<span class="focus-group-count">${count}건</span></td>`;
+  tbody.appendChild(row);
+}
+
 function renderSchedules() {
   lastRenderedScheduleIds = schedules.map(s => s.id);
   const tbody = document.getElementById("schedule-tbody");
   tbody.innerHTML = "";
-  if (schedules.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">등록된 일정이 없습니다</td></tr>`;
-    return;
-  }
+  const me = currentUser();
+  const groups = [
+    { label:"내 관련 일정", kind:"mine", items:schedules.filter(s => s.registeredBy === me || responsibleArray(s).includes(me)) },
+    { label:"시설팀 공유 일정", kind:"team", items:schedules.filter(s => s.registeredBy !== me && !responsibleArray(s).includes(me)) }
+  ];
   const today = todayIso();
-  let todayDividerShown = false;
-  schedules.forEach(s => {
-    // 오늘을 기준으로 이전/이후 항목이 잘 구분되도록, 날짜순 정렬된 목록 중간에 "오늘" 구분행을 한 번 끼워넣음
-    if (!todayDividerShown && earliestDate(s) >= today) {
-      todayDividerShown = true;
+
+  groups.forEach(group => {
+    appendFocusGroupHeader(tbody, group.label, group.items.length, group.kind, 8);
+    if (!group.items.length) {
+      const empty = document.createElement("tr");
+      empty.className = "focus-group-empty";
+      empty.innerHTML = `<td colspan="8">해당 일정이 없습니다</td>`;
+      tbody.appendChild(empty);
+      return;
+    }
+
+    let todayDividerShown = false;
+    group.items.forEach(s => {
+      if (!todayDividerShown && earliestDate(s) >= today) {
+        todayDividerShown = true;
+        const divider = document.createElement("tr");
+        divider.style.cursor = "default";
+        divider.innerHTML = `<td colspan="8" style="background:var(--bg); color:var(--ink-soft); font-weight:800; text-align:center; padding:7px; border-top:1px dashed var(--line-strong); border-bottom:1px dashed var(--line-strong);">오늘 (${today})</td>`;
+        tbody.appendChild(divider);
+      }
+      const tr = document.createElement("tr");
+      if (Array.isArray(s.dates) && s.dates.includes(today)) tr.classList.add("row-active-today");
+      const respArr = responsibleArray(s);
+      const isAuthor = s.registeredBy === me || isAdmin();
+      const editIcon = isAuthor ? `<button type="button" class="row-edit-btn" title="수정">✏️</button>` : "";
+      tr.innerHTML = `
+        <td class="td-check"><input type="checkbox" class="row-check" ${selectedScheduleIds.has(s.id) ? "checked" : ""} /></td>
+        <td title="${escapeHtml(s.title)}">${escapeHtml(s.title)}${deleteRequestBadge(s)}${editIcon}</td>
+        <td title="${escapeHtml(typeLabel(s.type))}"><span class="badge type-${s.type}">${escapeHtml(s.type)}</span></td>
+        <td title="${escapeHtml(formatDateRanges(s.dates))}${s.time ? " " + escapeHtml(s.time) : ""}">${escapeHtml(formatDateRangesShort(s.dates))}${s.time ? ` ${escapeHtml(s.time)}` : ""}</td>
+        <td title="${escapeHtml(s.vendor || "")}">${escapeHtml(s.vendor || "-")}</td>
+        <td title="${escapeHtml(respArr.join(", ") || "미지정")}">${escapeHtml(responsibleShort(respArr))}</td>
+        <td title="${escapeHtml(s.registeredBy || "")}">${escapeHtml(s.registeredBy || "-")}</td>
+        <td class="td-del"><button type="button" class="row-delete-btn" title="삭제">🗑</button></td>
+      `;
+      tr.addEventListener("click", () => openScheduleEdit(s.id, true));
+      const scheduleEditBtn = tr.querySelector(".row-edit-btn");
+      if (scheduleEditBtn) scheduleEditBtn.addEventListener("click", (e) => { e.stopPropagation(); openScheduleEdit(s.id, false); });
+      tr.querySelector(".row-check").addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (e.target.checked) selectedScheduleIds.add(s.id); else selectedScheduleIds.delete(s.id);
+      });
+      tr.querySelector(".row-delete-btn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        handleDeleteClick("schedule", s);
+      });
+      tbody.appendChild(tr);
+    });
+    if (!todayDividerShown) {
       const divider = document.createElement("tr");
       divider.style.cursor = "default";
       divider.innerHTML = `<td colspan="8" style="background:var(--bg); color:var(--ink-soft); font-weight:800; text-align:center; padding:7px; border-top:1px dashed var(--line-strong); border-bottom:1px dashed var(--line-strong);">오늘 (${today})</td>`;
       tbody.appendChild(divider);
     }
-    const tr = document.createElement("tr");
-    // 오늘 날짜를 포함해서 진행 중인 일정(며칠짜리 공사 등)은 "오늘" 구분선과 이어지는 느낌이 나도록 강조
-    if (Array.isArray(s.dates) && s.dates.includes(today)) tr.classList.add("row-active-today");
-    const respArr = responsibleArray(s);
-    const isAuthor = s.registeredBy === currentUser() || isAdmin();
-    const editIcon = isAuthor ? `<button type="button" class="row-edit-btn" title="수정">✏️</button>` : "";
-    tr.innerHTML = `
-      <td class="td-check"><input type="checkbox" class="row-check" ${selectedScheduleIds.has(s.id) ? "checked" : ""} /></td>
-      <td title="${escapeHtml(s.title)}">${escapeHtml(s.title)}${deleteRequestBadge(s)}${editIcon}</td>
-      <td title="${escapeHtml(typeLabel(s.type))}"><span class="badge type-${s.type}">${escapeHtml(s.type)}</span></td>
-      <td title="${escapeHtml(formatDateRanges(s.dates))}${s.time ? " " + escapeHtml(s.time) : ""}">${escapeHtml(formatDateRangesShort(s.dates))}${s.time ? ` ${escapeHtml(s.time)}` : ""}</td>
-      <td title="${escapeHtml(s.vendor || "")}">${escapeHtml(s.vendor || "-")}</td>
-      <td title="${escapeHtml(respArr.join(", ") || "미지정")}">${escapeHtml(responsibleShort(respArr))}</td>
-      <td title="${escapeHtml(s.registeredBy || "")}">${s.registeredBy || "-"}</td>
-      <td class="td-del"><button type="button" class="row-delete-btn" title="삭제">🗑</button></td>
-    `;
-    tr.addEventListener("click", () => openScheduleEdit(s.id, true));
-    const scheduleEditBtn = tr.querySelector(".row-edit-btn");
-    if (scheduleEditBtn) scheduleEditBtn.addEventListener("click", (e) => { e.stopPropagation(); openScheduleEdit(s.id, false); });
-    tr.querySelector(".row-check").addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (e.target.checked) selectedScheduleIds.add(s.id); else selectedScheduleIds.delete(s.id);
-    });
-    tr.querySelector(".row-delete-btn").addEventListener("click", (e) => {
-      e.stopPropagation();
-      handleDeleteClick("schedule", s);
-    });
-    tbody.appendChild(tr);
   });
-  // 모든 일정이 과거인 경우에도 목록 맨 아래에 오늘 구분행을 표시
-  if (!todayDividerShown) {
-    const divider = document.createElement("tr");
-    divider.style.cursor = "default";
-    divider.innerHTML = `<td colspan="8" style="background:var(--bg); color:var(--ink-soft); font-weight:800; text-align:center; padding:7px; border-top:1px dashed var(--line-strong); border-bottom:1px dashed var(--line-strong);">오늘 (${today})</td>`;
-    tbody.appendChild(divider);
-  }
 }
 
 document.getElementById("schedule-select-all").addEventListener("change", (e) => {
@@ -2501,35 +2531,45 @@ function renderMemos() {
   lastRenderedMemoIds = rows.map(m => m.id);
   const tbody = document.getElementById("memo-tbody");
   tbody.innerHTML = "";
-  if (rows.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">등록된 메모가 없습니다</td></tr>`;
-    return;
-  }
-  rows.forEach(m => {
-    const tr = document.createElement("tr");
-    const me = currentUser();
-    // 담당자인 내가 이미 확인한 항목은 진하게, 작성자(전달한 사람)인 내가 담당자의 확인을 확인한 항목은 연하게
-    if (m.status === "확인됨" && me === m.assignee) tr.classList.add("row-emphasized");
-    else if (m.status === "확인됨" && me === m.receivedBy) tr.classList.add("row-dimmed");
-    tr.innerHTML = `
-      <td class="td-check"><input type="checkbox" class="row-check" ${selectedMemoIds.has(m.id) ? "checked" : ""} /></td>
-      <td><b>${m.assignee || "미지정"}</b> - ${escapeHtml(m.subject || "")}${deleteRequestBadge(m)}</td>
-      <td><span class="badge urgency-${m.urgency}">${m.urgency}</span></td>
-      <td>${m.receivedBy || "-"}</td>
-      <td>${fmtTs(m.receivedAt)}</td>
-      <td><span class="badge status-${m.status}">${m.status}</span>${m.status === "확인됨" ? `<div class="small-note">${m.confirmedBy} ${fmtTs(m.confirmedAt)}</div>` : ""}</td>
-      <td class="td-del"><button type="button" class="row-delete-btn" title="삭제">🗑</button></td>
-    `;
-    tr.addEventListener("click", () => openMemoEdit(m.id));
-    tr.querySelector(".row-check").addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (e.target.checked) selectedMemoIds.add(m.id); else selectedMemoIds.delete(m.id);
+  const me = currentUser();
+  const groups = [
+    { label:"내 관련 메모", kind:"mine", items:rows.filter(m => m.assignee === me || m.receivedBy === me) },
+    { label:"시설팀 공유 메모", kind:"team", items:rows.filter(m => m.assignee !== me && m.receivedBy !== me) }
+  ];
+
+  groups.forEach(group => {
+    appendFocusGroupHeader(tbody, group.label, group.items.length, group.kind, 7);
+    if (!group.items.length) {
+      const empty = document.createElement("tr");
+      empty.className = "focus-group-empty";
+      empty.innerHTML = `<td colspan="7">해당 메모가 없습니다</td>`;
+      tbody.appendChild(empty);
+      return;
+    }
+    group.items.forEach(m => {
+      const tr = document.createElement("tr");
+      if (m.status === "확인됨" && me === m.assignee) tr.classList.add("row-emphasized");
+      else if (m.status === "확인됨" && me === m.receivedBy) tr.classList.add("row-dimmed");
+      tr.innerHTML = `
+        <td class="td-check"><input type="checkbox" class="row-check" ${selectedMemoIds.has(m.id) ? "checked" : ""} /></td>
+        <td><b>${escapeHtml(m.assignee || "미지정")}</b> - ${escapeHtml(m.subject || "")}${deleteRequestBadge(m)}</td>
+        <td><span class="badge urgency-${m.urgency}">${escapeHtml(m.urgency || "-")}</span></td>
+        <td>${escapeHtml(m.receivedBy || "-")}</td>
+        <td>${fmtTs(m.receivedAt)}</td>
+        <td><span class="badge status-${m.status}">${escapeHtml(m.status || "-")}</span>${m.status === "확인됨" ? `<div class="small-note">${escapeHtml(m.confirmedBy || "-")} ${fmtTs(m.confirmedAt)}</div>` : ""}</td>
+        <td class="td-del"><button type="button" class="row-delete-btn" title="삭제">🗑</button></td>
+      `;
+      tr.addEventListener("click", () => openMemoEdit(m.id));
+      tr.querySelector(".row-check").addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (e.target.checked) selectedMemoIds.add(m.id); else selectedMemoIds.delete(m.id);
+      });
+      tr.querySelector(".row-delete-btn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        handleDeleteClick("memo", m);
+      });
+      tbody.appendChild(tr);
     });
-    tr.querySelector(".row-delete-btn").addEventListener("click", (e) => {
-      e.stopPropagation();
-      handleDeleteClick("memo", m);
-    });
-    tbody.appendChild(tr);
   });
 }
 
