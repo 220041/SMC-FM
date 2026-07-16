@@ -126,22 +126,22 @@ function parseCsv(text) {
   return rows;
 }
 
-/* 열 위치가 바뀌어도 헤더 이름으로 찾아 지정한 순서대로 표시한다. width 합계는 100%. */
+/* 고정 정보 열은 실제 최대 글자 수에 맞추고, 적요·보완사유가 남은 폭을 나눠 쓴다. */
 const COLUMN_CONFIG = [
-  { key:"처리구분", label:"처리구분", width:5 },
-  { key:"적요", label:"적요", width:17 },
-  { key:"금액", label:"금액", width:6 },
-  { key:"희망발주일", label:"희망발주", width:7 },
-  { key:"등록일", label:"등록일", width:6 },
-  { key:"요청번호", label:"요청번호", width:8 },
-  { key:"처리상태", label:"처리상태", width:6 },
-  { key:"접수확인일", label:"접수확인", width:7 },
-  { key:"예상발주일", label:"예상발주", width:7 },
-  { key:"실제발주일", label:"실제발주", width:7 },
-  { key:"보완사항·지연사유", label:"보완·지연사유", width:9 },
-  { key:"계약팀 담당자", label:"담당자", width:5 },
-  { key:"최종수정일", label:"최종수정", width:7 },
-  { key:"처리경과일", label:"경과일", width:3 }
+  { key:"처리구분", label:"처리구분", width:"74px" },
+  { key:"적요", label:"적요", width:null },
+  { key:"금액", label:"금액", width:"72px" },
+  { key:"희망발주일", label:"희망발주", width:"72px" },
+  { key:"등록일", label:"등록일", width:"72px" },
+  { key:"요청번호", label:"요청번호", width:"86px" },
+  { key:"처리상태", label:"처리상태", width:"58px" },
+  { key:"접수확인일", label:"접수확인", width:"72px" },
+  { key:"예상발주일", label:"예상발주", width:"72px" },
+  { key:"실제발주일", label:"실제발주", width:"72px" },
+  { key:"보완사항·지연사유", label:"보완·지연사유", width:null },
+  { key:"계약팀 담당자", label:"담당자", width:"48px" },
+  { key:"최종수정일", label:"최종수정", width:"112px" },
+  { key:"처리경과일", label:"경과일", width:"42px" }
 ];
 function renderSheetTable(rows) {
   const wrap = document.getElementById("sheet-table-wrap");
@@ -158,7 +158,7 @@ function renderSheetTable(rows) {
     return hasVisibleValue && hasSubject && processingType !== "카드결제완료";
   });
   let html = "<table><colgroup>";
-  columns.forEach(column => { html += `<col style="width:${column.width}%">`; });
+  columns.forEach(column => { html += column.width ? `<col style="width:${column.width}">` : "<col>"; });
   html += "</colgroup><thead><tr>";
   columns.forEach(column => {
     html += `<th title="${escapeHtml(column.key)}">${escapeHtml(column.label)}</th>`;
