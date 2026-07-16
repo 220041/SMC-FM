@@ -25,7 +25,7 @@
   .nav-link-icon { font-size: 16px; }
   #user-select-wrap { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink-soft); }
   #user-select-wrap b { color: var(--ink); font-size: 15px; }
-  select, input[type=text], input[type=date], input[type=datetime-local], input[type=time], textarea {
+  select, input[type=text], input[type=search], input[type=date], input[type=datetime-local], input[type=time], textarea {
     border: 1.5px solid var(--line); border-radius: 9px; padding: 10px 12px; font-size: 17px; color: var(--ink);
     background: var(--surface);
   }
@@ -46,6 +46,19 @@
   .panel-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 11px; margin-bottom: 17.5px; }
   .panel-head h2 { font-size: 24px; margin: 0; }
   .panel-head-actions { display: flex; gap: 9px; align-items: center; flex-shrink: 0; }
+  .panel-search {
+    width: min(280px, 32vw); min-width: 180px; padding-left: 38px !important;
+    background-image: linear-gradient(transparent, transparent);
+  }
+  .panel-search-wrap { position: relative; display: flex; align-items: center; }
+  .panel-search-wrap::before {
+    content: "⌕"; position: absolute; left: 13px; z-index: 1; color: var(--ink-soft);
+    font-size: 21px; line-height: 1; pointer-events: none;
+  }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
   .panel-head .filter-bar { margin-bottom: 0; flex: 1 1 auto; }
   .btn-primary {
     background: var(--accent); color: #fff; border: none; border-radius: 11px;
@@ -93,6 +106,11 @@
   tr.row-done td { color: var(--dim); }
   tr.row-emphasized td { font-weight: 900; }
   tr.row-dimmed td { color: var(--dim); }
+  tr.row-shared-confirmed td:not(.memo-status-cell) { color: #98A1AA; }
+  tr.row-shared-confirmed td:not(.memo-status-cell) .badge { opacity: 0.58; }
+  tr.row-memo-unread { background: #FFF9F6; }
+  tr.row-memo-unread td:first-of-type { border-left: 4px solid var(--alert); }
+  tr.row-memo-unread .memo-subject { font-weight: 850; color: var(--ink); }
 
   .focus-group-row { cursor: default; }
   .focus-group-row td {
@@ -119,6 +137,10 @@
   th.th-del, td.td-del { width: 39.5px; text-align: center; }
   th.th-check, td.td-check { width: 35px; text-align: center; }
   .row-check { width: 17.5px; height: 17.5px; cursor: pointer; }
+  .selection-cell .row-check { visibility: hidden; }
+  table.selection-active .selection-cell .row-check { visibility: visible; }
+  .selection-toggle { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); }
+  .bulk-delete-btn[hidden] { display: none; }
 
   /* ── 일정관리 표: 항목이 많아도 한 줄로 맞추기 (넘치는 글자는 말줄임표 + 마우스오버로 전체 확인) ── */
   #schedule-table { table-layout: fixed; }
@@ -149,6 +171,9 @@
   .modal-box { background: var(--surface); border-radius: 17.5px; padding: 32px 34px; width: 100%; max-width: 616px; position: relative; }
   
   @media (max-width: 768px) {
+    .panel-head-actions { width: 100%; flex-wrap: wrap; }
+    .panel-search-wrap { flex: 1 1 100%; }
+    .panel-search { width: 100%; min-width: 0; }
     .modal-overlay {
       align-items: flex-end;
       padding: 0;
@@ -604,13 +629,18 @@
         <select id="ticket-filter-requester"><option value="all">전체</option></select>
         <label><input type="checkbox" id="ticket-filter-overdue" /> 기한초과만</label>
       </div>
-      <button class="btn-primary" id="ticket-new-btn">+ 새 업무 등록</button>
+      <div class="panel-head-actions">
+        <label class="panel-search-wrap"><span class="sr-only">관련업무 검색</span><input class="panel-search" type="search" id="ticket-search" placeholder="업무 검색" autocomplete="off" /></label>
+        <button class="btn-secondary btn-danger-outline bulk-delete-btn" id="ticket-bulk-delete" hidden>선택 삭제</button>
+        <button class="btn-primary" id="ticket-new-btn">+ 새 업무 등록</button>
+      </div>
     </div>
 
     <div class="ticket-section" id="ticket-section-received">
       <h3>📥 수신 <span class="small-note" id="ticket-section-received-count"></span></h3>
       <div class="table-scroll"><table class="ticket-table-compact">
         <thead><tr>
+          <th class="th-check"><input type="checkbox" class="selection-toggle ticket-selection-toggle" aria-label="관련업무 선택 모드" title="여러 업무 선택" /></th>
           <th>제목</th><th>요청자 / 구성원·열람</th><th>첫 세부사항</th><th>요청일(희망기한)</th><th>현상태</th><th>세부사항 이력</th><th class="th-del"></th>
         </tr></thead>
         <tbody id="ticket-tbody-received"></tbody>
@@ -620,6 +650,7 @@
       <h3>📤 발송 <span class="small-note" id="ticket-section-sent-count"></span></h3>
       <div class="table-scroll"><table class="ticket-table-compact">
         <thead><tr>
+          <th class="th-check"><input type="checkbox" class="selection-toggle ticket-selection-toggle" aria-label="관련업무 선택 모드" title="여러 업무 선택" /></th>
           <th>제목</th><th>요청자 / 구성원·열람</th><th>첫 세부사항</th><th>요청일(희망기한)</th><th>현상태</th><th>세부사항 이력</th><th class="th-del"></th>
         </tr></thead>
         <tbody id="ticket-tbody-sent"></tbody>
@@ -632,14 +663,15 @@
     <div class="panel-head">
       <h2>일정관리</h2>
       <div class="panel-head-actions">
-        <button class="btn-secondary btn-danger-outline" id="schedule-bulk-delete">선택 삭제</button>
+        <label class="panel-search-wrap"><span class="sr-only">일정 검색</span><input class="panel-search" type="search" id="schedule-search" placeholder="일정 검색" autocomplete="off" /></label>
+        <button class="btn-secondary btn-danger-outline bulk-delete-btn" id="schedule-bulk-delete" hidden>선택 삭제</button>
         <button class="btn-secondary" id="schedule-view-toggle"><span class="nav-link-icon">🗓️</span> 월간보기</button>
         <button class="btn-primary" id="schedule-new-btn">+ 새 일정 등록</button>
       </div>
     </div>
     <div class="table-scroll"><table id="schedule-table">
       <thead><tr>
-        <th class="th-check"><input type="checkbox" id="schedule-select-all" /></th>
+        <th class="th-check"><input type="checkbox" class="selection-toggle" id="schedule-select-all" aria-label="일정 선택 모드" title="여러 일정 선택" /></th>
         <th>제목</th><th>유형</th><th>날짜</th><th>업체/부서</th><th>담당</th><th>등록자</th><th class="th-del"></th>
       </tr></thead>
       <tbody id="schedule-tbody"></tbody>
@@ -676,13 +708,14 @@
         </select>
       </div>
       <div class="panel-head-actions">
-        <button class="btn-secondary btn-danger-outline" id="memo-bulk-delete">선택 삭제</button>
+        <label class="panel-search-wrap"><span class="sr-only">메모 검색</span><input class="panel-search" type="search" id="memo-search" placeholder="메모 검색" autocomplete="off" /></label>
+        <button class="btn-secondary btn-danger-outline bulk-delete-btn" id="memo-bulk-delete" hidden>선택 삭제</button>
         <button class="btn-primary" id="memo-new-btn">+ 새 메모 등록</button>
       </div>
     </div>
-    <div class="table-scroll"><table>
+    <div class="table-scroll"><table id="memo-table">
       <thead><tr>
-        <th class="th-check"><input type="checkbox" id="memo-select-all" /></th>
+        <th class="th-check"><input type="checkbox" class="selection-toggle" id="memo-select-all" aria-label="메모 선택 모드" title="여러 메모 선택" /></th>
         <th>담당자-내용</th><th>긴급도</th><th>작성자</th><th>받은시간</th><th>상태</th><th class="th-del"></th>
       </tr></thead>
       <tbody id="memo-tbody"></tbody>

@@ -509,6 +509,27 @@ function initDateField(input) {
    1. 업무관리
    ════════════════════════════════════════════════ */
 let tickets = [];
+let ticketSelectionMode = false;
+let selectedTicketIds = new Set();
+let lastRenderedTicketIds = [];
+
+function normalizedSearchText(value) {
+  return String(value ?? "").toLocaleLowerCase("ko-KR").replace(/\s+/g, " ").trim();
+}
+function includesSearch(values, queryText) {
+  if (!queryText) return true;
+  return normalizedSearchText(values.flat(Infinity).join(" ")).includes(queryText);
+}
+function retainVisibleSelections(selectedSet, visibleIds) {
+  const visible = new Set(visibleIds);
+  [...selectedSet].forEach(id => { if (!visible.has(id)) selectedSet.delete(id); });
+}
+function updateBulkButton(buttonId, mode, count) {
+  const button = document.getElementById(buttonId);
+  button.hidden = !mode;
+  button.textContent = count ? `선택 삭제 (${count})` : "선택 삭제";
+  button.disabled = count === 0;
+}
 let ticketDetailUnsubscribe = null;
 const ticketDetailsById = new Map();
 
@@ -618,6 +639,7 @@ onSnapshot(ticketListQuery, (snap) => {
 document.getElementById("ticket-filter-status").addEventListener("change", renderTickets);
 ticketFilterRequester.addEventListener("change", renderTickets);
 document.getElementById("ticket-filter-overdue").addEventListener("change", renderTickets);
+document.getElementById("ticket-search").addEventListener("input", renderTickets);
 /* 수신/발송 버튼은 더 이상 화면을 전환하지 않고, 두 구역이 항상 함께(위/아래) 보이므로
    해당 구역으로 부드럽게 스크롤 이동하는 바로가기 역할만 함 */
 document.getElementById("ticket-dir-received").addEventListener("click", () => {
@@ -681,6 +703,7 @@ function buildTicketRow(t, me) {
     : t.receivedAt ? `수신확인 ${t.receivedBy || "-"} · ${fmtTs(t.receivedAt)}` : "수신대기";
   const editIcon = isAuthor ? `<button type="button" class="row-edit-btn" title="수정">✏️</button>` : "";
   tr.innerHTML = `
+    <td class="td-check selection-cell"><input type="checkbox" class="row-check" aria-label="${escapeHtml(t.title)} 선택" ${selectedTicketIds.has(t.id) ? "checked" : ""} /></td>
     <td>${unseenDot}${escapeHtml(t.title)}${deleteRequestBadge(t)}${editIcon}</td>
     <td title="${escapeHtml(receiptText)}">${escapeHtml(counterpart || "-")}<div class="small-note">${escapeHtml(receiptText)}</div></td>
     <td class="ticket-content-cell" title="${escapeHtml(contentText)}">${escapeHtml(contentText)}</td>
@@ -690,6 +713,11 @@ function buildTicketRow(t, me) {
     <td class="td-del"><button type="button" class="row-delete-btn" title="삭제">🗑</button></td>
   `;
   tr.addEventListener("click", () => openTicketDetail(t.id, true));
+  tr.querySelector(".row-check").addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (e.target.checked) selectedTicketIds.add(t.id); else selectedTicketIds.delete(t.id);
+    updateTicketSelectionUi();
+  });
   const editBtn = tr.querySelector(".row-edit-btn");
   if (editBtn) editBtn.addEventListener("click", (e) => { e.stopPropagation(); openTicketDetail(t.id, false); });
   tr.querySelector(".row-delete-btn").addEventListener("click", (e) => {
@@ -703,7 +731,7 @@ function renderTicketGroup(rows, me, tbodyId, countId, btnId, sectionCountId) {
   const tbody = document.getElementById(tbodyId);
   tbody.innerHTML = "";
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">표시할 업무가 없습니다</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">표시할 업무가 없습니다</td></tr>`;
   } else {
     rows.forEach(t => tbody.appendChild(buildTicketRow(t, me)));
   }
@@ -717,12 +745,17 @@ function renderTickets() {
   const statusF = document.getElementById("ticket-filter-status").value;
   const reqF = ticketFilterRequester.value;
   const overdueOnly = document.getElementById("ticket-filter-overdue").checked;
+  const searchText = normalizedSearchText(document.getElementById("ticket-search").value);
   const me = currentUser();
 
   const passesFilters = (t) => {
     if (statusF !== "all" && t.status !== statusF) return false;
     if (reqF !== "all" && t.requestedBy !== reqF) return false;
     if (overdueOnly && !isTicketOverdue(t)) return false;
+    if (!includesSearch([
+      t.title, t.requestedBy, ticketRecipients(t), t.status, t.dueDate,
+      t.lastDetailText, (t.history || []).map(h => [h.text, h.author])
+    ], searchText)) return false;
     return true;
   };
 
@@ -733,9 +766,28 @@ function renderTickets() {
   });
   const sent = isAdmin() ? [] : tickets.filter(t => t.requestedBy === me && passesFilters(t));
 
+  lastRenderedTicketIds = [...new Set([...received, ...sent].map(t => t.id))];
+  retainVisibleSelections(selectedTicketIds, lastRenderedTicketIds);
+
   renderTicketGroup(received, me, "ticket-tbody-received", "ticket-count-received", "ticket-dir-received", "ticket-section-received-count");
   renderTicketGroup(sent, me, "ticket-tbody-sent", "ticket-count-sent", "ticket-dir-sent", "ticket-section-sent-count");
+  updateTicketSelectionUi();
 }
+
+function updateTicketSelectionUi() {
+  document.querySelectorAll(".ticket-table-compact").forEach(table => table.classList.toggle("selection-active", ticketSelectionMode));
+  document.querySelectorAll(".ticket-selection-toggle").forEach(toggle => { toggle.checked = ticketSelectionMode; });
+  updateBulkButton("ticket-bulk-delete", ticketSelectionMode, selectedTicketIds.size);
+}
+document.querySelectorAll(".ticket-selection-toggle").forEach(toggle => toggle.addEventListener("change", (event) => {
+  ticketSelectionMode = event.target.checked;
+  if (!ticketSelectionMode) selectedTicketIds.clear();
+  renderTickets();
+}));
+document.getElementById("ticket-bulk-delete").addEventListener("click", async () => {
+  await bulkDelete("ticket", tickets, selectedTicketIds);
+  renderTickets();
+});
 
 const ticketOverlay = document.getElementById("ticket-modal-overlay");
 let ticketEditingId = null;
@@ -1138,6 +1190,7 @@ document.getElementById("ticket-save").addEventListener("click", async () => {
 let schedules = [];
 let selectedScheduleIds = new Set();
 let lastRenderedScheduleIds = [];
+let scheduleSelectionMode = false;
 let scheduleViewMode = "list"; // "list" | "calendar"
 /* 일정의 대표 날짜 (가장 이른 날짜) - 날짜순 정렬 및 오늘 구분선 위치 판단에 사용 */
 function earliestDate(s) {
@@ -1165,13 +1218,18 @@ function appendFocusGroupHeader(tbody, label, count, kind, colspan) {
 }
 
 function renderSchedules() {
-  lastRenderedScheduleIds = schedules.map(s => s.id);
+  const searchText = normalizedSearchText(document.getElementById("schedule-search").value);
+  const visibleSchedules = schedules.filter(s => includesSearch([
+    s.title, s.type, s.vendor, responsibleArray(s), s.registeredBy, s.dates, s.time
+  ], searchText));
+  lastRenderedScheduleIds = visibleSchedules.map(s => s.id);
+  retainVisibleSelections(selectedScheduleIds, lastRenderedScheduleIds);
   const tbody = document.getElementById("schedule-tbody");
   tbody.innerHTML = "";
   const me = currentUser();
   const groups = [
-    { label:"내 관련 일정", kind:"mine", items:schedules.filter(s => s.registeredBy === me || responsibleArray(s).includes(me)) },
-    { label:"시설팀 공유 일정", kind:"team", items:schedules.filter(s => s.registeredBy !== me && !responsibleArray(s).includes(me)) }
+    { label:"내 관련 일정", kind:"mine", items:visibleSchedules.filter(s => s.registeredBy === me || responsibleArray(s).includes(me)) },
+    { label:"시설팀 공유 일정", kind:"team", items:visibleSchedules.filter(s => s.registeredBy !== me && !responsibleArray(s).includes(me)) }
   ];
   const today = todayIso();
 
@@ -1200,7 +1258,7 @@ function renderSchedules() {
       const isAuthor = ownsRecord("schedule", s) || isAdmin();
       const editIcon = isAuthor ? `<button type="button" class="row-edit-btn" title="수정">✏️</button>` : "";
       tr.innerHTML = `
-        <td class="td-check"><input type="checkbox" class="row-check" ${selectedScheduleIds.has(s.id) ? "checked" : ""} /></td>
+        <td class="td-check selection-cell"><input type="checkbox" class="row-check" aria-label="${escapeHtml(s.title)} 선택" ${selectedScheduleIds.has(s.id) ? "checked" : ""} /></td>
         <td title="${escapeHtml(s.title)}">${escapeHtml(s.title)}${deleteRequestBadge(s)}${editIcon}</td>
         <td title="${escapeHtml(typeLabel(s.type))}"><span class="badge type-${s.type}">${escapeHtml(s.type)}</span></td>
         <td title="${escapeHtml(formatDateRanges(s.dates))}${s.time ? " " + escapeHtml(s.time) : ""}">${escapeHtml(formatDateRangesShort(s.dates))}${s.time ? ` ${escapeHtml(s.time)}` : ""}</td>
@@ -1215,6 +1273,7 @@ function renderSchedules() {
       tr.querySelector(".row-check").addEventListener("click", (e) => {
         e.stopPropagation();
         if (e.target.checked) selectedScheduleIds.add(s.id); else selectedScheduleIds.delete(s.id);
+        updateScheduleSelectionUi();
       });
       tr.querySelector(".row-delete-btn").addEventListener("click", (e) => {
         e.stopPropagation();
@@ -1229,14 +1288,24 @@ function renderSchedules() {
       tbody.appendChild(divider);
     }
   });
+  updateScheduleSelectionUi();
 }
 
 document.getElementById("schedule-select-all").addEventListener("change", (e) => {
-  if (e.target.checked) lastRenderedScheduleIds.forEach(id => selectedScheduleIds.add(id));
-  else lastRenderedScheduleIds.forEach(id => selectedScheduleIds.delete(id));
+  scheduleSelectionMode = e.target.checked;
+  if (!scheduleSelectionMode) selectedScheduleIds.clear();
   renderSchedules();
 });
-document.getElementById("schedule-bulk-delete").addEventListener("click", () => bulkDelete("schedule", schedules, selectedScheduleIds));
+document.getElementById("schedule-search").addEventListener("input", renderSchedules);
+function updateScheduleSelectionUi() {
+  document.getElementById("schedule-table").classList.toggle("selection-active", scheduleSelectionMode);
+  document.getElementById("schedule-select-all").checked = scheduleSelectionMode;
+  updateBulkButton("schedule-bulk-delete", scheduleSelectionMode, selectedScheduleIds.size);
+}
+document.getElementById("schedule-bulk-delete").addEventListener("click", async () => {
+  await bulkDelete("schedule", schedules, selectedScheduleIds);
+  renderSchedules();
+});
 
 /* ── 일정관리: 월간보기 캘린더 ───────────────── */
 let schedCalViewY, schedCalViewM;
@@ -1775,6 +1844,7 @@ let memos = [];
 let selectedMemoIds = new Set();
 let lastRenderedMemoIds = [];
 let memoAssigneeSet = new Set();
+let memoSelectionMode = false;
 
 function renderMemoAssigneeChecks() {
   const wrap = document.getElementById("memo-assignee-checks");
@@ -1810,11 +1880,16 @@ onSnapshot(query(collection(db, "phoneMemos"), orderBy("receivedAt", "desc"), li
   renderDashboard();
 }, error => reportDataError("메모 불러오기", error));
 document.getElementById("memo-filter-status").addEventListener("change", renderMemos);
+document.getElementById("memo-search").addEventListener("input", renderMemos);
 
 function renderMemos() {
   const f = document.getElementById("memo-filter-status").value;
-  const rows = memos.filter(m => f === "all" || m.status === f);
+  const searchText = normalizedSearchText(document.getElementById("memo-search").value);
+  const rows = memos.filter(m => (f === "all" || m.status === f) && includesSearch([
+    m.subject, m.assignee, m.receivedBy, m.urgency, m.status, m.confirmedBy
+  ], searchText));
   lastRenderedMemoIds = rows.map(m => m.id);
+  retainVisibleSelections(selectedMemoIds, lastRenderedMemoIds);
   const tbody = document.getElementById("memo-tbody");
   tbody.innerHTML = "";
   const me = currentUser();
@@ -1834,21 +1909,23 @@ function renderMemos() {
     }
     group.items.forEach(m => {
       const tr = document.createElement("tr");
-      if (m.status === "확인됨" && me === m.assignee) tr.classList.add("row-emphasized");
+      if (m.status !== "확인됨") tr.classList.add("row-memo-unread");
+      if (group.kind === "team" && m.status === "확인됨") tr.classList.add("row-shared-confirmed");
       else if (m.status === "확인됨" && me === m.receivedBy) tr.classList.add("row-dimmed");
       tr.innerHTML = `
-        <td class="td-check"><input type="checkbox" class="row-check" ${selectedMemoIds.has(m.id) ? "checked" : ""} /></td>
-        <td><b>${escapeHtml(m.assignee || "미지정")}</b> - ${escapeHtml(m.subject || "")}${deleteRequestBadge(m)}</td>
+        <td class="td-check selection-cell"><input type="checkbox" class="row-check" aria-label="${escapeHtml(m.subject || "메모")} 선택" ${selectedMemoIds.has(m.id) ? "checked" : ""} /></td>
+        <td class="memo-subject"><b>${escapeHtml(m.assignee || "미지정")}</b> - ${escapeHtml(m.subject || "")}${deleteRequestBadge(m)}</td>
         <td><span class="badge urgency-${m.urgency}">${escapeHtml(m.urgency || "-")}</span></td>
         <td>${escapeHtml(m.receivedBy || "-")}</td>
         <td>${fmtTs(m.receivedAt)}</td>
-        <td><span class="badge status-${m.status}">${escapeHtml(m.status || "-")}</span>${m.status === "확인됨" ? `<div class="small-note">${escapeHtml(m.confirmedBy || "-")} ${fmtTs(m.confirmedAt)}</div>` : ""}</td>
+        <td class="memo-status-cell"><span class="badge status-${m.status}">${escapeHtml(m.status || "-")}</span>${m.status === "확인됨" ? `<div class="small-note">${escapeHtml(m.confirmedBy || "-")} ${fmtTs(m.confirmedAt)}</div>` : ""}</td>
         <td class="td-del"><button type="button" class="row-delete-btn" title="삭제">🗑</button></td>
       `;
       tr.addEventListener("click", () => openMemoEdit(m.id));
       tr.querySelector(".row-check").addEventListener("click", (e) => {
         e.stopPropagation();
         if (e.target.checked) selectedMemoIds.add(m.id); else selectedMemoIds.delete(m.id);
+        updateMemoSelectionUi();
       });
       tr.querySelector(".row-delete-btn").addEventListener("click", (e) => {
         e.stopPropagation();
@@ -1857,14 +1934,23 @@ function renderMemos() {
       tbody.appendChild(tr);
     });
   });
+  updateMemoSelectionUi();
 }
 
 document.getElementById("memo-select-all").addEventListener("change", (e) => {
-  if (e.target.checked) lastRenderedMemoIds.forEach(id => selectedMemoIds.add(id));
-  else lastRenderedMemoIds.forEach(id => selectedMemoIds.delete(id));
+  memoSelectionMode = e.target.checked;
+  if (!memoSelectionMode) selectedMemoIds.clear();
   renderMemos();
 });
-document.getElementById("memo-bulk-delete").addEventListener("click", () => bulkDelete("memo", memos, selectedMemoIds));
+function updateMemoSelectionUi() {
+  document.getElementById("memo-table").classList.toggle("selection-active", memoSelectionMode);
+  document.getElementById("memo-select-all").checked = memoSelectionMode;
+  updateBulkButton("memo-bulk-delete", memoSelectionMode, selectedMemoIds.size);
+}
+document.getElementById("memo-bulk-delete").addEventListener("click", async () => {
+  await bulkDelete("memo", memos, selectedMemoIds);
+  renderMemos();
+});
 
 const memoOverlay = document.getElementById("memo-modal-overlay");
 let memoEditingId = null;
