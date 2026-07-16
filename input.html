@@ -142,6 +142,26 @@
   .selection-toggle { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); }
   .bulk-delete-btn[hidden] { display: none; }
 
+  /* 관련업무 헤더는 데스크톱에서 한 줄을 유지한다. */
+  @media (min-width: 900px) {
+    #panel-tickets > .panel-head { flex-wrap: nowrap; gap: 8px; }
+    #panel-tickets > .panel-head h2 { font-size: 21px; flex: 0 0 auto; }
+    #panel-tickets .dir-toggle { flex: 0 0 auto; }
+    #panel-tickets .dir-toggle-btn { padding: 8px 10px; font-size: 14px; }
+    #panel-tickets > .panel-head > .filter-bar {
+      flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; gap: 5px;
+    }
+    #panel-tickets > .panel-head > .filter-bar label { font-size: 14px; margin-right: 0; white-space: nowrap; }
+    #panel-tickets > .panel-head > .filter-bar select { padding: 7px 8px; font-size: 14px; min-width: 0; }
+    #ticket-filter-status { width: 76px; }
+    #ticket-filter-requester { width: 78px; }
+    #panel-tickets .panel-head-actions { flex: 0 1 auto; gap: 6px; min-width: 0; }
+    #panel-tickets .panel-search { width: 145px; min-width: 105px; padding: 8px 9px 8px 33px !important; font-size: 14px; }
+    #panel-tickets .panel-search-wrap::before { left: 11px; font-size: 18px; }
+    #panel-tickets .panel-head-actions .btn-primary,
+    #panel-tickets .panel-head-actions .btn-secondary { padding: 9px 12px; font-size: 14px; white-space: nowrap; }
+  }
+
   /* ── 일정관리 표: 항목이 많아도 한 줄로 맞추기 (넘치는 글자는 말줄임표 + 마우스오버로 전체 확인) ── */
   #schedule-table { table-layout: fixed; }
   #schedule-table td, #schedule-table th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

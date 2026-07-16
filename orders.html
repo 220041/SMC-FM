@@ -42,15 +42,22 @@
   .sheet-updated-at { font-size: 12.5px; color: var(--dim); margin-right: 4px; }
   .sheet-status { padding: 26px 4px; color: var(--ink-soft); font-size: 15px; line-height: 1.7; }
   .sheet-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
-  /* 타이트 레이아웃: 열 너비를 내용에 맞춰 자동으로(auto) 잡되, 적요 열만 너무 길어지지 않도록 제한 */
+  /* 시트 한 행을 화면에서도 한 줄로 유지한다. 폭이 넘으면 표 영역만 가로 스크롤한다. */
   .sheet-table-wrap table { width: auto; min-width: 100%; border-collapse: collapse; font-size: 16.5px; }
-  .sheet-table-wrap th, .sheet-table-wrap td { padding: 10px 11px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+  .sheet-table-wrap th, .sheet-table-wrap td {
+    padding: 10px 11px; border-bottom: 1px solid var(--line); text-align: left;
+    white-space: nowrap; line-height: 1.35; height: 22px;
+  }
   .sheet-table-wrap th { background: var(--bg); font-weight: 800; color: var(--ink-soft); font-size: 15px; position: sticky; top: 0; }
   .sheet-table-wrap tbody tr:hover { background: #FAFBF9; }
-  /* 적요(3번째 열)만 예외적으로 폭 제한 + 말줄임 (전체 내용은 title 툴팁으로 확인) */
+  /* 긴 적요·보완사항만 폭을 제한하고 전체 내용은 마우스오버로 확인한다. */
   .sheet-table-wrap th:nth-child(3), .sheet-table-wrap td:nth-child(3) {
+    max-width: 300px; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sheet-table-wrap th:nth-child(13), .sheet-table-wrap td:nth-child(13) {
     max-width: 260px; overflow: hidden; text-overflow: ellipsis;
   }
+  .sheet-row-count { color: var(--ink-soft); font-size: 13px; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -120,13 +127,16 @@ function parseCsv(text) {
   return rows;
 }
 
-/* A~G(0~6) 출력, H(7, 빈 열)는 숨기고, I~K(8~10) 출력. 그 뒤(L열 이후, 11~)는 표시하지 않음 */
-const VISIBLE_COL_INDICES = [0, 1, 2, 3, 4, 5, 6, 8, 9, 10];
+/* 새 현황 시트의 실제 업무 필드 A~Q를 표시하고, R열 이후 자동 비교용 보조 필드는 숨긴다. */
+const LAST_BUSINESS_COLUMN_INDEX = 16;
 function renderSheetTable(rows) {
   const wrap = document.getElementById("sheet-table-wrap");
   const header = rows[0];
   const body = rows.slice(1);
-  const cols = VISIBLE_COL_INDICES.filter(i => i < header.length);
+  const cols = header
+    .map((label, index) => ({ label: String(label || "").trim(), index }))
+    .filter(col => col.index <= LAST_BUSINESS_COLUMN_INDEX && col.label)
+    .map(col => col.index);
   let html = "<table><thead><tr>";
   cols.forEach((ci) => {
     const label = header[ci] && header[ci].trim() ? header[ci] : "열" + (ci + 1);
@@ -140,6 +150,7 @@ function renderSheetTable(rows) {
   });
   html += "</tbody></table>";
   wrap.innerHTML = html;
+  return body.length;
 }
 
 let sheetDataLoaded = false;
@@ -160,10 +171,10 @@ async function loadSheetData(force) {
       status.textContent = "표시할 데이터가 없습니다.";
       return;
     }
-    renderSheetTable(rows);
+    const itemCount = renderSheetTable(rows);
     status.style.display = "none";
     sheetDataLoaded = true;
-    updatedAt.textContent = "마지막 갱신 " + new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+    updatedAt.innerHTML = `<span class="sheet-row-count">${itemCount}건</span> · 마지막 갱신 ${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}`;
   } catch (err) {
     status.innerHTML = "시트를 불러오지 못했습니다 (" + escapeHtml(err.message || "네트워크 오류") + ").<br>위의 \"구글시트에서 열기\" 버튼으로 원본을 확인해주세요.";
   }
