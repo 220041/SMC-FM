@@ -23,7 +23,7 @@
   .nav-link:active { background: var(--line); }
   .nav-link-icon { font-size: 16px; }
 
-  #content { max-width: 1210px; margin: 0 auto; padding: 22px; }
+  #content { max-width: 1600px; margin: 0 auto; padding: 22px; }
   .panel-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 11px; margin-bottom: 8px; }
   .panel-head h2 { font-size: 24px; margin: 0; }
   .panel-head-actions { display: flex; gap: 9px; align-items: center; flex-shrink: 0; }
@@ -41,23 +41,22 @@
 
   .sheet-updated-at { font-size: 12.5px; color: var(--dim); margin-right: 4px; }
   .sheet-status { padding: 26px 4px; color: var(--ink-soft); font-size: 15px; line-height: 1.7; }
-  .sheet-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
-  /* 시트 한 행을 화면에서도 한 줄로 유지한다. 폭이 넘으면 표 영역만 가로 스크롤한다. */
-  .sheet-table-wrap table { width: auto; min-width: 100%; border-collapse: collapse; font-size: 16.5px; }
+  .sheet-table-wrap { overflow-x: hidden; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
+  /* 필요한 열만 고정 폭으로 나눠 가로 스크롤 없이 한 건을 한 줄에 표시한다. */
+  .sheet-table-wrap table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 11.5px; }
   .sheet-table-wrap th, .sheet-table-wrap td {
-    padding: 10px 11px; border-bottom: 1px solid var(--line); text-align: left;
-    white-space: nowrap; line-height: 1.35; height: 22px;
+    padding: 8px 4px; border-bottom: 1px solid var(--line); text-align: left;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25; height: 20px;
   }
-  .sheet-table-wrap th { background: var(--bg); font-weight: 800; color: var(--ink-soft); font-size: 15px; position: sticky; top: 0; }
+  .sheet-table-wrap th { background: var(--bg); font-weight: 800; color: var(--ink-soft); font-size: 11px; position: sticky; top: 0; }
   .sheet-table-wrap tbody tr:hover { background: #FAFBF9; }
-  /* 긴 적요·보완사항만 폭을 제한하고 전체 내용은 마우스오버로 확인한다. */
-  .sheet-table-wrap th:nth-child(3), .sheet-table-wrap td:nth-child(3) {
-    max-width: 300px; overflow: hidden; text-overflow: ellipsis;
-  }
-  .sheet-table-wrap th:nth-child(13), .sheet-table-wrap td:nth-child(13) {
-    max-width: 260px; overflow: hidden; text-overflow: ellipsis;
-  }
   .sheet-row-count { color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+  @media (max-width: 1050px) {
+    #content { padding: 14px 10px; }
+    .sheet-table-wrap table { font-size: 10px; }
+    .sheet-table-wrap th { font-size: 9.5px; }
+    .sheet-table-wrap th, .sheet-table-wrap td { padding: 7px 2px; }
+  }
 </style>
 </head>
 <body>
@@ -83,7 +82,7 @@
       <button class="btn-primary" id="sheet-refresh-btn">🔄 새로고침</button>
     </div>
   </div>
-  <p class="panel-sub">시설팀에서 수의계약사유서·시행기안 발주 요청 사항과 법인카드 결제 내역을 기재하면, 계약팀에서 발주일과 카드결제 확인 내역을 기재하여 공유하는 구글시트입니다.<br>이 화면은 해당 시트 내용을 그대로 보여줍니다 (편집은 구글시트에서).</p>
+  <p class="panel-sub">시설팀의 발주 요청과 계약팀 처리 현황을 보여줍니다. 카드결제완료 항목은 제외하며, 긴 내용은 마우스를 올리면 전체를 확인할 수 있습니다 (편집은 구글시트에서).</p>
   <div id="sheet-status" class="sheet-status"></div>
   <div id="sheet-table-wrap" class="sheet-table-wrap"></div>
 </div>
@@ -127,27 +126,53 @@ function parseCsv(text) {
   return rows;
 }
 
-/* 새 현황 시트의 실제 업무 필드 A~Q를 표시하고, R열 이후 자동 비교용 보조 필드는 숨긴다. */
-const LAST_BUSINESS_COLUMN_INDEX = 16;
+/* 열 위치가 바뀌어도 헤더 이름으로 찾아 지정한 순서대로 표시한다. width 합계는 100%. */
+const COLUMN_CONFIG = [
+  { key:"처리구분", label:"처리구분", width:5 },
+  { key:"적요", label:"적요", width:17 },
+  { key:"금액", label:"금액", width:6 },
+  { key:"희망발주일", label:"희망발주", width:7 },
+  { key:"등록일", label:"등록일", width:6 },
+  { key:"요청번호", label:"요청번호", width:8 },
+  { key:"처리상태", label:"처리상태", width:6 },
+  { key:"접수확인일", label:"접수확인", width:7 },
+  { key:"예상발주일", label:"예상발주", width:7 },
+  { key:"실제발주일", label:"실제발주", width:7 },
+  { key:"보완사항·지연사유", label:"보완·지연사유", width:9 },
+  { key:"계약팀 담당자", label:"담당자", width:5 },
+  { key:"최종수정일", label:"최종수정", width:7 },
+  { key:"처리경과일", label:"경과일", width:3 }
+];
 function renderSheetTable(rows) {
   const wrap = document.getElementById("sheet-table-wrap");
-  const header = rows[0];
-  const body = rows.slice(1);
-  const cols = header
-    .map((label, index) => ({ label: String(label || "").trim(), index }))
-    .filter(col => col.index <= LAST_BUSINESS_COLUMN_INDEX && col.label)
-    .map(col => col.index);
-  let html = "<table><thead><tr>";
-  cols.forEach((ci) => {
-    const label = header[ci] && header[ci].trim() ? header[ci] : "열" + (ci + 1);
-    html += `<th>${escapeHtml(label)}</th>`;
+  const header = rows[0].map(value => String(value || "").trim());
+  const processingTypeIndex = header.indexOf("처리구분");
+  const subjectIndex = header.indexOf("적요");
+  const columns = COLUMN_CONFIG
+    .map(config => ({ ...config, index:header.indexOf(config.key) }))
+    .filter(config => config.index >= 0);
+  const body = rows.slice(1).filter(row => {
+    const processingType = String(row[processingTypeIndex] || "").replace(/\s+/g, "");
+    const hasVisibleValue = columns.some(column => String(row[column.index] || "").trim());
+    const hasSubject = String(row[subjectIndex] || "").trim().length > 0;
+    return hasVisibleValue && hasSubject && processingType !== "카드결제완료";
+  });
+  let html = "<table><colgroup>";
+  columns.forEach(column => { html += `<col style="width:${column.width}%">`; });
+  html += "</colgroup><thead><tr>";
+  columns.forEach(column => {
+    html += `<th title="${escapeHtml(column.key)}">${escapeHtml(column.label)}</th>`;
   });
   html += "</tr></thead><tbody>";
   body.forEach(r => {
     html += "<tr>";
-    cols.forEach((ci) => { html += `<td title="${escapeHtml(r[ci] || "")}">${escapeHtml(r[ci] || "")}</td>`; });
+    columns.forEach(column => {
+      const value = r[column.index] || "";
+      html += `<td title="${escapeHtml(value)}">${escapeHtml(value)}</td>`;
+    });
     html += "</tr>";
   });
+  if (!body.length) html += `<tr><td colspan="${columns.length}" style="text-align:center;padding:24px;color:var(--dim);">표시할 발주 요청이 없습니다.</td></tr>`;
   html += "</tbody></table>";
   wrap.innerHTML = html;
   return body.length;
